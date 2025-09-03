@@ -1,0 +1,132 @@
+package com.ssafy.BlueMarble.domain.user.service;
+
+import com.ssafy.BlueMarble.domain.auth.security.JwtTokenProvider;
+import com.ssafy.BlueMarble.domain.user.dto.request.UpdateUserInfoRequest;
+import com.ssafy.BlueMarble.domain.user.dto.response.UserInfoResponse;
+import com.ssafy.BlueMarble.domain.user.dto.response.UserSearchResponseDTO;
+import com.ssafy.BlueMarble.domain.user.entity.User;
+import com.ssafy.BlueMarble.domain.user.repository.UserRepository;
+import com.ssafy.BlueMarble.global.common.exception.BusinessError;
+import com.ssafy.BlueMarble.global.common.exception.BusinessException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Random;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+@Transactional
+public class UserService {
+
+    private final UserRedisService userRedisService;
+    private final UserRepository userRepository;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final Random random = new Random();
+
+    public UserInfoResponse getUserInfo(User user) {
+//        UserStats userStats = userStatsRepository.findByUser(user);
+//
+//        LevelService.XpInfo xpInfo = levelService.calculateXpInfo(userStats);
+//
+//        List<JobStats> jobStatsList = jobStatsRepository.findByUser(user);
+//
+//        Map<Role, JobStats> jobStatsMap = jobStatsList.stream()
+//                .collect(Collectors.toMap(JobStats::getJobType, stats -> stats));
+//
+//        List<ItemDto> icons = inventoryService.getUserIcons(user.getId());
+//        List<ItemDto> nameTags = inventoryService.getUserNameTags(user.getId());
+//
+//        return UserInfoResponse.builder()
+//                .nickname(user.getNickname())
+//                .email(user.getEmail())
+//                .createdAt(user.getCreatedAt())
+//                .level(userStats.getLevel())
+//                .xp(xpInfo.curXp())
+//                .maxXp(xpInfo.maxXp())
+//                .progress(xpInfo.progress())
+//                .tier(userStats.getTier())
+//                .MMR(userStats.getMMR())
+//                .totalGames(userStats.getTotalGames())
+//                .totalWins(userStats.getTotalWins())
+//                .totalLosses(userStats.getTotalLosses())
+//                .winRate(userStats.getWinRate())
+//                .MafiaTeamWinRate(jobStatsService.calculateJobWinRate(jobStatsMap, Role.MAFIA))
+//                .CitizenTeamWinRate(jobStatsService.calculateCitizenTeamWinRate(jobStatsList))
+//                .iconUrl(user.getIconUrl())
+//                .nameTagUrl(user.getNameTagUrl())
+//                .icons(icons)
+//                .nameTags(nameTags)
+//                .build();
+        return UserInfoResponse.builder().build();
+    }
+
+    public String generateNickname() {
+        String nickname;
+        do {
+            nickname = "Player" + (10000 + random.nextInt(90000));
+        } while (userRepository.existsByNickname(nickname));
+
+        return nickname;
+    }
+
+    @Transactional
+    public boolean updateUserInfo(User user, UpdateUserInfoRequest request) {
+        // 닉네임 중복 체크
+        if (userRepository.existsByNickname(request.getNickname()))
+            throw new BusinessException(BusinessError.NICKNAME_DUPLICATED);
+
+        request.applyTo(user);
+
+//        if(request.getNameTagId()!=null){
+//            Item item = itemRepository.findById(request.getNameTagId())
+//                    .orElseThrow(()-> new BusinessException(BusinessError.ITEM_ID_NOT_FOUND));
+//
+//            if(item.getItemCategory() != Item.CategoryType.NAME)
+//                throw new BusinessException(BusinessError.CATEGORY_MISMATCH);
+//
+//            user.setNameTagUrl(item.getItemIcon());
+//        }
+
+        User savedUser = userRepository.save(user);
+
+//        if (nicknameChanged) {
+//            userRedisService.putNickname(savedUser.getId().toString(), savedUser.getNickname(), icon, nameTag);
+//        }
+
+        return true;
+    }
+
+    public void logOut(String refreshToken) {
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new BusinessException(BusinessError.INVALID_TOKEN);
+        }
+
+        String email = jwtTokenProvider.getEmail(refreshToken);
+        String redisKey = "RT:" + email;
+
+        Boolean isDeleted = redisTemplate.delete(redisKey);
+
+        if (!(isDeleted)) {
+            throw new BusinessException(BusinessError.TOKEN_DELETE_FAIL);
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(BusinessError.USER_EMAIL_NOT_FOUND));
+
+        user.setFcmToken(null);
+        userRepository.save(user);
+    }
+
+    public void deleteUser(User user) {
+        userRepository.delete(user);
+    }
+
+    public UserSearchResponseDTO searchUser(String userName) {
+        return userRepository.findByNickname(userName);
+    }
+}
