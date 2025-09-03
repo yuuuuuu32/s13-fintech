@@ -1,0 +1,49 @@
+# ────────────── 공통 ──────────────
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+*.lock
+
+# ────────────── Frontend (React) ──────────────
+node_modules/
+dist/
+build/
+out/
+.cache/
+coverage/
+*.tsbuildinfo
+
+# 환경변수
+.env
+.env.local
+.env.*.local
+
+# ────────────── Backend (Spring Boot) ──────────────
+# Maven / Gradle build 결과물
+/target/
+/build/
+/out/
+
+# IDE / Editor 설정
+*.iml
+*.ipr
+*.iws
+
+# OS 특화
+ehthumbs.db
+Desktop.ini
+
+# 로그 / 임시 파일
+*.log
+*.tmp
+
+# 환경 설정 (개발자 로컬별)
+application-*.yml
+application-*.properties
