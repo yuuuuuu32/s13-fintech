@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.request.ConstructRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
+import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
 import com.ssafy.BlueMarble.domain.game.service.LandService;
 import com.ssafy.BlueMarble.domain.game.service.MapService;
 import com.ssafy.BlueMarble.domain.game.service.EventService;
@@ -142,6 +143,10 @@ public class WebSocketHandler extends TextWebSocketHandler {
             case WORLD_TRAVEL_EVENT:
                 WorldTravelRequest worldTravelRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), WorldTravelRequest.class);
                 eventService.handleWorldTravelEvent(session, worldTravelRequest);
+                break;
+            case USE_DICE:
+                UseDiceRequest useDiceRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), UseDiceRequest.class);
+                eventService.handleUseDiceEvent(session, useDiceRequest);
                 break;
         }
 
