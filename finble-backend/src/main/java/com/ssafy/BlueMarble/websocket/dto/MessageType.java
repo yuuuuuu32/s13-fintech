@@ -24,5 +24,6 @@ public enum MessageType {
     TRADE_LAND,
     CONSTRUCT_BUILDING,
     JAIL_EVENT,
-    WORLD_TRAVEL_EVENT
+    WORLD_TRAVEL_EVENT,
+    USE_DICE
 }
