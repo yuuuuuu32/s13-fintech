@@ -4,12 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.GameMap;
 import com.ssafy.BlueMarble.domain.game.dto.MapCell;
-import com.ssafy.BlueMarble.domain.game.dto.request.TradeLand;
+import com.ssafy.BlueMarble.domain.game.dto.request.ConstructRequest;
+import com.ssafy.BlueMarble.domain.game.dto.request.TradeLandRequest;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.ConstructPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.TradeLandPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
@@ -32,22 +34,22 @@ public class LandService {
      * 땅 구매
      */
     @Transactional
-    public void tradeLand(WebSocketSession session, TradeLand tradeLand) {
+    public void tradeLand(WebSocketSession session, TradeLandRequest tradeLandRequest) {
         String roomId = roomService.getRoom(session.getId());
         
         // 1. 구매자, 판매자의 자산 정보를 가져온다.
-        CreateMapPayload.PlayerState buyer = gameRedisService.getPlayerState(roomId, tradeLand.getBuyerName());
-        CreateMapPayload.PlayerState seller = gameRedisService.getPlayerState(roomId, tradeLand.getLandOwner());
+        CreateMapPayload.PlayerState buyer = gameRedisService.getPlayerState(roomId, tradeLandRequest.getBuyerName());
+        CreateMapPayload.PlayerState seller = gameRedisService.getPlayerState(roomId, tradeLandRequest.getLandOwner());
         
         // 2. 맵 데이터를 가져온다.
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         GameMap mapData = gameState.getCurrentMap();
         
         // 3. 구매하려는 땅의 정보를 찾는다.
-        MapCell targetCell = mapData.getCells().get(tradeLand.getLandNum());
+        MapCell targetCell = mapData.getCells().get(tradeLandRequest.getLandNum());
 
         // 만약 판매자가 땅을 가지고 있지 않다면
-        if (!seller.getOwnedProperties().contains(tradeLand.getLandNum())) {
+        if (!seller.getOwnedProperties().contains(tradeLandRequest.getLandNum())) {
             throw new BusinessException(BusinessError.LAND_NOT_FOUND);
         }
 
@@ -57,7 +59,7 @@ public class LandService {
         }
         
         // 5. 땅 주인을 구매자로 변경
-        targetCell.setOwnerName(tradeLand.getBuyerName());
+        targetCell.setOwnerName(tradeLandRequest.getBuyerName());
         
         // 6. 구매자의 자산 업데이트
         buyer.setMoney(buyer.getMoney() - targetCell.getToll());
@@ -67,7 +69,7 @@ public class LandService {
         buyer.getOwnedProperties().add(targetCell.getCellNumber());
         
         // 7. 판매자의 자산 업데이트 (판매자가 있는 경우)
-        if (!tradeLand.getLandOwner().equals("null")) {
+        if (!tradeLandRequest.getLandOwner().equals("null")) {
             seller.setMoney(seller.getMoney() + targetCell.getToll());
             if (seller.getOwnedProperties() != null) {
                 seller.getOwnedProperties().remove(Integer.valueOf(targetCell.getCellNumber()));
@@ -84,6 +86,63 @@ public class LandService {
                 .build();
         JsonNode payloadNode = objectMapper.valueToTree(payload);
         MessageDto message = new MessageDto(MessageType.TRADE_LAND, payloadNode);
+        sessionMessageService.sendMessageToRoom(roomId, message);
+    }
+
+    /**
+     * 건설
+     * */
+    @Transactional
+    public void constructBuilding(WebSocketSession session, ConstructRequest constructRequest) {
+        //1. 건설 하려는 사람의 정보를 가져온다.
+        String roomId = roomService.getRoom(session.getId());
+        CreateMapPayload.PlayerState user = gameRedisService.getPlayerState(roomId, constructRequest.getUsername());
+        //2. 맵 정보를 가져온다.
+        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
+        GameMap mapData = gameState.getCurrentMap();
+        //3. 건설시도 ( 건설 자금이 충분한지 / 현재 건설하려는 땅을 소유하고 있는지 체크해야함)
+        MapCell targetCell = mapData.getCells().get(constructRequest.getLandNum());
+
+        //3.1 건설 자금이 충분한지
+        if(targetCell.getToll() * 10 > user.getMoney()) {
+            throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
+        }
+        //3.2 건설하려는 땅을 소유하고 있는가?
+        if(!targetCell.getOwnerName().equals(constructRequest.getUsername())){
+            throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
+        }
+
+        MapCell.BuildingType curType = targetCell.getBuildingType();
+
+        switch (curType) {
+            case BUILDING:
+                targetCell.setBuildingType(MapCell.BuildingType.HOTEL);
+                break;
+            case VILLA:
+                targetCell.setBuildingType(MapCell.BuildingType.BUILDING);
+                break;
+            case HOTEL:
+                break;
+        }
+
+        //4. 업데이트된 상태를 Redis에 저장
+        gameRedisService.saveGameMapState(roomId, gameState);
+        //5. 메시지 전달
+        ConstructPayload payload = ConstructPayload.builder()
+                .result(true)
+                .userName(constructRequest.getUsername())
+                .landNum(constructRequest.getLandNum())
+                .buildingType(targetCell.getBuildingType())
+                .updatedAsset(
+                        ConstructPayload.Asset.builder()
+                                .money(user.getMoney())
+                                .lands(user.getOwnedProperties())
+                                .build()
+                )
+                .build();
+
+        JsonNode payloadNode = objectMapper.valueToTree(payload);
+        MessageDto message = new MessageDto(MessageType.CONSTRUCT_BUILDING, payloadNode);
         sessionMessageService.sendMessageToRoom(roomId, message);
     }
 }

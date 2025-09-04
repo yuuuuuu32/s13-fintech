@@ -1,6 +1,7 @@
 package com.ssafy.BlueMarble.websocket.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.BlueMarble.domain.game.dto.request.ConstructRequest;
 import com.ssafy.BlueMarble.domain.game.service.LandService;
 import com.ssafy.BlueMarble.domain.game.service.MapService;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
@@ -10,7 +11,7 @@ import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
-import com.ssafy.BlueMarble.domain.game.dto.request.TradeLand;
+import com.ssafy.BlueMarble.domain.game.dto.request.TradeLandRequest;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.CreateRoomPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.EnterRoomPayload;
@@ -123,10 +124,13 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 mapService.createNewGameMapState(session, createMapPayload);
                 break;
             case TRADE_LAND:
-                TradeLand tradeLand = objectMapper.treeToValue(chatMessageDto.getPayload(), TradeLand.class);
-                landService.tradeLand(session, tradeLand);
+                TradeLandRequest tradeLandRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), TradeLandRequest.class);
+                landService.tradeLand(session, tradeLandRequest);
                 break;
-
+            case CONSTRUCT_BUILDING:
+                ConstructRequest constructRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), ConstructRequest.class);
+                landService.constructBuilding(session, constructRequest);
+                break;
         }
 
         log.info("[WebSocket] handleTextMessage 종료 - sessionId: {}", session.getId());

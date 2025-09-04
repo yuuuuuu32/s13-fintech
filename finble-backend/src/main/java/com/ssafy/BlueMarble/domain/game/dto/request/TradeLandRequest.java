@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class TradeLand {
+public class TradeLandRequest {
     private Integer landNum;
     private String landOwner;
     private String buyerName;
