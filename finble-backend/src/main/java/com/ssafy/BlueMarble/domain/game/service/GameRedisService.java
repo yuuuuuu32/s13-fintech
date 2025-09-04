@@ -105,6 +105,6 @@ public class GameRedisService {
      */
     public boolean hasGameMapState(String roomId) {
         String key = GAME_MAP_PREFIX + roomId;
-        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+        return redisTemplate.hasKey(key);
     }
 }
