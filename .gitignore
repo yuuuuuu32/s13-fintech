@@ -20,10 +20,13 @@ out/
 coverage/
 *.tsbuildinfo
 
-# 환경변수
+# ────────────── 환경변수 & 보안 ──────────────
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+.env.staging
 
 # ────────────── Backend (Spring Boot) ──────────────
 # Maven / Gradle build 결과물
@@ -40,10 +43,21 @@ coverage/
 ehthumbs.db
 Desktop.ini
 
-# 로그 / 임시 파일
+# ────────────── 로그 파일 ──────────────
 *.log
+logs/
 *.tmp
+nohup.out
 
 # 환경 설정 (개발자 로컬별)
 application-*.yml
 application-*.properties
+
+# ────────────── Docker ──────────────
+# Docker volumes
+mysql_data/
+redis_data/
+
+# Docker 임시 파일
+.dockerignore
+docker-compose.override.yml
