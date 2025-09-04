@@ -43,6 +43,10 @@ public enum BusinessError {
 
     //투표
     INVALID_VOTE(HttpStatus.BAD_REQUEST, "유효한 투표가 아닙니다."),
+    
+    //게임
+    LAND_NOT_FOUND(HttpStatus.BAD_REQUEST, "땅을 찾을 수 없습니다."),
+    INSUFFICIENT_MONEY(HttpStatus.BAD_REQUEST, "잔액이 부족합니다."),
     ;
 
 
