@@ -1,5 +1,9 @@
 # Multi-stage build for Spring Boot application
+<<<<<<< HEAD
 FROM gradle:8.5-jdk21 AS build
+=======
+FROM gradle:8.5-jdk17 AS build
+>>>>>>> 4e19aea (feature/back-server : 배포 세팅- Docker 세팅- Redis, DB 연결 준비)
 
 # Set working directory
 WORKDIR /app
@@ -18,7 +22,11 @@ COPY src ./src
 RUN gradle clean build --no-daemon -x test
 
 # Runtime stage
+<<<<<<< HEAD
 FROM eclipse-temurin:21-jre-alpine
+=======
+FROM eclipse-temurin:17-jre-alpine
+>>>>>>> 4e19aea (feature/back-server : 배포 세팅- Docker 세팅- Redis, DB 연결 준비)
 
 # Set working directory
 WORKDIR /app
@@ -39,11 +47,19 @@ RUN chown appuser:appuser app.jar
 USER appuser
 
 # Expose port
+<<<<<<< HEAD
 EXPOSE 8081
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8081/actuator/health || exit 1
+=======
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+>>>>>>> 4e19aea (feature/back-server : 배포 세팅- Docker 세팅- Redis, DB 연결 준비)
 
 # Run the application
 ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]

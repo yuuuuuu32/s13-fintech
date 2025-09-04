@@ -5,9 +5,12 @@ pipeline {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml'
         BACKEND_IMAGE = 'bluemarble-backend'
         BRANCH_NAME = env.BRANCH_NAME ?: 'master'
+<<<<<<< HEAD
         EC2_HOST = 'j13d106.p.ssafy.io'
         EC2_USER = 'ubuntu'
         SSH_KEY_ID = 'J13D106T-pem'  // Jenkins Credentials에서 설정할 SSH Key ID
+=======
+>>>>>>> 4e19aea (feature/back-server : 배포 세팅- Docker 세팅- Redis, DB 연결 준비)
     }
     
     tools {
@@ -62,7 +65,11 @@ pipeline {
             }
         }
         
+<<<<<<< HEAD
         stage('Deploy to EC2') {
+=======
+        stage('Deploy') {
+>>>>>>> 4e19aea (feature/back-server : 배포 세팅- Docker 세팅- Redis, DB 연결 준비)
             when {
                 anyOf {
                     branch 'master'
@@ -97,6 +104,7 @@ pipeline {
                             sleep 10
                         done
                         
+<<<<<<< HEAD
                         // Health check on EC2
                         sh """
                             ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
@@ -123,6 +131,16 @@ pipeline {
                             '
                         """
                     }
+=======
+                        if [ $attempt -eq $max_attempts ]; then
+                            echo "Health check failed after $max_attempts attempts"
+                            docker-compose logs backend
+                            exit 1
+                        fi
+                        
+                        echo "Application is healthy!"
+                    '''
+>>>>>>> 4e19aea (feature/back-server : 배포 세팅- Docker 세팅- Redis, DB 연결 준비)
                 }
             }
         }
