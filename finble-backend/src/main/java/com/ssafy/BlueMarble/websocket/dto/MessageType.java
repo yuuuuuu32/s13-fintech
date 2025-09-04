@@ -13,10 +13,13 @@ public enum MessageType {
     KICK_USER,//다른 유저 강제퇴장
     KICKED,//내가 강제퇴장
 
-    // 게임 관련
+    // 게임 진행 관련
     START_GAME,
     START_GAME_OBSERVE,
     GAME_STATE_CHANGE,
     ROLE_ASSIGNMENT,
     GAME_END,
+
+    // 게임 로직 관련
+    TRADE_LAND
 }

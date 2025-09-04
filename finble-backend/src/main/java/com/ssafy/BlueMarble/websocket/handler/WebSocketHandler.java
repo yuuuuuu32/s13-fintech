@@ -1,6 +1,7 @@
 package com.ssafy.BlueMarble.websocket.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.BlueMarble.domain.game.service.LandService;
 import com.ssafy.BlueMarble.domain.game.service.MapService;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
@@ -9,6 +10,7 @@ import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
+import com.ssafy.BlueMarble.domain.game.dto.request.TradeLand;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.CreateRoomPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.EnterRoomPayload;
@@ -35,6 +37,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final UserRedisService userRedisService;
     private final MapService mapService;
+    private final LandService landService;
 
     /**
      * [연결 성공] WebSocket 협상이 성공적으로 완료되고 WebSocket 연결이 열려 사용할 준비가 된 후 호출됩니다.
@@ -118,6 +121,10 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
                 CreateMapPayload createMapPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), CreateMapPayload.class);
                 mapService.createNewGameMapState(session, createMapPayload);
+                break;
+            case TRADE_LAND:
+                TradeLand tradeLand = objectMapper.treeToValue(chatMessageDto.getPayload(), TradeLand.class);
+                landService.tradeLand(session, tradeLand);
                 break;
 
         }
