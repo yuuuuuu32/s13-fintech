@@ -21,5 +21,6 @@ public enum MessageType {
     GAME_END,
 
     // 게임 로직 관련
-    TRADE_LAND
+    TRADE_LAND,
+    CONSTRUCT_BUILDING
 }
