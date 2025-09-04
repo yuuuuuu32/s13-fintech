@@ -79,6 +79,7 @@ public class MapService {
                     .isInJail(false)
                     .jailTurns(0)
                     .isActive(true)
+                    .anglecard(false) // 게임 시작 시 천사카드 미보유
                     .build();
             players.put(playerId, playerState);
         }
@@ -92,6 +93,7 @@ public class MapService {
                 .playerOrder(shuffledPlayers)
                 .players(players)
                 .currentPlayerIndex(0)
+                .angelCardInDeck(true) // 게임 시작 시 천사카드는 덱에 포함
                 .build();
 
         // Redis에 저장

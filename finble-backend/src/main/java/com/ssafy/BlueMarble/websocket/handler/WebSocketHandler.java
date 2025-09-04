@@ -1,6 +1,7 @@
 package com.ssafy.BlueMarble.websocket.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.BlueMarble.domain.game.service.CardService;
 import com.ssafy.BlueMarble.domain.game.service.MapService;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
@@ -10,9 +11,12 @@ import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.UseCardPayload;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.DrawCardPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.CreateRoomPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.EnterRoomPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.KickRoomPayload;
+import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
 import com.ssafy.BlueMarble.websocket.service.WebSocketSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +39,8 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final UserRedisService userRedisService;
     private final MapService mapService;
+    private final CardService cardService;
+    private final SessionMessageService sessionMessageService;
 
     /**
      * [연결 성공] WebSocket 협상이 성공적으로 완료되고 WebSocket 연결이 열려 사용할 준비가 된 후 호출됩니다.
@@ -118,6 +124,49 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
                 CreateMapPayload createMapPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), CreateMapPayload.class);
                 mapService.createNewGameMapState(session, createMapPayload);
+                break;
+            case USE_CARD:
+                log.info("[WebSocket] 카드 사용 요청: roomId={}, sessionId={}", roomId, session.getId());
+                if ("null".equals(roomId))
+                    throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
+                UseCardPayload useCardPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), UseCardPayload.class);
+                boolean cardUsed = cardService.useCard(roomId, useCardPayload.getUserName(), useCardPayload.getCardName());
+                
+                UseCardPayload responsePayload = UseCardPayload.builder()
+                        .result(cardUsed)
+                        .build();
+                
+                MessageDto responseMessage = MessageDto.builder()
+                        .type(MessageType.USE_CARD)
+                        .payload(objectMapper.valueToTree(responsePayload))
+                        .build();
+                        
+                sessionMessageService.sendMessageToRoom(roomId, responseMessage);
+                log.info("[WebSocket] 카드 사용 결과 전송 완료: roomId={}, result={}", roomId, cardUsed);
+                break;
+            case DRAW_CARD:
+                log.info("[WebSocket] 카드 뽑기 요청: roomId={}, sessionId={}", roomId, session.getId());
+                if ("null".equals(roomId))
+                    throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
+                DrawCardPayload drawCardPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), DrawCardPayload.class);
+                DrawCardPayload.DrawCardResult drawResult = cardService.drawCard(roomId, drawCardPayload.getUserName());
+                
+                if (drawResult != null) {
+                    DrawCardPayload drawResponsePayload = DrawCardPayload.builder()
+                            .result(drawResult)
+                            .build();
+                    
+                    MessageDto drawResponseMessage = MessageDto.builder()
+                            .type(MessageType.DRAW_CARD)
+                            .payload(objectMapper.valueToTree(drawResponsePayload))
+                            .build();
+                            
+                    sessionMessageService.sendMessageToRoom(roomId, drawResponseMessage);
+                    log.info("[WebSocket] 카드 뽑기 결과 전송 완료: roomId={}, userName={}, cardName={}", 
+                            roomId, drawResult.getUserName(), drawResult.getCardName());
+                } else {
+                    log.error("[WebSocket] 카드 뽑기 실패: roomId={}, userName={}", roomId, drawCardPayload.getUserName());
+                }
                 break;
 
         }

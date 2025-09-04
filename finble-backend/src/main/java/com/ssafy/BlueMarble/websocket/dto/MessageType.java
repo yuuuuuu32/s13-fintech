@@ -19,4 +19,6 @@ public enum MessageType {
     GAME_STATE_CHANGE,
     ROLE_ASSIGNMENT,
     GAME_END,
+    USE_CARD,
+    DRAW_CARD,
 }
