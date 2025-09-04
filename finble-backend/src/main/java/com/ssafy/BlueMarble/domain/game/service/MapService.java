@@ -31,10 +31,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MapService {
 
     private final SessionMessageService sessionMessageService;
-    private final WebSocketSessionService webSocketSessionService;
     private final CityRepository cityRepository;
     private final GameRedisService gameRedisService;
-    private final RoomService roomService;
     private final ObjectMapper objectMapper;
     private final UserRedisService userRedisService;
     private final RedisTemplate<String, String> redisTemplate;
@@ -101,7 +99,7 @@ public class MapService {
 
         // 웹소켓
         JsonNode mapState = objectMapper.valueToTree(gameState);
-        MessageDto message = new MessageDto(MessageType.START_GAME, mapState);
+        MessageDto message = new MessageDto(MessageType.START_GAME_OBSERVE, mapState);
         sessionMessageService.sendMessageToRoom(roomId, message);
 
         log.info("새로운 게임 맵 상태 생성: roomId={}, players={}",
