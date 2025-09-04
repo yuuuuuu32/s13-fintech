@@ -12,6 +12,7 @@ import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.CreateRoomPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.EnterRoomPayload;
+import com.ssafy.BlueMarble.websocket.dto.payload.room.KickRoomPayload;
 import com.ssafy.BlueMarble.websocket.service.WebSocketSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -108,8 +109,8 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 session.close();
                 break;
             case KICK:
-//                KickRoomPayload kickRoomPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), KickRoomPayload.class);
-//                roomService.kick(session, kickRoomPayload);
+                KickRoomPayload kickRoomPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), KickRoomPayload.class);
+                roomService.kick(session, kickRoomPayload);
                 break;
             case START_GAME:
                 log.info("[WebSocket] 게임 시작 요청: roomId={}, sessionId={}", roomId, session.getId());
