@@ -58,11 +58,19 @@ logs/
 nohup.out
 
 # 환경 설정 (개발자 로컬별 - 기본 application.yml은 제외)
+<<<<<<< HEAD
 # application-local.yml
 # application-dev.yml
 # application-prod.yml
 # application-test.yml
 # application-*.properties
+=======
+application-local.yml
+application-dev.yml
+application-prod.yml
+application-test.yml
+application-*.properties
+>>>>>>> 3041b10 (refactor/back-server : 백엔드 코드 수정)
 
 # ────────────── Docker ──────────────
 # Docker volumes
