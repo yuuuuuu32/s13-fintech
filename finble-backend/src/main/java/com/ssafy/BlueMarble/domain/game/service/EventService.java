@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
+import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
@@ -13,6 +14,7 @@ import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.JailPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.ConstructPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.WorldTravelPayload;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.UseDicePayload;
 import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
 
 import lombok.RequiredArgsConstructor;
@@ -22,7 +24,6 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +34,7 @@ public class EventService {
     private final RoomService roomService;
     private final ObjectMapper objectMapper;
     private final SessionMessageService sessionMessageService;
+    private final Random random = new Random();
 
     /**
      * 감옥 이벤트 처리
@@ -196,6 +198,87 @@ public class EventService {
 
         JsonNode payloadNode = objectMapper.valueToTree(payload);
         MessageDto message = new MessageDto(MessageType.WORLD_TRAVEL_EVENT, payloadNode);
+        sessionMessageService.sendMessageToRoom(roomId, message);
+    }
+
+    /**
+     * 주사위 사용 이벤트 처리
+     */
+    public void handleUseDiceEvent(WebSocketSession session, UseDiceRequest useDiceRequest) {
+        String roomId = roomService.getRoom(session.getId());
+        
+        // 1. 게임 맵 정보
+        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
+        
+        // 2. 주사위 사용자 정보
+        CreateMapPayload.PlayerState player = gameState.getPlayers().get(useDiceRequest.getUserName());
+        if (player == null) {
+            throw new BusinessException(BusinessError.USER_NOT_FOUND);
+        }
+
+        // 3. 주사위 던지기
+        int diceNum = random.nextInt(6) + 1;
+        
+        // 4. 위치 계산
+        int currentPosition = player.getPosition();
+        int newPosition = (currentPosition + diceNum) % 28; // 28개 칸 순환
+        
+        // 5. 시작점 통과 여부
+        int salaryBonus = 0;
+        if (newPosition < currentPosition) { // 시작점을 통과했는지 확인
+            salaryBonus = 1000; // 월급
+            player.setMoney(player.getMoney() + salaryBonus);
+        }
+        
+        // 6. 새로운 위치로 이동
+        player.setPosition(newPosition);
+        
+        // 7. 도착한 땅 정보 확인
+        String landOwner = null;
+        int tollAmount = 0;
+        boolean canBuyLand = false;
+        
+        if (gameState.getCurrentMap().getCells().get(newPosition).getOwnerName() != null) {
+            
+            landOwner = gameState.getCurrentMap().getCells().get(newPosition).getOwnerName();
+            tollAmount = gameState.getCurrentMap().getCells().get(newPosition).getToll();
+            
+            // 8. 통행료 지불
+            if (player.getMoney() >= tollAmount) {
+                player.setMoney(player.getMoney() - tollAmount);
+                
+                // 소유자에게 통행료 지급
+                CreateMapPayload.PlayerState owner = gameState.getPlayers().get(landOwner);
+                if (owner != null) {
+                    owner.setMoney(owner.getMoney() + tollAmount);
+                }
+            }
+        } else {
+            // 땅이 비어있으면 구매 가능
+            canBuyLand = true;
+        }
+        
+        // 9. 게임 상태 저장
+        gameRedisService.saveGameMapState(roomId, gameState);
+        
+        // 10. 결과 메시지 전송
+        UseDicePayload payload = UseDicePayload.builder()
+                .userName(useDiceRequest.getUserName())
+                .diceNum(diceNum)
+                .currentPosition(newPosition)
+                .salaryBonus(salaryBonus)
+                .canBuyLand(canBuyLand)
+                .tollAmount(tollAmount)
+                .updatedAsset(
+                        ConstructPayload.Asset.builder()
+                                .money(player.getMoney())
+                                .lands(player.getOwnedProperties() != null ? player.getOwnedProperties() : new ArrayList<>())
+                                .build()
+                )
+                .build();
+        
+        JsonNode payloadNode = objectMapper.valueToTree(payload);
+        MessageDto message = new MessageDto(MessageType.USE_DICE, payloadNode);
         sessionMessageService.sendMessageToRoom(roomId, message);
     }
 }
