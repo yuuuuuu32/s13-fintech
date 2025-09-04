@@ -28,9 +28,13 @@ coverage/
 .env.development
 .env.staging
 <<<<<<< HEAD
+<<<<<<< HEAD
 .env.example
 =======
 >>>>>>> 358f37f (feature/back-server : 배포 세팅- Docker 세팅- Redis, DB 연결 준비)
+=======
+.env.example
+>>>>>>> d809946 (style/back-server : gitignore 수정)
 
 # ────────────── Backend (Spring Boot) ──────────────
 # Maven / Gradle build 결과물
