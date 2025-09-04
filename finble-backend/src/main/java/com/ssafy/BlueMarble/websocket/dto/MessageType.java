@@ -22,5 +22,7 @@ public enum MessageType {
 
     // 게임 로직 관련
     TRADE_LAND,
-    CONSTRUCT_BUILDING
+    CONSTRUCT_BUILDING,
+    JAIL_EVENT,
+    WORLD_TRAVEL_EVENT
 }

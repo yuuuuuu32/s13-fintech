@@ -2,8 +2,11 @@ package com.ssafy.BlueMarble.websocket.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.request.ConstructRequest;
+import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
+import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
 import com.ssafy.BlueMarble.domain.game.service.LandService;
 import com.ssafy.BlueMarble.domain.game.service.MapService;
+import com.ssafy.BlueMarble.domain.game.service.EventService;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 
@@ -39,6 +42,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private final UserRedisService userRedisService;
     private final MapService mapService;
     private final LandService landService;
+    private final EventService eventService;
 
     /**
      * [연결 성공] WebSocket 협상이 성공적으로 완료되고 WebSocket 연결이 열려 사용할 준비가 된 후 호출됩니다.
@@ -130,6 +134,14 @@ public class WebSocketHandler extends TextWebSocketHandler {
             case CONSTRUCT_BUILDING:
                 ConstructRequest constructRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), ConstructRequest.class);
                 landService.constructBuilding(session, constructRequest);
+                break;
+            case JAIL_EVENT:
+                JailRequest jailRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), JailRequest.class);
+                eventService.handleJailEvent(session, jailRequest);
+                break;
+            case WORLD_TRAVEL_EVENT:
+                WorldTravelRequest worldTravelRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), WorldTravelRequest.class);
+                eventService.handleWorldTravelEvent(session, worldTravelRequest);
                 break;
         }
 
