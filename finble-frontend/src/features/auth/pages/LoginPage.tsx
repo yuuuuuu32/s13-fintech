@@ -1,9 +1,11 @@
-import googleLogo from '../../../assets/google-logo.svg' // 구글 로고 이미지가 필요합니다.
+import { useNavigate } from 'react-router-dom'
+import googleLogo from '../../../assets/google-logo.svg'
 
 export default function LoginPage() {
+  const navigate = useNavigate()
+
   const handleGoogleLogin = () => {
-    // TODO: 실제 구글 로그인 로직을 여기에 구현합니다.
-    console.log('구글 로그인 시도')
+    navigate('/lobby')
   }
 
   return (
