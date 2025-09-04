@@ -130,8 +130,6 @@ public class WebSocketHandler extends TextWebSocketHandler {
     //     roomId와 uid가 필요한 메시지 타입들을 체크하는 헬퍼 메서드
     private boolean needsRoomIdAndUserId(MessageType messageType) {
 //        return messageType == MessageType.NIGHT_VOTE ||
-//                messageType == MessageType.DAY_VOTE ||
-//                messageType == MessageType.PF_VOTE;
         return true;
     }
 
