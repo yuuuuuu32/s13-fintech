@@ -8,12 +8,7 @@ import java.util.List;
 
 @Repository
 public interface CityRepository extends JpaRepository<City, Long> {
-    
-    /**
-     * 모든 도시를 가격 순으로 정렬하여 조회
-     */
-    List<City> findAllByOrderByPriceAsc();
-    
+
     /**
      * 도시 이름으로 조회
      */

@@ -8,6 +8,8 @@ import com.ssafy.BlueMarble.domain.game.entity.GameState;
 import com.ssafy.BlueMarble.domain.game.repository.CityRepository;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
+import com.ssafy.BlueMarble.global.common.exception.BusinessError;
+import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.service.WebSocketSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +30,7 @@ public class MapService {
     private final RoomService roomService;
     private final UserRedisService userRedisService;
     private final RedisTemplate<String, String> redisTemplate;
-    
+
     private static final int MAP_SIZE = 32;
     private static final Random random = new Random();
 
@@ -44,12 +46,11 @@ public class MapService {
      * 새로운 게임 맵 상태 생성 (방에서 게임 시작할 때 호출)
      */
     public MapState createNewGameMapState(String roomId) {
-        // 기존 RoomService에서 방의 플레이어 목록 가져오기
         String usersKey = "room:" + roomId + ":users";
         Set<String> playerIds = redisTemplate.opsForSet().members(usersKey);
-        
+
         if (playerIds == null || playerIds.isEmpty()) {
-            throw new IllegalStateException("방에 플레이어가 없습니다: " + roomId);
+            throw new BusinessException(BusinessError.USER_ID_NOT_FOUND);
         }
 
         // 맵 생성
@@ -89,7 +90,7 @@ public class MapService {
         // Redis에 저장
         gameRedisService.saveGameMapState(roomId, gameState);
 
-        log.info("새로운 게임 맵 상태 생성: roomId={}, players={}", 
+        log.info("새로운 게임 맵 상태 생성: roomId={}, players={}",
                 roomId, shuffledPlayers.size());
 
         return gameState;
@@ -118,7 +119,7 @@ public class MapService {
 
         MapState.PlayerState player = gameState.getPlayers().get(playerId);
         if (player == null) {
-            throw new IllegalStateException("플레이어를 찾을 수 없습니다: " + playerId);
+            throw new BusinessException(BusinessError.USER_ID_NOT_FOUND);
         }
 
         // 새로운 위치 계산
@@ -128,7 +129,7 @@ public class MapService {
         // 게임 상태 업데이트
         gameRedisService.saveGameMapState(roomId, gameState);
 
-        log.info("플레이어 이동: roomId={}, playerId={}, position={}", 
+        log.info("플레이어 이동: roomId={}, playerId={}, position={}",
                 roomId, playerId, newPosition);
 
         return gameState;
@@ -139,12 +140,11 @@ public class MapService {
      */
     public void endGame(String roomId) {
         MapState gameState = gameRedisService.getGameMapState(roomId);
-        if (gameState != null) {
-            gameState.setGameState(GameState.FINISHED);
-            gameRedisService.saveGameMapState(roomId, gameState);
+        gameState.setGameState(GameState.FINISHED);
+        gameRedisService.saveGameMapState(roomId, gameState);
 
-            log.info("게임 종료: roomId={}", roomId);
-        }
+        log.info("게임 종료: roomId={}", roomId);
+
     }
 
     /**
@@ -167,14 +167,8 @@ public class MapService {
             mapCells.set(eventCell.position(), createEventCell(eventCell.position(), eventCell.name(), eventCell.eventType()));
         }
 
-        // 도시 칸 배치
-        List<City> allCities = cityRepository.findAllByOrderByPriceAsc();
-        int neededCities = MAP_SIZE - EVENT_CELLS.length;
-
-        if (allCities.size() < neededCities) {
-            throw new IllegalStateException("도시 개수가 부족합니다. 최소 " + neededCities + "개 필요");
-        }
-
+        // 도시 칸 배치 (랜덤하게 배치함)
+        List<City> allCities = cityRepository.findAll();
         List<City> cityPool = new ArrayList<>(allCities);
         Collections.shuffle(cityPool, random);
 
