@@ -1,6 +1,7 @@
-package com.ssafy.BlueMarble.domain.game.dto;
+package com.ssafy.BlueMarble.websocket.dto.payload.game;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.ssafy.BlueMarble.domain.game.dto.GameMap;
 import com.ssafy.BlueMarble.domain.game.entity.GameState;
 import lombok.Builder;
 import lombok.Data;
@@ -11,12 +12,12 @@ import java.util.Map;
 @Data
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class MapState {
+public class CreateMapPayload {
     private String roomId;                       // 방 ID
     private GameState gameState;                 // 게임 상태
     private GameMap currentMap;                  // 현재 맵
     private List<String> playerOrder;            // 플레이어 순서
-    private Map<String, PlayerState> players;    // 플레이어별 상태
+    private Map<String , PlayerState> players;    // 플레이어별 상태
     private int currentPlayerIndex;               // 현재 플레이어 인덱스
 
     @Data
