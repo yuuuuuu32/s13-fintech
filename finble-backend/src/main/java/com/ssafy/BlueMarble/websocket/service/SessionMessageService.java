@@ -64,7 +64,6 @@ public class SessionMessageService {
      *
      * @param roomId    방 ID
      * @param message   전송할 메시지
-     * @param logPrefix 로그 접두사
      */
     public void sendMessageToRoom(String roomId, MessageDto message) {
         try {
