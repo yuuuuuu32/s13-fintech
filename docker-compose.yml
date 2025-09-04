@@ -1,0 +1,82 @@
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: bluemarble-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-bluemarble}
+      MYSQL_USER: ${DB_USER:-bluemarble_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - bluemarble-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: bluemarble-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redispassword}
+    volumes:
+      - redis_data:/data
+    networks:
+      - bluemarble-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: ./finble-backend
+      dockerfile: Dockerfile
+    container_name: bluemarble-backend
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-docker}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-bluemarble}
+      DB_USER: ${DB_USER:-bluemarble_user}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redispassword}
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-key-here}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bluemarble-network
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
+networks:
+  bluemarble-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local

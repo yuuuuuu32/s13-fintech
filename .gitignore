@@ -1,0 +1,64 @@
+# ────────────── 공통 ──────────────
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+*.lock
+
+# ────────────── Frontend (React) ──────────────
+node_modules/
+dist/
+build/
+out/
+.cache/
+coverage/
+*.tsbuildinfo
+
+# ────────────── 환경변수 & 보안 ──────────────
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.staging
+.env.example
+
+# ────────────── Backend (Spring Boot) ──────────────
+# Maven / Gradle build 결과물
+/target/
+/build/
+/out/
+
+# IDE / Editor 설정
+*.iml
+*.ipr
+*.iws
+
+# OS 특화
+ehthumbs.db
+Desktop.ini
+
+# ────────────── 로그 파일 ──────────────
+*.log
+logs/
+*.tmp
+nohup.out
+
+# 환경 설정 (개발자 로컬별)
+application-*.yml
+application-*.properties
+
+# ────────────── Docker ──────────────
+# Docker volumes
+mysql_data/
+redis_data/
+
+# Docker 임시 파일
+.dockerignore
+docker-compose.override.yml

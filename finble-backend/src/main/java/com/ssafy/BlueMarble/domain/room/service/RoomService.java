@@ -45,7 +45,7 @@ public class RoomService {
     private final WebSocketSessionService webSocketSessionService;
     private final int MAX_USER_LIMIT = 12;
 
-    //대기방 만들기
+    //대기방 만들기₩
     public void createRoom(WebSocketSession session, CreateRoomPayload createRoomPayload) {
         log.info("createRoom 메서드 시작");
 
