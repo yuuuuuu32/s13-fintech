@@ -145,4 +145,18 @@ public class LandService {
         MessageDto message = new MessageDto(MessageType.CONSTRUCT_BUILDING, payloadNode);
         sessionMessageService.sendMessageToRoom(roomId, message);
     }
+
+    /**
+     * 감옥 이벤트
+     * */
+    public void jailEvent(WebSocketSession session) {
+
+    }
+
+    /**
+     * 세계여행 이벤트
+     * */
+    public void travelEvent(WebSocketSession session) {
+
+    }
 }
