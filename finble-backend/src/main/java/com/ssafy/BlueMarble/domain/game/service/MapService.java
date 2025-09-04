@@ -2,7 +2,6 @@ package com.ssafy.BlueMarble.domain.game.service;
 
 import com.ssafy.BlueMarble.domain.game.dto.GameMap;
 import com.ssafy.BlueMarble.domain.game.dto.MapCell;
-import com.ssafy.BlueMarble.domain.game.dto.MapState;
 import com.ssafy.BlueMarble.domain.game.entity.City;
 import com.ssafy.BlueMarble.domain.game.entity.GameState;
 import com.ssafy.BlueMarble.domain.game.repository.CityRepository;
@@ -10,11 +9,13 @@ import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.service.WebSocketSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.socket.WebSocketSession;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,7 +46,8 @@ public class MapService {
     /**
      * 새로운 게임 맵 상태 생성 (방에서 게임 시작할 때 호출)
      */
-    public MapState createNewGameMapState(String roomId) {
+    public void createNewGameMapState(WebSocketSession session, CreateMapPayload createMapPayload) {
+        String roomId = createMapPayload.getRoomId();
         String usersKey = "room:" + roomId + ":users";
         Set<String> playerIds = redisTemplate.opsForSet().members(usersKey);
 
@@ -61,9 +63,9 @@ public class MapService {
         Collections.shuffle(shuffledPlayers, random);
 
         // 플레이어 상태 초기화
-        Map<String, MapState.PlayerState> players = new ConcurrentHashMap<>();
+        Map<String, CreateMapPayload.PlayerState> players = new ConcurrentHashMap<>();
         for (String playerId : shuffledPlayers) {
-            MapState.PlayerState playerState = MapState.PlayerState.builder()
+            CreateMapPayload.PlayerState playerState = CreateMapPayload.PlayerState.builder()
                     .userId(playerId)
                     .nickname(getPlayerNickname(playerId))
                     .position(0) // 시작 위치
@@ -77,7 +79,7 @@ public class MapService {
         }
 
         // 게임 상태 생성
-        MapState gameState = MapState.builder()
+        CreateMapPayload gameState = CreateMapPayload.builder()
                 .roomId(null)
                 .roomId(roomId)
                 .gameState(GameState.PLAYING)
@@ -92,15 +94,13 @@ public class MapService {
 
         log.info("새로운 게임 맵 상태 생성: roomId={}, players={}",
                 roomId, shuffledPlayers.size());
-
-        return gameState;
     }
 
     /**
      * 게임 맵 상태 조회
      */
-    public MapState getGameMapState(String roomId) {
-        MapState gameState = gameRedisService.getGameMapState(roomId);
+    public CreateMapPayload getGameMapState(String roomId) {
+        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         if (gameState != null) {
             // TTL 갱신
             gameRedisService.updateGameStateTTL(roomId);
@@ -111,13 +111,13 @@ public class MapService {
     /**
      * 플레이어 이동
      */
-    public MapState movePlayer(String roomId, String playerId, int steps) {
-        MapState gameState = gameRedisService.getGameMapState(roomId);
+    public CreateMapPayload movePlayer(String roomId, String playerId, int steps) {
+        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         if (gameState == null) {
             throw new IllegalStateException("게임 맵 상태를 찾을 수 없습니다: " + roomId);
         }
 
-        MapState.PlayerState player = gameState.getPlayers().get(playerId);
+        CreateMapPayload.PlayerState player = gameState.getPlayers().get(playerId);
         if (player == null) {
             throw new BusinessException(BusinessError.USER_ID_NOT_FOUND);
         }
@@ -139,7 +139,7 @@ public class MapService {
      * 게임 종료
      */
     public void endGame(String roomId) {
-        MapState gameState = gameRedisService.getGameMapState(roomId);
+        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         gameState.setGameState(GameState.FINISHED);
         gameRedisService.saveGameMapState(roomId, gameState);
 

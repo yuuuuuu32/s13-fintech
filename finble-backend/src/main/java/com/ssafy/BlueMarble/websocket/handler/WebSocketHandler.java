@@ -9,9 +9,9 @@ import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.CreateRoomPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.EnterRoomPayload;
-import com.ssafy.BlueMarble.websocket.dto.payload.room.KickRoomPayload;
 import com.ssafy.BlueMarble.websocket.service.WebSocketSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +20,6 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
-
-import static com.ssafy.BlueMarble.websocket.dto.MessageType.*;
 
 
 /**
@@ -115,10 +113,10 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 break;
             case START_GAME:
                 log.info("[WebSocket] 게임 시작 요청: roomId={}, sessionId={}", roomId, session.getId());
-                if("null".equals(roomId))
+                if ("null".equals(roomId))
                     throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
-                mapService.createMap();
-                mapService.createNewGameMapState(roomId);
+                CreateMapPayload createMapPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), CreateMapPayload.class);
+                mapService.createNewGameMapState(session, createMapPayload);
                 break;
 
         }
@@ -128,7 +126,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     }
 
 
-//     roomId와 uid가 필요한 메시지 타입들을 체크하는 헬퍼 메서드
+    //     roomId와 uid가 필요한 메시지 타입들을 체크하는 헬퍼 메서드
     private boolean needsRoomIdAndUserId(MessageType messageType) {
 //        return messageType == MessageType.NIGHT_VOTE ||
 //                messageType == MessageType.DAY_VOTE ||

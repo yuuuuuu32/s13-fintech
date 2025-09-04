@@ -2,15 +2,13 @@ package com.ssafy.BlueMarble.domain.game.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.BlueMarble.domain.game.dto.MapState;
-import com.ssafy.BlueMarble.domain.game.entity.GameState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
-
+import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -27,7 +25,7 @@ public class GameRedisService {
     /**
      * 방의 게임 맵 상태 저장
      */
-    public void saveGameMapState(String roomId, MapState gameState) {
+    public void saveGameMapState(String roomId, CreateMapPayload gameState) {
         try {
             String key = GAME_MAP_PREFIX + roomId;
             String value = objectMapper.writeValueAsString(gameState);
@@ -41,12 +39,12 @@ public class GameRedisService {
     /**
      * 방의 게임 맵 상태 조회
      */
-    public MapState getGameMapState(String roomId) {
+    public CreateMapPayload getGameMapState(String roomId) {
         try {
             String key = GAME_MAP_PREFIX + roomId;
             String value = redisTemplate.opsForValue().get(key);
             if (value != null) {
-                return objectMapper.readValue(value, MapState.class);
+                return objectMapper.readValue(value, CreateMapPayload.class);
             }
         } catch (JsonProcessingException e) {
             log.error("게임 맵 상태 조회 실패: roomId={}", roomId, e);
@@ -66,7 +64,7 @@ public class GameRedisService {
     /**
      * 개별 플레이어 상태 저장
      */
-    public void savePlayerState(String roomId, String userId, MapState.PlayerState playerState) {
+    public void savePlayerState(String roomId, String userId, CreateMapPayload.PlayerState playerState) {
         try {
             String key = PLAYER_STATE_PREFIX + roomId + ":" + userId;
             String value = objectMapper.writeValueAsString(playerState);
@@ -79,12 +77,12 @@ public class GameRedisService {
     /**
      * 개별 플레이어 상태 조회
      */
-    public MapState.PlayerState getPlayerState(String roomId, String userId) {
+    public CreateMapPayload.PlayerState getPlayerState(String roomId, String userId) {
         try {
             String key = PLAYER_STATE_PREFIX + roomId + ":" + userId;
             String value = redisTemplate.opsForValue().get(key);
             if (value != null) {
-                return objectMapper.readValue(value, MapState.PlayerState.class);
+                return objectMapper.readValue(value, CreateMapPayload.PlayerState.class);
             }
         } catch (JsonProcessingException e) {
             log.error("플레이어 상태 조회 실패: roomId={}, userId={}", roomId, userId, e);
