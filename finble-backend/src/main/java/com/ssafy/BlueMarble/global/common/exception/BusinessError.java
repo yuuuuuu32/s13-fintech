@@ -47,6 +47,8 @@ public enum BusinessError {
     //게임
     LAND_NOT_FOUND(HttpStatus.BAD_REQUEST, "땅을 찾을 수 없습니다."),
     INSUFFICIENT_MONEY(HttpStatus.BAD_REQUEST, "잔액이 부족합니다."),
+    USER_NOT_FOUND(HttpStatus.BAD_REQUEST, "사용자를 찾을 수 없습니다."),
+    INVALID_JAIL_STATE(HttpStatus.BAD_REQUEST, "감옥 상태가 올바르지 않습니다."),
     ;
 
 
