@@ -27,6 +27,7 @@ coverage/
 .env.production
 .env.development
 .env.staging
+.env.example
 
 # ────────────── Backend (Spring Boot) ──────────────
 # Maven / Gradle build 결과물
