@@ -1,24 +1,25 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLobbyStore } from '../store/useLobbyStore.ts'
 
 interface CreateRoomModalProps {
-  onClose: () => void // 모달을 닫는 함수
+  onClose: () => void
 }
 
 export function CreateRoomModal({ onClose }: CreateRoomModalProps) {
   const [roomName, setRoomName] = useState('')
   const addRoom = useLobbyStore((state) => state.addRoom)
+  const navigate = useNavigate()
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = () => {
+    console.log('asdas')
     if (roomName.trim()) {
-      addRoom(roomName.trim())
-      onClose() // 방을 만든 후 모달을 닫습니다.
+      const newRoomId = addRoom(roomName.trim())
+      navigate(`/room/${newRoomId}`)
     }
   }
 
   return (
-    // 모달 배경
     <div
       style={{
         position: 'fixed',
@@ -32,9 +33,8 @@ export function CreateRoomModal({ onClose }: CreateRoomModalProps) {
         alignItems: 'center',
         zIndex: 100,
       }}
-      onClick={onClose} // 배경 클릭 시 모달 닫기
+      // 이 부분의 onClick 핸들러를 완전히 제거했습니다!
     >
-      {/* 모달 컨텐츠 */}
       <div
         style={{
           padding: '2rem',
@@ -43,35 +43,37 @@ export function CreateRoomModal({ onClose }: CreateRoomModalProps) {
           border: '1px solid #555',
           minWidth: '400px',
         }}
-        onClick={(e) => e.stopPropagation()} // 컨텐츠 클릭 시 닫히지 않도록 이벤트 전파 방지
       >
         <h2 style={{ marginTop: 0, marginBottom: '1.5rem' }}>새로운 방 만들기</h2>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            value={roomName}
-            onChange={(e) => setRoomName(e.target.value)}
-            placeholder="방 제목을 입력하세요"
-            style={{
-              width: '100%',
-              padding: '0.8rem',
-              fontSize: '1rem',
-              borderRadius: '6px',
-              border: '1px solid #666',
-              backgroundColor: '#333',
-              color: 'white',
-              marginBottom: '1.5rem',
-            }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-            <button type="button" onClick={onClose} style={{ padding: '0.6rem 1.2rem' }}>
-              취소
-            </button>
-            <button type="submit" style={{ padding: '0.6rem 1.2rem', backgroundColor: '#535bf2' }}>
-              만들기
-            </button>
-          </div>
-        </form>
+
+        <input
+          type="text"
+          value={roomName}
+          onChange={(e) => setRoomName(e.target.value)}
+          placeholder="방 제목을 입력하세요"
+          style={{
+            width: '100%',
+            padding: '0.8rem',
+            fontSize: '1rem',
+            borderRadius: '6px',
+            border: '1px solid #666',
+            backgroundColor: '#333',
+            color: 'white',
+            marginBottom: '1.5rem',
+          }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+          <button type="button" onClick={onClose} style={{ padding: '0.6rem 1.2rem' }}>
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            style={{ padding: '0.6rem 1.2rem', backgroundColor: '#535bf2' }}
+          >
+            만들기
+          </button>
+        </div>
       </div>
     </div>
   )

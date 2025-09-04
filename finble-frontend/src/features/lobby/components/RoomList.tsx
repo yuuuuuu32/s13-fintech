@@ -1,10 +1,10 @@
+import { useNavigate } from 'react-router-dom'
 import { useLobbyStore, type GameRoom } from '../store/useLobbyStore.ts'
 
 export function RoomList() {
-  // 스토어에서 방 목록을 가져옵니다.
   const rooms = useLobbyStore((state) => state.rooms)
+  const navigate = useNavigate()
 
-  // 대기중인 방만 필터링합니다.
   const waitingRooms = rooms.filter((room) => room.status === 'waiting')
 
   return (
@@ -25,10 +25,12 @@ export function RoomList() {
         >
           <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{room.name}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            {/* room.players -> room.players.length 로 수정 */}
             <span style={{ fontSize: '1.1rem', color: '#ccc' }}>
-              {room.players}/{room.maxPlayers}
+              {room.players.length}/{room.maxPlayers}
             </span>
             <button
+              onClick={() => navigate(`/room/${room.id}`)}
               style={{
                 padding: '0.5rem 1rem',
                 fontSize: '1rem',
