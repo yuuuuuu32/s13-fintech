@@ -1,5 +1,7 @@
 package com.ssafy.BlueMarble.domain.game.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.GameMap;
 import com.ssafy.BlueMarble.domain.game.dto.MapCell;
 import com.ssafy.BlueMarble.domain.game.entity.City;
@@ -9,7 +11,10 @@ import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
+import com.ssafy.BlueMarble.websocket.dto.MessageDto;
+import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
+import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
 import com.ssafy.BlueMarble.websocket.service.WebSocketSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,10 +30,12 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class MapService {
 
+    private final SessionMessageService sessionMessageService;
     private final WebSocketSessionService webSocketSessionService;
     private final CityRepository cityRepository;
     private final GameRedisService gameRedisService;
     private final RoomService roomService;
+    private final ObjectMapper objectMapper;
     private final UserRedisService userRedisService;
     private final RedisTemplate<String, String> redisTemplate;
 
@@ -91,6 +98,11 @@ public class MapService {
 
         // Redis에 저장
         gameRedisService.saveGameMapState(roomId, gameState);
+
+        // 웹소켓
+        JsonNode mapState = objectMapper.valueToTree(gameState);
+        MessageDto message = new MessageDto(MessageType.START_GAME, mapState);
+        sessionMessageService.sendMessageToRoom(roomId, message);
 
         log.info("새로운 게임 맵 상태 생성: roomId={}, players={}",
                 roomId, shuffledPlayers.size());

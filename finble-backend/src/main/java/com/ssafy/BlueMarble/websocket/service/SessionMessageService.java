@@ -66,7 +66,7 @@ public class SessionMessageService {
      * @param message   전송할 메시지
      * @param logPrefix 로그 접두사
      */
-    public void sendMessageToRoom(String roomId, MessageDto message, String logPrefix) {
+    public void sendMessageToRoom(String roomId, MessageDto message) {
         try {
             String usersKey = "room:" + roomId + ":users";
             Set<String> userIds = redisTemplate.opsForSet().members(usersKey);
@@ -75,13 +75,12 @@ public class SessionMessageService {
                 WebSocketSession session = webSocketSessionService.getSessionByUserId(userId);
                 if (session != null && session.isOpen()) {
                     sendMessage(session, message);
-                    log.info("{} 전송 완료: {} -> {}", logPrefix, roomId, userId);
                 } else {
                     log.warn("사용자 {}의 세션을 찾을 수 없거나 연결이 닫혀있음", userId);
                 }
             }
         } catch (Exception e) {
-            log.error("{} 전송 실패: {}", logPrefix, roomId, e);
+            log.error("전송 실패: {}", roomId, e);
         }
     }
 
