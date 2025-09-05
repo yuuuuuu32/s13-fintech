@@ -1,9 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { RoomList } from '../components/RoomList.tsx'
 import { CreateRoomModal } from '../components/CreateRoomModal.tsx'
+import { useLobbyStore } from '../store/useLobbyStore.ts'
 
 export default function LobbyPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const fetchRooms = useLobbyStore((state) => state.fetchRooms)
+
+  useEffect(() => {
+    fetchRooms()
+  }, [fetchRooms])
 
   return (
     <div

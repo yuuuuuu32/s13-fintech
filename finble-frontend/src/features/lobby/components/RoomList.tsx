@@ -1,17 +1,19 @@
 import { useNavigate } from 'react-router-dom'
-import { useLobbyStore, type GameRoom } from '../store/useLobbyStore.ts'
+import { useLobbyStore } from '../store/useLobbyStore.ts'
 
 export function RoomList() {
   const rooms = useLobbyStore((state) => state.rooms)
   const navigate = useNavigate()
 
+  // 현재는 waitingRooms 필터링 로직을 유지하지만,
+  // 백엔드에서 받은 status를 활용하는 것이 더 정확합니다.
   const waitingRooms = rooms.filter((room) => room.status === 'waiting')
 
   return (
     <div style={{ width: '100%', maxWidth: '800px', marginTop: '2rem' }}>
       {waitingRooms.map((room) => (
         <div
-          key={room.id}
+          key={room.roomNo}
           style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -23,14 +25,13 @@ export function RoomList() {
             border: '1px solid #444',
           }}
         >
-          <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{room.name}</span>
+          <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{room.title}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            {/* room.players -> room.players.length 로 수정 */}
             <span style={{ fontSize: '1.1rem', color: '#ccc' }}>
-              {room.players.length}/{room.maxPlayers}
+              {room.currentPlayer}/{room.maxPlayer}
             </span>
             <button
-              onClick={() => navigate(`/room/${room.id}`)}
+              onClick={() => navigate(`/room/${room.roomNo}`)}
               style={{
                 padding: '0.5rem 1rem',
                 fontSize: '1rem',
