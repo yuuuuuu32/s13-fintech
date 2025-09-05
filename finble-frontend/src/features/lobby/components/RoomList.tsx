@@ -5,15 +5,13 @@ export function RoomList() {
   const rooms = useLobbyStore((state) => state.rooms)
   const navigate = useNavigate()
 
-  // 현재는 waitingRooms 필터링 로직을 유지하지만,
-  // 백엔드에서 받은 status를 활용하는 것이 더 정확합니다.
   const waitingRooms = rooms.filter((room) => room.status === 'waiting')
 
   return (
     <div style={{ width: '100%', maxWidth: '800px', marginTop: '2rem' }}>
       {waitingRooms.map((room) => (
         <div
-          key={room.roomNo}
+          key={room.id}
           style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -25,13 +23,13 @@ export function RoomList() {
             border: '1px solid #444',
           }}
         >
-          <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{room.title}</span>
+          <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{room.name}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
             <span style={{ fontSize: '1.1rem', color: '#ccc' }}>
-              {room.currentPlayer}/{room.maxPlayer}
+              {room.players.length}/{room.maxPlayers}
             </span>
             <button
-              onClick={() => navigate(`/room/${room.roomNo}`)}
+              onClick={() => navigate(`/room/${room.id}`)}
               style={{
                 padding: '0.5rem 1rem',
                 fontSize: '1rem',
