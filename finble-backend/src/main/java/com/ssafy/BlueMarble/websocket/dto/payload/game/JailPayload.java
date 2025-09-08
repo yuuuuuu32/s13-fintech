@@ -8,8 +8,9 @@ import lombok.Data;
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class JailPayload {
-     private Boolean result;                  
-     private String userName;                   
-     private ConstructPayload.Asset updatedAsset; 
-     private int turns;                        
+    private Boolean result;
+    private String userName;
+    private ConstructPayload.Asset updatedAsset;
+    private int turns;
+
 }
