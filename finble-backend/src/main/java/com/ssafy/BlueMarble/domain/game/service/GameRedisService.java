@@ -16,8 +16,7 @@ public class GameRedisService {
     
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
-    
-    // 기존 RoomService와 통합된 키 구조
+
     private static final String GAME_MAP_PREFIX = "room:map:";
     private static final String PLAYER_STATE_PREFIX = "room:player:";
     private static final int GAME_STATE_TTL = 1800;
