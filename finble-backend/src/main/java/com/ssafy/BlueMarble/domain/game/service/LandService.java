@@ -33,7 +33,6 @@ public class LandService {
     /**
      * 땅 구매
      */
-    @Transactional
     public void tradeLand(WebSocketSession session, TradeLandRequest tradeLandRequest) {
         String roomId = roomService.getRoom(session.getId());
         
@@ -92,7 +91,6 @@ public class LandService {
     /**
      * 건설
      * */
-    @Transactional
     public void constructBuilding(WebSocketSession session, ConstructRequest constructRequest) {
         //1. 건설 하려는 사람의 정보를 가져온다.
         String roomId = roomService.getRoom(session.getId());
@@ -144,5 +142,19 @@ public class LandService {
         JsonNode payloadNode = objectMapper.valueToTree(payload);
         MessageDto message = new MessageDto(MessageType.CONSTRUCT_BUILDING, payloadNode);
         sessionMessageService.sendMessageToRoom(roomId, message);
+    }
+
+    /**
+     * 감옥 이벤트
+     * */
+    public void jailEvent(WebSocketSession session) {
+
+    }
+
+    /**
+     * 세계여행 이벤트
+     * */
+    public void travelEvent(WebSocketSession session) {
+
     }
 }
