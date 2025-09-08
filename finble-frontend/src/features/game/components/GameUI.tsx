@@ -1,25 +1,35 @@
 import { useState, useEffect, useRef } from 'react'
 import { useGameStore } from '../store/useGameStore.ts'
 import { useNavigate } from 'react-router-dom';
+import { boardData } from '../data/boardData.ts';
 
 export function GameUI() {
-  const players = useGameStore((state) => state.players)
-  const currentPlayerIndex = useGameStore((state) => state.currentPlayerIndex)
-  const gamePhase = useGameStore((state) => state.gamePhase)
-  const winnerId = useGameStore((state) => state.winnerId)
-  const modal = useGameStore((state) => state.modal)
-  const buyProperty = useGameStore((state) => state.buyProperty)
-  const acquireProperty = useGameStore((state) => state.acquireProperty)
-  const payToll = useGameStore((state) => state.payToll)
-  const endTurn = useGameStore((state) => state.endTurn)
-  const setDicePower = useGameStore((state) => state.setDicePower)
+  const {
+    players,
+    currentPlayerIndex,
+    gamePhase,
+    winnerId,
+    modal,
+    totalTurns,
+    currentTurn,
+    buyProperty,
+    acquireProperty,
+    payToll,
+    endTurn,
+    setDicePower,
+    payBail,
+    handleJail,
+    selectExpoProperty,
+    selectTravelDestination,
+  } = useGameStore(state => state);
+
   const navigate = useNavigate();
 
   const [gauge, setGauge] = useState(0)
   const gaugeRef = useRef<any>(null)
   const [isCharging, setIsCharging] = useState(false)
+  const [showWorldTravelPicker, setShowWorldTravelPicker] = useState(false);
 
-  // 컴포넌트가 언마운트될 때 인터벌을 정리하기 위한 useEffect
   useEffect(() => {
     return () => clearInterval(gaugeRef.current)
   }, [])
@@ -28,8 +38,7 @@ export function GameUI() {
     if (gamePhase !== 'WAITING_FOR_ROLL') return
     
     setIsCharging(true)
-    setGauge(0) // 누르기 시작하면 게이지 초기화
-
+    setGauge(0)
     let power = 0
     let direction = 1
     const interval = setInterval(() => {
@@ -51,14 +60,25 @@ export function GameUI() {
   }
 
   const handleGoToLobby = () => {
+    // 여기에 게임 상태 초기화 로직을 추가할 수 있습니다.
     navigate('/lobby');
   };
+  
+  useEffect(() => {
+    setShowWorldTravelPicker(modal.type === 'WORLD_TRAVEL_PICKER');
+  }, [modal.type]);
 
   const winner = winnerId ? players.find(p => p.id === winnerId) : null;
   const isGameOver = gamePhase === 'GAME_OVER';
+  const currentPlayer = players[currentPlayerIndex];
 
   return (
-    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', color: 'white' }}>
+    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', color: 'white', fontFamily: 'Arial, sans-serif' }}>
+      {/* 남은 턴 / 현재 턴 표시 */}
+      <div style={{ position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', padding: '10px 20px', backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: '10px', fontSize: '1.5rem', fontWeight: 'bold' }}>
+        {currentTurn} / {totalTurns} 턴
+      </div>
+
       {players.map((player, index) => (
         <div 
           key={player.id}
@@ -67,20 +87,19 @@ export function GameUI() {
             ...(index === 0 && { top: '20px', left: '20px' }),
             ...(index === 1 && { top: '20px', right: '20px' }),
             padding: '10px',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            border: `2px solid ${index === currentPlayerIndex ? 'yellow' : 'white'}`,
+            backgroundColor: `rgba(0,0,0,${player.money <= 0 ? 0.3 : 0.7})`, // 파산 시 반투명
+            border: `2px solid ${index === currentPlayerIndex && gamePhase !== 'GAME_OVER' ? 'yellow' : 'white'}`,
             borderRadius: '8px',
-            display: player.money <= 0 ? 'none' : 'block' // 파산한 플레이어 정보 숨기기
+            transition: 'background-color 0.3s'
           }}
         >
-          <h3>{player.name}</h3>
+          <h3>{player.name} {player.money <= 0 ? '(파산)' : ''}</h3>
           <p>자산: {player.money.toLocaleString()}원</p>
           <p>소유도시: {player.properties.length}개</p>
         </div>
       ))}
 
       <div style={{ position: 'absolute', bottom: '5%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'all', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        {/* [수정됨] WAITING_FOR_ROLL 상태일 때 항상 게이지 바가 보이도록 수정 */}
         {gamePhase === 'WAITING_FOR_ROLL' && (
           <div style={{ width: '300px', height: '30px', backgroundColor: '#4a5568', borderRadius: '15px', overflow: 'hidden', border: '2px solid white', marginBottom: '1rem' }}>
             <div style={{ width: `${gauge}%`, height: '100%', backgroundColor: '#f56565', transition: 'width 0.02s linear' }} />
@@ -89,17 +108,17 @@ export function GameUI() {
         <button 
           onMouseDown={handleChargeStart}
           onMouseUp={handleChargeEnd}
-          onMouseLeave={handleChargeEnd} // 버튼 밖으로 마우스가 나가도 굴림 처리
+          onMouseLeave={handleChargeEnd}
           disabled={gamePhase !== 'WAITING_FOR_ROLL'}
-          style={{ padding: '20px 40px', fontSize: '24px', cursor: 'pointer' }}
+          style={{ padding: '20px 40px', fontSize: '24px', cursor: 'pointer', opacity: gamePhase !== 'WAITING_FOR_ROLL' ? 0.5 : 1 }}
         >
-          {gamePhase === 'WAITING_FOR_ROLL' ? (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절') : '...'}
+          {currentPlayer.isInJail ? '무인도...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
         </button>
       </div>
 
-      {(modal.type !== 'NONE' || isGameOver) && (
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'all' }}>
-          <div style={{ padding: '30px', backgroundColor: 'white', color: 'black', borderRadius: '10px', textAlign: 'center', maxWidth: '400px' }}>
+      {(modal.type !== 'NONE' || isGameOver || showWorldTravelPicker) && (
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'all', zIndex: 10 }}>
+          <div style={{ padding: '30px', backgroundColor: 'white', color: 'black', borderRadius: '10px', textAlign: 'center', minWidth: '350px' }}>
             {modal.type === 'BUY_PROPERTY' && (
               <>
                 <h2>{modal.tile?.name}</h2>
@@ -111,7 +130,7 @@ export function GameUI() {
                 </div>
               </>
             )}
-            {modal.type === 'ACQUIRE_PROPERTY' && (
+             {modal.type === 'ACQUIRE_PROPERTY' && (
               <>
                 <h2>{modal.tile?.name} 인수</h2>
                 <p>통행료: {modal.toll?.toLocaleString()}원</p>
@@ -135,6 +154,51 @@ export function GameUI() {
                 <h2>알림</h2>
                 <p style={{ fontSize: '1.1rem', margin: '20px 0' }}>{modal.text}</p>
                 <button onClick={endTurn} style={{ padding: '10px 20px' }}>확인</button>
+              </>
+            )}
+             {modal.type === 'JAIL' && (
+              <>
+                <h2>무인도 도착</h2>
+                <p>보석금을 내고 즉시 탈출하거나, 3턴 동안 머물러야 합니다.</p>
+                <p>(남은 턴: {currentPlayer.jailTurns})</p>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                  <button onClick={payBail} style={{ padding: '10px 20px' }}>보석금 ({ (500000).toLocaleString() }원) 지불</button>
+                  <button onClick={handleJail} style={{ padding: '10px 20px' }}>머물기</button>
+                </div>
+              </>
+            )}
+             {modal.type === 'EXPO' && (
+              <>
+                <h2>박람회 개최!</h2>
+                <p>소유한 땅 중 하나의 통행료를 2배로 올릴 수 있습니다.</p>
+                <div style={{ maxHeight: '200px', overflowY: 'auto', margin: '20px 0', border: '1px solid #ccc', borderRadius: '5px' }}>
+                  {modal.properties?.map(prop => (
+                    <button key={prop.index} onClick={() => selectExpoProperty(prop.index)} style={{ display: 'block', width: '100%', padding: '10px', textAlign: 'left' }}>
+                      {prop.name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            {showWorldTravelPicker && (
+              <>
+                <h2>세계여행</h2>
+                <p>이동하고 싶은 타일을 클릭하세요.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '4px', marginTop: '1rem', pointerEvents: 'all' }}>
+                  {boardData.map((tile, index) => (
+                    <button 
+                      key={index} 
+                      onClick={() => {
+                        setShowWorldTravelPicker(false);
+                        selectTravelDestination(index);
+                      }}
+                      style={{ padding: '8px 4px', fontSize: '10px', border: '1px solid #eee' }}
+                      title={tile.name}
+                    >
+                      {tile.name.substring(0, 3)}
+                    </button>
+                  ))}
+                </div>
               </>
             )}
             {isGameOver && (
