@@ -46,7 +46,7 @@ services:
       dockerfile: Dockerfile
     container_name: bluemarble-backend
     ports:
-      - "8081:8080"
+      - "8081:8081"
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-docker}
       DB_HOST: mysql
