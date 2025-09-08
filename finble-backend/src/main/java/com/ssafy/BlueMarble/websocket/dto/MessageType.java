@@ -13,7 +13,7 @@ public enum MessageType {
     KICK_USER,//다른 유저 강제퇴장
     KICKED,//내가 강제퇴장
 
-    // 게임 진행 관련
+    // 게임 관련
     START_GAME,
     START_GAME_OBSERVE,
     GAME_STATE_CHANGE,
@@ -25,5 +25,10 @@ public enum MessageType {
     CONSTRUCT_BUILDING,
     JAIL_EVENT,
     WORLD_TRAVEL_EVENT,
-    USE_DICE
+    USE_DICE,
+
+    // 카드 관련
+    DRAW_CARD,
+    USE_CARD,
+    ANGEL_DEFENSE
 }
