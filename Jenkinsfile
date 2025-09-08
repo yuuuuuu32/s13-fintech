@@ -85,7 +85,7 @@ pipeline {
                         max_attempts=30
                         attempt=0
                         
-                        until curl -f http://localhost:8080/actuator/health || [ $attempt -eq $max_attempts ]; do
+                        until curl -f http://localhost:8081/actuator/health || [ $attempt -eq $max_attempts ]; do
                             echo "Health check attempt $((++attempt))/$max_attempts"
                             sleep 10
                         done
