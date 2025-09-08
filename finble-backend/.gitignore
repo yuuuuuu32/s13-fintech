@@ -4,7 +4,7 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
-src/main/resources/*
+# src/main/resources/*
 
 # 로그 및 PID 파일 추가
 app.log
