@@ -25,5 +25,10 @@ public enum MessageType {
     CONSTRUCT_BUILDING,
     JAIL_EVENT,
     WORLD_TRAVEL_EVENT,
-    USE_DICE
+    USE_DICE,
+    
+    // 카드 관련
+    DRAW_CARD,
+    USE_CARD,
+    ANGEL_DEFENSE
 }
