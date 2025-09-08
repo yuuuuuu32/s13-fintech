@@ -4,40 +4,35 @@ import { useSpring, animated } from '@react-spring/three'
 import type { Player as PlayerData } from '../store/useGameStore'
 import { useGameStore } from '../store/useGameStore'
 
-// 가장 정확한 위치 계산 함수
+// Board.tsx와 동일한 위치 계산 로직을 사용합니다.
 const getTilePosition = (index: number): [number, number, number] => {
-  const TILES_PER_LINE = 8
-  const TILE_WIDTH = 3
-  const TILE_DEPTH = 4.5
-  const HALF_BOARD_SIDE = (TILES_PER_LINE * TILE_WIDTH) / 2
-  const HALF_TILE_WIDTH = TILE_WIDTH / 2
-  const HALF_TILE_DEPTH = TILE_DEPTH / 2
+  const TILES_PER_SIDE = 8;
+  const TILE_WIDTH = 3;
+  const HALF_BOARD_WIDTH = (TILES_PER_SIDE * TILE_WIDTH) / 2 - TILE_WIDTH / 2;
 
-  let x = 0
-  let z = 0
-
-  const side = Math.floor(index / TILES_PER_LINE)
-  const indexOnSide = index % TILES_PER_LINE
+  const position: [number, number, number] = [0, 0, 0];
+  const side = Math.floor(index / TILES_PER_SIDE);
+  const indexOnSide = index % TILES_PER_SIDE;
 
   switch (side) {
-    case 0: // 아래쪽 (우측 상단 코너부터 시작)
-      x = HALF_BOARD_SIDE - HALF_TILE_WIDTH - indexOnSide * TILE_WIDTH
-      z = HALF_BOARD_SIDE - HALF_TILE_DEPTH
+    case 0: // 아래
+      position[0] = HALF_BOARD_WIDTH - indexOnSide * TILE_WIDTH;
+      position[2] = HALF_BOARD_WIDTH;
       break
-    case 1: // 왼쪽 (아래쪽으로 이동)
-      x = -HALF_BOARD_SIDE + HALF_TILE_DEPTH
-      z = HALF_BOARD_SIDE - HALF_TILE_WIDTH - indexOnSide * TILE_WIDTH
+    case 1: // 왼쪽
+      position[0] = -HALF_BOARD_WIDTH;
+      position[2] = HALF_BOARD_WIDTH - indexOnSide * TILE_WIDTH;
       break
-    case 2: // 위쪽 (좌측 하단 코너부터 시작)
-      x = -HALF_BOARD_SIDE + HALF_TILE_WIDTH + indexOnSide * TILE_WIDTH
-      z = -HALF_BOARD_SIDE + HALF_TILE_DEPTH
+    case 2: // 위
+      position[0] = -HALF_BOARD_WIDTH + indexOnSide * TILE_WIDTH;
+      position[2] = -HALF_BOARD_WIDTH;
       break
-    case 3: // 오른쪽 (위쪽으로 이동)
-      x = HALF_BOARD_SIDE - HALF_TILE_DEPTH
-      z = -HALF_BOARD_SIDE + HALF_TILE_WIDTH + indexOnSide * TILE_WIDTH
+    case 3: // 오른쪽
+      position[0] = HALF_BOARD_WIDTH;
+      position[2] = -HALF_BOARD_WIDTH + indexOnSide * TILE_WIDTH;
       break
   }
-  return [x, 0.5, z]
+  return [position[0], 0.5, position[2]];
 }
 
 interface PlayerProps {
@@ -51,18 +46,20 @@ export function Player({ player }: PlayerProps) {
 
   const targetPosition = useMemo(() => getTilePosition(player.position), [player.position])
 
+  // 플레이어 이동 애니메이션
   const { position } = useSpring({
     to: { position: targetPosition },
     config: { duration: 1000 },
     onRest: () => {
-      if (isMyTurn && gamePhase === 'PLAYER_MOVING') {
+      // 내 턴이고, 이동이 끝났을 때만 타일 액션을 실행합니다.
+      if (isMyTurn && (gamePhase === 'PLAYER_MOVING' || gamePhase === 'WORLD_TRAVEL')) {
         handleTileAction()
       }
     },
   })
 
   return (
-    <animated.mesh position={position as any}>
+    <animated.mesh position={position as any} castShadow>
       {player.character === 'cone' && <Cone args={[0.5, 1]}><meshStandardMaterial color="royalblue" /></Cone>}
       {player.character === 'sphere' && <Sphere args={[0.5]}><meshStandardMaterial color="hotpink" /></Sphere>}
     </animated.mesh>
