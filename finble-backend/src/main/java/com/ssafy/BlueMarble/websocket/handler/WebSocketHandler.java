@@ -1,14 +1,14 @@
 package com.ssafy.BlueMarble.websocket.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.BlueMarble.domain.game.service.MapService;
 import com.ssafy.BlueMarble.domain.game.dto.request.ConstructRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
 import com.ssafy.BlueMarble.domain.game.service.LandService;
-import com.ssafy.BlueMarble.domain.game.service.MapService;
 import com.ssafy.BlueMarble.domain.game.service.EventService;
-import com.ssafy.BlueMarble.domain.game.service.EventService;
+import com.ssafy.BlueMarble.domain.ChanceCard.service.CardService;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 
@@ -18,9 +18,12 @@ import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.domain.game.dto.request.TradeLandRequest;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.UseCardPayload;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.DrawCardPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.CreateRoomPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.EnterRoomPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.KickRoomPayload;
+import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
 import com.ssafy.BlueMarble.websocket.service.WebSocketSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +32,8 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+
+import java.util.Map;
 
 
 /**
@@ -45,7 +50,8 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private final MapService mapService;
     private final LandService landService;
     private final EventService eventService;
-    private final EventService eventService;
+    private final CardService cardService;
+    private final SessionMessageService sessionMessageService;
 
     /**
      * [연결 성공] WebSocket 협상이 성공적으로 완료되고 WebSocket 연결이 열려 사용할 준비가 된 후 호출됩니다.
@@ -150,6 +156,20 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 UseDiceRequest useDiceRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), UseDiceRequest.class);
                 eventService.handleUseDiceEvent(session, useDiceRequest);
                 break;
+            case USE_CARD:
+                log.info("[WebSocket] 카드 사용 요청: roomId={}, sessionId={}", roomId, session.getId());
+                UseCardPayload useCardPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), UseCardPayload.class);
+                handleUseCard(session, useCardPayload, roomId, userId);
+                break;
+            case DRAW_CARD:
+                log.info("[WebSocket] 카드 뽑기 요청: roomId={}, sessionId={}", roomId, session.getId());
+                DrawCardPayload drawCardPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), DrawCardPayload.class);
+                handleDrawCard(session, drawCardPayload, roomId, userId);
+                break;
+            case ANGEL_DEFENSE:
+                log.info("[WebSocket] 천사카드 방어 요청: roomId={}, sessionId={}", roomId, session.getId());
+                handleAngelDefense(session, roomId, userId);
+                break;
         }
 
         log.info("[WebSocket] handleTextMessage 종료 - sessionId: {}", session.getId());
@@ -165,6 +185,96 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
     private boolean needsRoomId(MessageType messageType) {
         return messageType == MessageType.START_GAME;
+    }
+
+    /**
+     * 카드 뽑기 처리
+     */
+    private void handleDrawCard(WebSocketSession session, DrawCardPayload payload, String roomId, String userId) {
+        try {
+            log.info("[WebSocket] 카드 뽑기 시작: roomId={}, userName={}", roomId, payload.getUserName());
+
+            if ("null".equals(roomId))
+                throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
+
+            DrawCardPayload.DrawCardResult result = cardService.drawCard(roomId, payload.getUserName());
+
+            if (result != null) {
+                DrawCardPayload responsePayload = DrawCardPayload.builder()
+                        .result(result)
+                        .build();
+
+                MessageDto responseMessage = MessageDto.builder()
+                        .type(MessageType.DRAW_CARD)
+                        .payload(objectMapper.valueToTree(responsePayload))
+                        .build();
+
+                sessionMessageService.sendMessageToRoom(roomId, responseMessage);
+                log.info("[WebSocket] 카드 뽑기 성공: roomId={}, cardName={}", roomId, result.getCardName());
+            } else {
+                log.error("[WebSocket] 카드 뽑기 실패: roomId={}, userName={}", roomId, payload.getUserName());
+            }
+
+        } catch (Exception e) {
+            log.error("[WebSocket] 카드 뽑기 중 오류 발생: roomId={}, userName={}", roomId, payload.getUserName(), e);
+        }
+    }
+
+    /**
+     * 카드 사용 처리
+     */
+    private void handleUseCard(WebSocketSession session, UseCardPayload payload, String roomId, String userId) {
+        try {
+            log.info("[WebSocket] 카드 사용 시작: roomId={}, userName={}, cardName={}",
+                    roomId, payload.getUserName(), payload.getCardName());
+
+            if ("null".equals(roomId))
+                throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
+
+            boolean success = cardService.useCard(roomId, payload.getUserName(), payload.getCardName());
+
+            UseCardPayload responsePayload = UseCardPayload.builder()
+                    .result(success)
+                    .build();
+
+            MessageDto responseMessage = MessageDto.builder()
+                    .type(MessageType.USE_CARD)
+                    .payload(objectMapper.valueToTree(responsePayload))
+                    .build();
+
+            sessionMessageService.sendMessageToRoom(roomId, responseMessage);
+            log.info("[WebSocket] 카드 사용 완료: roomId={}, success={}", roomId, success);
+
+        } catch (Exception e) {
+            log.error("[WebSocket] 카드 사용 중 오류 발생: roomId={}, userName={}, cardName={}",
+                    roomId, payload.getUserName(), payload.getCardName(), e);
+        }
+    }
+
+    /**
+     * 천사카드 방어 처리
+     */
+    private void handleAngelDefense(WebSocketSession session, String roomId, String userId) {
+        try {
+            log.info("[WebSocket] 천사카드 방어 시작: roomId={}, userId={}", roomId, userId);
+
+            boolean success = cardService.useAngelCardDefense(roomId, userId);
+
+            // 결과를 모든 참가자에게 브로드캐스트
+            MessageDto responseMessage = MessageDto.builder()
+                    .type(MessageType.ANGEL_DEFENSE)
+                    .payload(Map.of(
+                            "success", success,
+                            "userId", userId
+                    ))
+                    .build();
+
+            webSocketSessionService.sendMessageToRoom(roomId, responseMessage);
+            log.info("[WebSocket] 천사카드 방어 완료: roomId={}, success={}", roomId, success);
+
+        } catch (Exception e) {
+            log.error("[WebSocket] 천사카드 방어 중 오류 발생: roomId={}, userId={}", roomId, userId, e);
+        }
     }
 
     /**
