@@ -8,6 +8,7 @@ import lombok.Getter;
 public class DrawCardPayload {
     
     private String userName;
+    private DrawCardResult result;
     
     @Getter
     @Builder

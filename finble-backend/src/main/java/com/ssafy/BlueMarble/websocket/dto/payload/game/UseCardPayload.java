@@ -9,5 +9,6 @@ public class UseCardPayload {
     
     private String userName;
     private String cardName;
+    private Boolean result;
     
 }
