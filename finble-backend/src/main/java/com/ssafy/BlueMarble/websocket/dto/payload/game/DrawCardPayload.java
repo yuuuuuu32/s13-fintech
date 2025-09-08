@@ -1,17 +1,20 @@
 package com.ssafy.BlueMarble.websocket.dto.payload.game;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 
-@Getter
+@Data
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class DrawCardPayload {
     
     private String userName;
     private DrawCardResult result;
     
-    @Getter
+    @Data
     @Builder
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class DrawCardResult {
         private String userName;
         private String cardName;

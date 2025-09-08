@@ -1,4 +1,4 @@
-package com.ssafy.BlueMarble.domain.chanceCard.entity;
+package com.ssafy.BlueMarble.domain.game.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -1,6 +1,6 @@
-package com.ssafy.BlueMarble.domain.chanceCard.repository;
+package com.ssafy.BlueMarble.domain.game.repository;
 
-import com.ssafy.BlueMarble.domain.chanceCard.entity.Card;
+import com.ssafy.BlueMarble.domain.game.entity.Card;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

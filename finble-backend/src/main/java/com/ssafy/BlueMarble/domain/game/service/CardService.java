@@ -1,12 +1,10 @@
-package com.ssafy.BlueMarble.domain.ChanceCard.service;
+package com.ssafy.BlueMarble.domain.game.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.BlueMarble.domain.chanceCard.entity.Card;
-import com.ssafy.BlueMarble.domain.chanceCard.repository.CardRepository;
-import com.ssafy.BlueMarble.domain.game.service.GameRedisService;
+import com.ssafy.BlueMarble.domain.game.entity.Card;
+import com.ssafy.BlueMarble.domain.game.repository.CardRepository;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
-import com.ssafy.BlueMarble.websocket.dto.payload.game.UseCardPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.DrawCardPayload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,10 +12,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
@@ -118,13 +114,11 @@ public class CardService {
     
     public void addCard(String roomId, String userId, String cardName) {
         try {
-            // 천사카드인 경우 특별 처리
             if ("천사카드".equals(cardName)) {
                 handleAngelCardAcquisition(roomId, userId);
                 return;
             }
             
-            // 일반 카드는 즉발형이므로 저장하지 않고 즉시 효과 적용
             log.info("즉발형 카드 효과 적용: roomId={}, userId={}, cardName={}", roomId, userId, cardName);
             
         } catch (Exception e) {
@@ -140,23 +134,16 @@ public class CardService {
                 return;
             }
             
-            // 천사카드가 덱에 없으면 획득 불가
             if (!gameMapState.isAngelCardInDeck()) {
                 log.warn("천사카드가 이미 다른 플레이어가 보유중: roomId={}", roomId);
                 return;
             }
             
-            // 플레이어에게 천사카드 부여
             CreateMapPayload.PlayerState player = gameMapState.getPlayers().get(userId);
             if (player != null) {
                 player.setAnglecard(true);
-                
-                // 덱에서 천사카드 제거
                 gameMapState.setAngelCardInDeck(false);
-                
-                // 게임 상태 저장
                 gameRedisService.saveGameMapState(roomId, gameMapState);
-                
                 log.info("천사카드 획득: roomId={}, userId={}", roomId, userId);
             }
             
@@ -175,16 +162,11 @@ public class CardService {
             
             CreateMapPayload.PlayerState player = gameMapState.getPlayers().get(userId);
             if (player == null || !player.isAnglecard()) {
-                return false; // 천사카드 미보유
+                return false;
             }
             
-            // 천사카드 사용: 플레이어에게서 제거
             player.setAnglecard(false);
-            
-            // 덱에 천사카드 복귀
             gameMapState.setAngelCardInDeck(true);
-            
-            // 게임 상태 저장
             gameRedisService.saveGameMapState(roomId, gameMapState);
             
             log.info("천사카드 방어 사용: roomId={}, userId={}", roomId, userId);
@@ -210,21 +192,17 @@ public class CardService {
                 return null;
             }
             
-            // 1. DB에서 모든 카드 조회
             List<Card> availableCards = getAvailableCardsFromDB(gameMapState);
             if (availableCards.isEmpty()) {
                 log.error("뽑을 수 있는 카드가 없음: roomId={}", roomId);
                 return null;
             }
             
-            // 2. 랜덤으로 Card 엔티티 선택
             Card drawnCard = availableCards.get(random.nextInt(availableCards.size()));
             
-            // 3. 카드 타입별 처리
             if (drawnCard.getCardType() == Card.CardType.ANGEL) {
                 handleAngelCardDrawn(roomId, userId, gameMapState);
             } else {
-                // 즉발카드 즉시 효과 적용
                 applyInstantCardEffectFromDB(drawnCard, gameMapState.getPlayers().get(userId));
                 gameRedisService.saveGameMapState(roomId, gameMapState);
             }
@@ -246,7 +224,6 @@ public class CardService {
         try {
             List<Card> allCards = cardRepository.findAll();
             
-            // 천사카드가 이미 누군가 보유중이면 제외
             if (!gameMapState.isAngelCardInDeck()) {
                 allCards = allCards.stream()
                         .filter(card -> card.getCardType() != Card.CardType.ANGEL)
@@ -274,7 +251,6 @@ public class CardService {
         }
     }
     
-    // ========== 샘플 코드 시작 ==========
     private Card.CardType getCardType(String cardName) {
         try {
             Card card = cardRepository.findByCardName(cardName).orElse(null);
@@ -295,17 +271,13 @@ public class CardService {
                 return;
             }
             
-            // effect_value에 따른 동적 효과 적용
             if (effectValue == 10) {
-                // 감옥 이동 (특수 케이스)
                 applyJailEffect(player);
                 log.info("즉발카드 효과 적용 - 감옥: cardName={}, description={}", card.getCardName(), description);
             } else if (Math.abs(effectValue) >= 10000) {
-                // 돈 관련 효과 (절댓값이 10000 이상)
                 applyMoneyEffect(player, effectValue);
                 log.info("즉발카드 효과 적용 - 돈: cardName={}, amount={}, description={}", card.getCardName(), effectValue, description);
             } else {
-                // 위치 이동 효과 (절댓값이 10000 미만)
                 applyPositionEffect(player, effectValue);
                 log.info("즉발카드 효과 적용 - 이동: cardName={}, move={}, description={}", card.getCardName(), effectValue, description);
             }
@@ -323,14 +295,12 @@ public class CardService {
                 return false;
             }
             
-            // DB에서 카드 정보 조회
             Card card = cardRepository.findByCardName(cardName).orElse(null);
             if (card == null) {
                 log.error("DB에서 카드를 찾을 수 없음: cardName={}", cardName);
                 return false;
             }
             
-            // DB 기반 효과 적용
             applyInstantCardEffectFromDB(card, player);
             
             gameRedisService.saveGameMapState(roomId, gameMapState);
@@ -388,5 +358,4 @@ public class CardService {
             return false;
         }
     }
-    // ========== 샘플 코드 끝 ==========
 }

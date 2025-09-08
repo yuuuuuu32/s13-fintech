@@ -1,6 +1,6 @@
-package com.ssafy.BlueMarble.domain.chanceCard.dto;
+package com.ssafy.BlueMarble.domain.game.dto;
 
-import com.ssafy.BlueMarble.domain.chanceCard.entity.Card;
+import com.ssafy.BlueMarble.domain.game.entity.Card;
 import lombok.Builder;
 import lombok.Getter;
 
