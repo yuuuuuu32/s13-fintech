@@ -49,6 +49,7 @@ services:
       - "8081:8081"
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/finble?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
       DB_HOST: mysql
       DB_PORT: 3306
       DB_NAME: ${DB_NAME:-finble}
