@@ -68,7 +68,7 @@ pipeline {
             steps {
                 echo 'Building Docker images...'
                 script {
-                    sh 'docker-compose build backend'
+                    sh 'docker-compose build --no-cache backend'
                 }
             }
         }
@@ -106,7 +106,7 @@ pipeline {
                             ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
                                 cd /home/ubuntu/bluemarble &&
                                 sudo docker-compose down --remove-orphans &&
-                                sudo docker-compose build backend &&
+                                sudo docker-compose build --no-cache backend &&
                                 sudo docker-compose up -d
                             '
                         """
