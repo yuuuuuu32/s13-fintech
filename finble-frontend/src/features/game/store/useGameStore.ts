@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { boardData as initialBoardData, BuildingType } from '../data/boardData.ts'
 import type { TileData } from '../data/boardData.ts'
 import { currentUser } from '../../lobby/store/useLobbyStore'
+import { connectWebSocket, disconnectWebSocket, sendMessage, subscribeToTopic } from '../../../utils/websocket'
 
 type GamePhase = 'WAITING_FOR_ROLL' | 'DICE_ROLLING' | 'PLAYER_MOVING' | 'TILE_ACTION' | 'WORLD_TRAVEL' | 'GAME_OVER' | 'MANAGE_PROPERTY' | 'WORLD_TRAVEL_MOVE'
 type ModalType = 'NONE' | 'BUY_PROPERTY' | 'ACQUIRE_PROPERTY' | 'CHANCE_CARD' | 'INFO' | 'JAIL' | 'EXPO' | 'MANAGE_PROPERTY' | 'INSUFFICIENT_FUNDS'
@@ -28,6 +29,7 @@ const chanceCards = [
 ];
 
 interface GameState {
+  gameId: string | null;
   players: Player[]
   board: TileData[] // 보드 데이터를 상태로 관리
   currentPlayerIndex: number
@@ -63,11 +65,16 @@ interface GameState {
   startWorldTravelSelection: () => void
   selectTravelDestination: (tileIndex: number) => void
   buildBuilding: (tileIndex: number) => void
+  connect: (gameId: string) => void;
+  disconnect: () => void;
+  send: (destination: string, body: any) => void;
+  updateGameState: (newState: Partial<GameState>) => void;
 }
 
 const BAIL_AMOUNT = 500000;
 
 export const useGameStore = create<GameState>()((set, get) => ({
+  gameId: null,
   players: [
     { id: currentUser.id, name: `${currentUser.name}`, money: 2200000, position: 0, character: 'cone', properties: [], isInJail: false, jailTurns: 0, isTraveling: false, lapCount: 0 },
     { id: 'player-2', name: '플레이어 2', money: 2000000, position: 0, character: 'sphere', properties: [], isInJail: false, jailTurns: 0, isTraveling: false, lapCount: 0 },
@@ -85,8 +92,40 @@ export const useGameStore = create<GameState>()((set, get) => ({
 
   setDicePower: (power) => set({ dicePower: power }),
 
+  connect: (gameId: string) => {
+    set({ gameId });
+    connectWebSocket({
+      onConnect: () => {
+        console.log('Game WebSocket connected!');
+        subscribeToTopic(`/topic/game/${gameId}`, (message) => {
+          console.log('Received game update:', message);
+          get().updateGameState(message);
+        });
+      },
+      onDisconnect: () => {
+        console.log('Game WebSocket disconnected.');
+      },
+      onMessage: (topic, message) => {
+        console.log(`Received message on ${topic}:`, message);
+        // Handle specific message types if needed, or let updateGameState handle it
+      },
+    });
+  },
+
+  disconnect: () => {
+    disconnectWebSocket();
+  },
+
+  send: (destination: string, body: any) => {
+    sendMessage(destination, body);
+  },
+
+  updateGameState: (newState: Partial<GameState>) => {
+    set(newState);
+  },
+
   rollDice: () => {
-    const { gamePhase, players, currentPlayerIndex } = get();
+    const { gamePhase, players, currentPlayerIndex, gameId, send } = get();
     const currentPlayer = players[currentPlayerIndex];
 
     if (gamePhase !== 'WAITING_FOR_ROLL') return;
@@ -101,7 +140,12 @@ export const useGameStore = create<GameState>()((set, get) => ({
       return;
     }
 
-    set({ gamePhase: 'DICE_ROLLING' });
+    if (gameId) {
+      send(`/app/game/${gameId}/roll-dice`, { playerId: currentPlayer.id });
+    } else {
+      console.warn('Game ID not set. Cannot send roll dice message.');
+      set({ gamePhase: 'DICE_ROLLING' }); // Fallback for local testing
+    }
   },
 
   movePlayer: (diceValues) => {

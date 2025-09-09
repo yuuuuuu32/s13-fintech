@@ -6,9 +6,23 @@ import { Board } from '../components/Board.tsx'
 import { Player } from '../components/Player.tsx'
 import { GameUI } from '../components/GameUI.tsx'
 import { Dice } from '../components/Dice.tsx'
+import { useEffect } from 'react'
 
 export default function GameCanvas() {
   const players = useGameStore((state) => state.players)
+  const connect = useGameStore((state) => state.connect)
+  const disconnect = useGameStore((state) => state.disconnect)
+
+  // Dummy gameId for testing. In a real app, this would come from routing or context.
+  const gameId = 'test-game-id'; 
+
+  useEffect(() => {
+    connect(gameId);
+    return () => {
+      disconnect();
+    };
+  }, [connect, disconnect, gameId]);
+
   console.log('Players in GameCanvas:', players);
   console.log('Players in GameCanvas:', players);
 
