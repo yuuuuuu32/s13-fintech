@@ -4,18 +4,15 @@ pipeline {
     environment {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml'
         BACKEND_IMAGE = 'bluemarble-backend'
-        BRANCH_NAME = env.BRANCH_NAME ?: 'master'
-<<<<<<< HEAD
+        BRANCH_NAME = "${env.BRANCH_NAME ?: 'master'}"
         EC2_HOST = 'j13d106.p.ssafy.io'
         EC2_USER = 'ubuntu'
         SSH_KEY_ID = 'J13D106T-pem'  // Jenkins Credentials에서 설정할 SSH Key ID
-=======
->>>>>>> 4e19aea (feature/back-server : 배포 세팅- Docker 세팅- Redis, DB 연결 준비)
     }
     
-    tools {
-        gradle 'Gradle'
-    }
+    // tools {
+    //     gradle 'Gradle'
+    // }
     
     stages {
         stage('Checkout') {
@@ -65,11 +62,7 @@ pipeline {
             }
         }
         
-<<<<<<< HEAD
         stage('Deploy to EC2') {
-=======
-        stage('Deploy') {
->>>>>>> 4e19aea (feature/back-server : 배포 세팅- Docker 세팅- Redis, DB 연결 준비)
             when {
                 anyOf {
                     branch 'master'
@@ -99,12 +92,6 @@ pipeline {
                             scp -o StrictHostKeyChecking=no -r ./* ${env.EC2_USER}@${env.EC2_HOST}:/home/ubuntu/bluemarble/
                         """
                         
-<<<<<<< HEAD
-                        until curl -f http://localhost:8081/actuator/health || [ $attempt -eq $max_attempts ]; do
-                            echo "Health check attempt $((++attempt))/$max_attempts"
-                            sleep 10
-                        done
-=======
                         // Deploy on EC2
                         sh """
                             ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
@@ -114,9 +101,7 @@ pipeline {
                                 sudo docker-compose up -d
                             '
                         """
->>>>>>> ace104e954bf1f070f1f0ccaa8da53139a837e14
                         
-<<<<<<< HEAD
                         // Health check on EC2
                         sh """
                             ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
@@ -143,16 +128,6 @@ pipeline {
                             '
                         """
                     }
-=======
-                        if [ $attempt -eq $max_attempts ]; then
-                            echo "Health check failed after $max_attempts attempts"
-                            docker-compose logs backend
-                            exit 1
-                        fi
-                        
-                        echo "Application is healthy!"
-                    '''
->>>>>>> 4e19aea (feature/back-server : 배포 세팅- Docker 세팅- Redis, DB 연결 준비)
                 }
             }
         }
