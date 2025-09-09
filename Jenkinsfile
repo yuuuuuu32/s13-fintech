@@ -4,15 +4,15 @@ pipeline {
     environment {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml'
         BACKEND_IMAGE = 'bluemarble-backend'
-        BRANCH_NAME = env.BRANCH_NAME ?: 'master'
+        BRANCH_NAME = "${env.BRANCH_NAME ?: 'master'}"
         EC2_HOST = 'j13d106.p.ssafy.io'
         EC2_USER = 'ubuntu'
         SSH_KEY_ID = 'J13D106T-pem'  // Jenkins Credentials에서 설정할 SSH Key ID
     }
     
-    tools {
-        gradle 'Gradle'
-    }
+    // tools {
+    //     gradle 'Gradle'
+    // }
     
     stages {
         stage('Checkout') {
