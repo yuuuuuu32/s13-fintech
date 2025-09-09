@@ -90,8 +90,6 @@ pipeline {
                             ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
                                 mkdir -p /home/ubuntu/bluemarble &&
                                 cd /home/ubuntu/bluemarble &&
-                                sudo apt-get update &&
-                                sudo apt-get install -y docker.io docker-compose-plugin &&
                                 sudo systemctl start docker &&
                                 sudo systemctl enable docker &&
                                 sudo usermod -aG docker ubuntu
