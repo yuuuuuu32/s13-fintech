@@ -1,56 +1,100 @@
-.room-list-container {
-  width: 100%;
-  max-width: 800px;
-  margin-top: 2rem;
+/* Glass Panel Effect (중복 방지 위해 최소화) */
+.glass-panel {
+  background: rgba(0, 20, 40, 0.3);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  box-shadow: 
+    0 0 20px rgba(0, 255, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  z-index: 2;
+}
+
+.room-grid-container {
+  flex: 1;
+  padding: 1.5rem;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.room-grid-header {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.room-grid-header h3 {
+  font-size: 1.3rem;
+  color: #00ffff;
+  margin: 0;
+  text-shadow: 0 0 10px #00ffff;
+}
+
+.scan-line {
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #00ffff, transparent);
+  animation: scanLine 2s ease-in-out infinite;
+}
+
+@keyframes scanLine {
+  0%, 100% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+}
+
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1rem;
+  overflow-y: auto;
+  padding-right: 10px;
 }
 
-.room-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  background-color: #2a2a2a;
-  border-radius: 8px;
-  border: 1px solid #444;
-  transition: background-color 0.2s ease;
+/* Scrollbar Styling */
+.room-grid::-webkit-scrollbar {
+  width: 8px;
 }
 
-.room-item:hover {
-  background-color: #3a3a3a;
+.room-grid::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
 }
 
-.room-name {
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #fff;
+.room-grid::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #00ffff, #ff00ff);
+  border-radius: 4px;
+  box-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
 }
 
-.room-details {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
+.room-grid::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #ff00ff, #00ffff);
 }
 
-.room-players {
-  font-size: 1.1rem;
-  color: #ccc;
+/* Glass panel animation */
+.glass-panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ffff, transparent);
+  opacity: 0.3;
+  animation: dataFlow 4s ease-in-out infinite;
 }
 
-.join-button {
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  border: none;
-  border-radius: 6px;
-  background-color: #535bf2;
-  color: white;
-  transition: background-color 0.2s ease;
-}
-
-.join-button:hover {
-  background-color: #646cff;
+@keyframes dataFlow {
+  0% {
+    transform: translateX(-100%) scaleX(0);
+  }
+  50% {
+    transform: translateX(0) scaleX(1);
+  }
+  100% {
+    transform: translateX(100%) scaleX(0);
+  }
 }

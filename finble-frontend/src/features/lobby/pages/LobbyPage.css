@@ -1,52 +1,141 @@
-.lobby-container {
+.cyberpunk-lobby {
   width: 100vw;
-  min-height: 100vh;
-  background-color: #1a1a1e;
-  color: #fff;
+  height: 100vh;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a0f2e 50%, #0a0a0a 100%);
+  position: relative;
+  overflow: hidden;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 2rem;
-  box-sizing: border-box;
-  overflow-y: auto;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  font-family: 'Courier New', monospace;
 }
 
-.lobby-header {
-  width: 100%;
-  max-width: 800px;
+/* Sidebar - 내 정보만, 길게 확장 */
+.lobby-sidebar {
+  width: 350px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-height: 100%;
+}
+
+/* Main Content - 전체 공간 차지 */
+.lobby-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Header Container - 제목 + 버튼 */
+.header-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+  position: relative;
 }
 
-.lobby-title {
+.title {
+  font-size: 2.5rem;
+  color: #ffffff;
+  text-shadow: 
+    0 0 5px #00ffff,
+    0 0 10px #00ffff,
+    0 0 20px #00ffff;
   margin: 0;
-  font-size: 2.2rem;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 700;
+  position: relative;
 }
 
-.lobby-main {
+.title::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 0;
   width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, #00ffff, #ff00ff, transparent);
+  border-radius: 2px;
+}
+
+/* 버튼 그룹 - 우측 상단에 배치 */
+.header-buttons {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
 }
 
-.create-room-button {
-  padding: 0.8rem 1.5rem;
-  font-size: 1rem;
+.quick-button,
+.create-button {
+  padding: 0.75rem 1.5rem;
+  border: 2px solid;
+  border-radius: 12px;
   font-weight: bold;
+  text-transform: uppercase;
   cursor: pointer;
-  border: none;
-  border-radius: 8px;
-  background-color: #535bf2;
-  color: white;
-  transition: background-color 0.2s ease;
-  font-family: 'Noto Sans KR', sans-serif;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
 }
 
-.create-room-button:hover {
-  background-color: #646cff;
+.quick-button {
+  border-color: #00ffff;
+  color: #00ffff;
+  background: rgba(0, 255, 255, 0.1);
+}
+
+.quick-button:hover {
+  background: #00ffff;
+  color: #000;
+  transform: translateY(-2px);
+}
+
+.create-button {
+  border-color: #ff00ff;
+  color: #ff00ff;
+  background: rgba(255, 0, 255, 0.1);
+}
+
+.create-button:hover {
+  background: #ff00ff;
+  color: #000;
+  transform: translateY(-2px);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .cyberpunk-lobby {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .lobby-sidebar {
+    width: 100%;
+  }
+
+  .header-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .quick-button,
+  .create-button {
+    padding: 0.75rem 1.2rem;
+    font-size: 0.8rem;
+  }
 }
