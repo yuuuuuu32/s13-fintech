@@ -72,6 +72,6 @@ management:
       show-components: always
   health:
     redis:
-      enabled: true
+      enabled: false
     db:
       enabled: true

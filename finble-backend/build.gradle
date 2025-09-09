@@ -14,6 +14,11 @@ java {
 jar {
     enabled = false
 }
+
+springBoot {
+    mainClass = 'com.ssafy.BlueMarble.MafiaApplication'
+}
+
 repositories {
     mavenCentral()
 }
