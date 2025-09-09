@@ -4,7 +4,7 @@ services:
     image: mysql:8.0
     container_name: bluemarble-mysql
     ports:
-      - "3306:3306"
+      - "3307:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
       MYSQL_DATABASE: ${DB_NAME:-bluemarble}
@@ -12,7 +12,8 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-password}
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
     networks:
       - bluemarble-network
     restart: unless-stopped
@@ -52,7 +53,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_NAME: ${DB_NAME:-bluemarble}
-      DB_USER: ${DB_USER:-bluemarble_user}
+      DB_USERNAME: ${DB_USER:-bluemarble_user}
       DB_PASSWORD: ${DB_PASSWORD:-password}
       REDIS_HOST: redis
       REDIS_PORT: 6379

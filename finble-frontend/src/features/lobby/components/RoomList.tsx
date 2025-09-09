@@ -1,23 +1,22 @@
+import React from 'react';
+import { useLobbyStore } from '../store/useLobbyStore';
 import { RoomCard } from './RoomCard';
 import './RoomList.css';
 
-export const RoomList = ({ rooms, onJoin }) => {
+export function RoomList() {
+  const rooms = useLobbyStore((state) => state.rooms);
+  const waitingRooms = rooms.filter((room) => room.status === 'waiting');
+
   return (
-    <div className="room-grid-container glass-panel">
+    <main className="lobby-rooms-container glass-panel">
       <div className="room-grid-header">
         <h3>ACTIVE ROOMS</h3>
-        <div className="scan-line"></div>
       </div>
       <div className="room-grid">
-        {rooms.map((room, index) => (
-          <RoomCard 
-            key={index} 
-            room={room} 
-            index={index} 
-            onJoin={onJoin}  // 👈 여기서 전달
-          />
+        {waitingRooms.map((room) => (
+          <RoomCard key={room.id} room={room} />
         ))}
       </div>
-    </div>
+    </main>
   );
-};
+}

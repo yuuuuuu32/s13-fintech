@@ -7,5 +7,5 @@ USE bluemarble;
 GRANT ALL PRIVILEGES ON bluemarble.* TO 'bluemarble_user'@'%';
 FLUSH PRIVILEGES;
 
--- Create basic tables if they don't exist (optional - Spring Boot will handle this)
--- This file is mainly for ensuring database and user setup
+-- Wait for Spring Boot to create tables, then insert data
+-- This file will be executed after Spring Boot creates the schema
