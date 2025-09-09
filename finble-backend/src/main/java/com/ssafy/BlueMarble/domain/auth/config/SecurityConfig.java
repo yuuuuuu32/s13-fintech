@@ -24,17 +24,22 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf
+                        .disable())
+                .headers(headers -> headers
+                        .frameOptions().disable())
 
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/v3/api-docs"
                         ).permitAll()
+                        .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/ws/**", "/user/**", "/game/**").permitAll()
                         .requestMatchers("/api/room/**", "/api/user/friend/**").permitAll()
                         .requestMatchers("/api/game/**").permitAll()
                         .requestMatchers("/api/inventory/**").permitAll()
+                        .requestMatchers("/api/map/**").permitAll()
                         .requestMatchers(
                                 "/auth/**", "/oauth2/**", "/oauth2", "/login/oauth2", "/login/oauth2/code/**"
                         ).permitAll()
