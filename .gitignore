@@ -51,10 +51,6 @@ logs/
 nohup.out
 
 # 환경 설정 (개발자 로컬별 - 기본 application.yml은 제외)
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> ace104e954bf1f070f1f0ccaa8da53139a837e14
 # application-local.yml
 # application-dev.yml
 # application-prod.yml
