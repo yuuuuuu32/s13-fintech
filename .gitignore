@@ -50,9 +50,12 @@ logs/
 *.tmp
 nohup.out
 
-# 환경 설정 (개발자 로컬별)
-application-*.yml
-application-*.properties
+# 환경 설정 (개발자 로컬별 - 기본 application.yml은 제외)
+# application-local.yml
+# application-dev.yml
+# application-prod.yml
+# application-test.yml
+# application-*.properties
 
 # ────────────── Docker ──────────────
 # Docker volumes

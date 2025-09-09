@@ -1,0 +1,16 @@
+spring:
+  profiles:
+    active: docker
+  
+  application:
+    name: bluemarble-backend
+
+# 기본 서버 설정 (다른 프로파일에서 오버라이드)
+server:
+  port: 8080
+
+# 기본 로깅 설정
+logging:
+  level:
+    root: INFO
+    com.ssafy.BlueMarble: DEBUG

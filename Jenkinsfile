@@ -5,6 +5,9 @@ pipeline {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml'
         BACKEND_IMAGE = 'bluemarble-backend'
         BRANCH_NAME = env.BRANCH_NAME ?: 'master'
+        EC2_HOST = 'j13d106.p.ssafy.io'
+        EC2_USER = 'ubuntu'
+        SSH_KEY_ID = 'J13D106T-pem'  // Jenkins Credentials에서 설정할 SSH Key ID
     }
     
     tools {
@@ -59,7 +62,7 @@ pipeline {
             }
         }
         
-        stage('Deploy') {
+        stage('Deploy to EC2') {
             when {
                 anyOf {
                     branch 'master'
@@ -68,36 +71,58 @@ pipeline {
                 }
             }
             steps {
-                echo 'Deploying application...'
+                echo 'Deploying to EC2 server...'
                 script {
-                    // Stop existing containers
-                    sh 'docker-compose down --remove-orphans'
-                    
-                    // Start services
-                    sh 'docker-compose up -d'
-                    
-                    // Wait for services to be ready
-                    sh '''
-                        echo "Waiting for services to start..."
-                        sleep 30
+                    sshagent(credentials: [env.SSH_KEY_ID]) {
+                        // Create project directory on EC2 if it doesn't exist
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
+                                mkdir -p /home/ubuntu/bluemarble &&
+                                cd /home/ubuntu/bluemarble &&
+                                sudo apt-get update &&
+                                sudo apt-get install -y docker.io docker-compose-plugin &&
+                                sudo systemctl start docker &&
+                                sudo systemctl enable docker &&
+                                sudo usermod -aG docker ubuntu
+                            '
+                        """
                         
-                        # Health check
-                        max_attempts=30
-                        attempt=0
+                        // Copy project files to EC2
+                        sh """
+                            scp -o StrictHostKeyChecking=no -r ./* ${env.EC2_USER}@${env.EC2_HOST}:/home/ubuntu/bluemarble/
+                        """
                         
                         until curl -f http://localhost:8081/actuator/health || [ $attempt -eq $max_attempts ]; do
                             echo "Health check attempt $((++attempt))/$max_attempts"
                             sleep 10
                         done
                         
-                        if [ $attempt -eq $max_attempts ]; then
-                            echo "Health check failed after $max_attempts attempts"
-                            docker-compose logs backend
-                            exit 1
-                        fi
-                        
-                        echo "Application is healthy!"
-                    '''
+                        // Health check on EC2
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
+                                echo "Waiting for services to start..."
+                                sleep 30
+                                
+                                # Health check
+                                max_attempts=30
+                                attempt=0
+                                
+                                until curl -f http://localhost:8081/actuator/health || [ \$attempt -eq \$max_attempts ]; do
+                                    echo "Health check attempt \$((\$attempt + 1))/\$max_attempts"
+                                    attempt=\$((\$attempt + 1))
+                                    sleep 10
+                                done
+                                
+                                if [ \$attempt -eq \$max_attempts ]; then
+                                    echo "Health check failed after \$max_attempts attempts"
+                                    sudo docker-compose logs backend
+                                    exit 1
+                                fi
+                                
+                                echo "Application is healthy on EC2!"
+                            '
+                        """
+                    }
                 }
             }
         }
