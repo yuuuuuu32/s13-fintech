@@ -1,69 +1,55 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLobbyStore } from '../store/useLobbyStore';
 import './CreateRoomModal.css';
 
-interface CreateRoomModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProps) {
+export const CreateRoomModal = ({ isOpen, onClose }) => {
   const [roomName, setRoomName] = useState('');
-  const [error, setError] = useState('');
-  const addRoom = useLobbyStore((state) => state.addRoom);
   const navigate = useNavigate();
+  const addRoom = useLobbyStore((state) => state.addRoom);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError('');
-    if (roomName.trim().length < 2 || roomName.trim().length > 20) {
-      setError('방 제목은 2자 이상 20자 이하로 입력해주세요.');
+  if (!isOpen) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!roomName.trim()) {
+      alert('Please enter a room name.');
       return;
     }
-    const newRoomId = addRoom(roomName.trim());
+    // Using default values for maxPlayers (4) and gameMode ('Battle Royale')
+    const newRoomId = addRoom(roomName.trim(), 4, 'Battle Royale');
+    onClose();
     navigate(`/room/${newRoomId}`);
   };
 
-  const handleClose = () => {
-    setRoomName('');
-    setError('');
-    onClose();
-  };
-
-
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">CREATE NEW ROOM</h2>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>CREATE NEW ROOM</h2>
+          <button className="close-button" onClick={onClose}>×</button>
+        </div>
         <form className="modal-form" onSubmit={handleSubmit}>
-          <input
-            type="text"
-            value={roomName}
-            onChange={(e) => setRoomName(e.target.value)}
-            className="modal-input"
-            placeholder="Enter a room name"
-            autoFocus
-          />
-          {error && <p className="error-message">{error}</p>}
-          <div className="modal-buttons">
-            <button
-              type="button"
-              className="modal-button cancel"
-              onClick={handleClose}
-            >
+          <div className="form-group">
+            <label>Room Name</label>
+            <input
+              type="text"
+              placeholder="Enter room name..."
+              required
+              value={roomName}
+              onChange={(e) => setRoomName(e.target.value)}
+            />
+          </div>
+          <div className="form-actions">
+            <button type="button" className="cancel-button" onClick={onClose}>
               CANCEL
             </button>
-            <button type="submit" className="modal-button confirm">
-              CREATE
+            <button type="submit" className="create-button">
+              CREATE ROOM
             </button>
           </div>
         </form>
       </div>
     </div>
   );
-}
+};

@@ -1,0 +1,55 @@
+/* Room Cards - New Style */
+.room-card { 
+  background: #2a2a2e; 
+  border: 1px solid #555; 
+  border-radius: 8px; 
+  overflow: hidden; 
+  transition: all 0.3s ease; 
+  cursor: pointer;
+}
+
+.room-card:hover { 
+  border-color: #00ffff; 
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+  transform: translateY(-3px); 
+}
+
+.room-card-inner { padding: 1.5rem; }
+.room-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+
+.room-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.2rem;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 0 5px #00ffff;
+}
+
+.room-status { padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.7rem; text-transform: uppercase; font-weight: bold; }
+.room-status.waiting { background: rgba(0, 255, 0, 0.2); color: #00ff00; border: 1px solid #00ff00; }
+.room-status.in-game { background: rgba(255, 0, 255, 0.2); color: #ff00ff; border: 1px solid #ff00ff; }
+.room-info { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+.room-detail { display: flex; justify-content: space-between; }
+.label { color: #aaa; font-size: 0.9rem; }
+.value { color: #00ffff; font-weight: bold; font-size: 0.9rem; }
+
+.join-button {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  font-weight: bold;
+  font-family: 'Orbitron', sans-serif;
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  background-color: #00ffff;
+  color: #000;
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+}
+
+.join-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 1);
+}

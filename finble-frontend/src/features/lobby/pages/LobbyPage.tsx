@@ -1,23 +1,24 @@
-import { useState } from 'react';
-import { CreateRoomModal } from '../components/CreateRoomModal';
-import { RoomList } from '../components/RoomList';
+import React, { useState } from 'react';
 import './LobbyPage.css';
+import { UserInfo } from '../components/UserInfo';
+import { LobbyHeader } from '../components/LobbyHeader';
+import { RoomList } from '../components/RoomList';
+import { CreateRoomModal } from '../components/CreateRoomModal';
+import { MatrixRain } from '../components/MatrixRain';
 
 export default function LobbyPage() {
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
   return (
-    <div className="lobby-container">
-      <header className="lobby-header">
-        <h1 className="lobby-title">게임 대기방</h1>
-        <button
-          className="create-room-button"
-          onClick={() => setCreateModalOpen(true)}
-        >
-          방 만들기
-        </button>
-      </header>
+    <div className="cyberpunk-lobby">
+      <MatrixRain />
+
+      <aside className="lobby-sidebar">
+        <UserInfo />
+      </aside>
+
       <main className="lobby-main">
+        <LobbyHeader onCreateRoom={() => setCreateModalOpen(true)} />
         <RoomList />
       </main>
 

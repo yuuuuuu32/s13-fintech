@@ -1,9 +1,11 @@
--- Initial database setup for Finble
-CREATE DATABASE IF NOT EXISTS finble;
+-- Initial database setup for BlueMarble
+CREATE DATABASE IF NOT EXISTS bluemarble;
 
--- Ensure application user exists and has privileges
-CREATE USER IF NOT EXISTS 'finble'@'%' IDENTIFIED BY 'password';
-GRANT ALL PRIVILEGES ON finble.* TO 'finble'@'%';
+USE bluemarble;
+
+-- Grant privileges to the application user
+GRANT ALL PRIVILEGES ON bluemarble.* TO 'bluemarble_user'@'%';
 FLUSH PRIVILEGES;
 
--- Spring Boot will handle schema creation via JPA
+-- Wait for Spring Boot to create tables, then insert data
+-- This file will be executed after Spring Boot creates the schema
