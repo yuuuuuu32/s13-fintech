@@ -29,8 +29,16 @@ pipeline {
                     // Copy environment file if it doesn't exist
                     sh '''
                         if [ ! -f .env ]; then
-                            cp .env.example .env
-                            echo "Environment file created from example"
+                            if [ -f .env.example ]; then
+                                cp .env.example .env
+                                echo "Environment file created from example"
+                            else
+                                echo "Warning: .env.example not found, creating minimal .env"
+                                echo "SPRING_PROFILE=docker" > .env
+                                echo "SERVER_PORT=8081" >> .env
+                            fi
+                        else
+                            echo ".env file already exists"
                         fi
                     '''
                 }
