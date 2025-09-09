@@ -8,6 +8,7 @@ import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
 import com.ssafy.BlueMarble.domain.game.service.LandService;
 import com.ssafy.BlueMarble.domain.game.service.EventService;
+import com.ssafy.BlueMarble.domain.game.service.CardService;
 import com.ssafy.BlueMarble.websocket.service.WebSocketCardService;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
@@ -52,6 +53,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private final EventService eventService;
     private final WebSocketCardService webSocketCardService;
     private final SessionMessageService sessionMessageService;
+    private final CardService cardService;
 
     /**
      * [연결 성공] WebSocket 협상이 성공적으로 완료되고 WebSocket 연결이 열려 사용할 준비가 된 후 호출됩니다.
@@ -270,7 +272,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     ))
                     .build();
 
-            webSocketSessionService.sendMessageToRoom(roomId, responseMessage);
+            sessionMessageService.sendMessageToRoom(roomId, responseMessage);
             log.info("[WebSocket] 천사카드 방어 완료: roomId={}, success={}", roomId, success);
 
         } catch (Exception e) {
