@@ -36,6 +36,7 @@ pipeline {
                                 echo "Warning: .env.example not found, creating minimal .env"
                                 echo "SPRING_PROFILE=docker" > .env
                                 echo "SERVER_PORT=8081" >> .env
+                                echo "JWT_SECRET=bluemarble-jwt-secret-key-for-finble-game-project-2024-very-long-secure-key-minimum-256-bits-required" >> .env
                             fi
                         else
                             echo ".env file already exists"
