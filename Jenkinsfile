@@ -99,10 +99,22 @@ pipeline {
                             scp -o StrictHostKeyChecking=no -r ./* ${env.EC2_USER}@${env.EC2_HOST}:/home/ubuntu/bluemarble/
                         """
                         
+<<<<<<< HEAD
                         until curl -f http://localhost:8081/actuator/health || [ $attempt -eq $max_attempts ]; do
                             echo "Health check attempt $((++attempt))/$max_attempts"
                             sleep 10
                         done
+=======
+                        // Deploy on EC2
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
+                                cd /home/ubuntu/bluemarble &&
+                                sudo docker-compose down --remove-orphans &&
+                                sudo docker-compose build backend &&
+                                sudo docker-compose up -d
+                            '
+                        """
+>>>>>>> ace104e954bf1f070f1f0ccaa8da53139a837e14
                         
 <<<<<<< HEAD
                         // Health check on EC2

@@ -1,9 +1,5 @@
 # Multi-stage build for Spring Boot application
-<<<<<<< HEAD
 FROM gradle:8.5-jdk21 AS build
-=======
-FROM gradle:8.5-jdk17 AS build
->>>>>>> 4e19aea (feature/back-server : 배포 세팅- Docker 세팅- Redis, DB 연결 준비)
 
 # Set working directory
 WORKDIR /app
