@@ -133,7 +133,7 @@ pipeline {
                                     echo "Checking container status..."
                                     sudo docker ps -a
                                     echo "=== Backend container logs ==="
-                                    sudo docker logs bluemarble-backend --tail=100
+                                    sudo docker logs bluemarble-backend
                                     echo "=== MySQL container logs ==="
                                     sudo docker logs bluemarble-mysql --tail=50
                                     echo "=== Redis container logs ==="

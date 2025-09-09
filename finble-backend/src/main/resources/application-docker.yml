@@ -53,8 +53,10 @@ server:
 
 logging:
   level:
-    com.ssafy.BlueMarble: INFO
+    com.ssafy.BlueMarble: DEBUG
     org.springframework.security: INFO
+    org.springframework.boot.autoconfigure: DEBUG
+    root: INFO
   file:
     name: /app/logs/bluemarble.log
   pattern:
