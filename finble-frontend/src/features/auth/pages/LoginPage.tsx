@@ -5,20 +5,43 @@ import pinbleLogo from '../../../assets/pinble-logo.png'; // 게임 로고
 import googleIcon from '../../../assets/google-logo.svg'; // Google 아이콘 (이 파일은 assets 폴더에 추가해야 합니다)
 import NicknameModal from '../components/NicknameModal'; // 모달 컴포넌트 import
 import './LoginPage.css';
+import { useGoogleLogin } from '@react-oauth/google';
+import apiClient from '../../../api/client'; // apiClient 임포트
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false); // 모달 상태 추가
 
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setIsLoggingIn(true);
+      console.log('Google Login Success:', tokenResponse);
+      try {
+        // 백엔드로 ID 토큰 전송
+        const res = await apiClient.post('/auth/google', {
+          idToken: tokenResponse.access_token, // Google Identity Services는 access_token을 반환합니다.
+        });
+        console.log('Backend Response:', res.data);
+        // 백엔드로부터 받은 JWT 등을 처리 (예: localStorage에 저장)
+        // localStorage.setItem('jwt', res.data.jwt);
+        setIsLoggingIn(false);
+        setIsModalOpen(true); // 로그인 후 로비 이동 대신 모달 열기
+      } catch (error) {
+        console.error('Backend login error:', error);
+        setIsLoggingIn(false);
+        // 에러 처리 로직
+      }
+    },
+    onError: (errorResponse) => {
+      console.error('Google Login Failed:', errorResponse);
+      setIsLoggingIn(false);
+    },
+  });
+
   const handleGoogleLogin = () => {
     setIsLoggingIn(true);
-
-    // Simulate an API call for login
-    setTimeout(() => {
-      setIsLoggingIn(false);
-      setIsModalOpen(true); // 로그인 후 로비 이동 대신 모달 열기
-    }, 1500);
+    googleLogin(); // Google 로그인 흐름 시작
   };
 
   const handleNicknameComplete = () => {
