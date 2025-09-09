@@ -266,10 +266,10 @@ public class WebSocketHandler extends TextWebSocketHandler {
             // 결과를 모든 참가자에게 브로드캐스트
             MessageDto responseMessage = MessageDto.builder()
                     .type(MessageType.ANGEL_DEFENSE)
-                    .payload(Map.of(
+                    .payload(objectMapper.valueToTree(Map.of(
                             "success", success,
                             "userId", userId
-                    ))
+                    )))
                     .build();
 
             sessionMessageService.sendMessageToRoom(roomId, responseMessage);
