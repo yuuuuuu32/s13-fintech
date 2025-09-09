@@ -36,9 +36,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
+      interval: 10s
       timeout: 3s
-      retries: 3
+      retries: 5
+      start_period: 5s
 
   # Spring Boot Backend
   backend:
@@ -57,9 +58,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-password}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-key-here}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-6f8d3a1c2b4e5f60718293ab4cd5ef60718293ab4cd5ef60a1b2c3d4e5f60718}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dummy-client-id}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-dummy-client-secret}
     depends_on:
       mysql:
         condition: service_healthy
