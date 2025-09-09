@@ -177,8 +177,12 @@ pipeline {
         failure {
             echo 'Pipeline failed!'
             script {
-                // Show logs for debugging
-                sh 'docker-compose logs --tail=50'
+                // Show logs for debugging - check if docker-compose.yml exists first
+                if (fileExists('docker-compose.yml')) {
+                    sh 'docker-compose -f docker-compose.yml logs --tail=50 || echo "Failed to get docker-compose logs"'
+                } else {
+                    echo "docker-compose.yml not found, skipping logs"
+                }
             }
         }
         unstable {
