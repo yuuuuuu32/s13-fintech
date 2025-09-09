@@ -129,7 +129,10 @@ pipeline {
                                 
                                 if [ \$attempt -eq \$max_attempts ]; then
                                     echo "Health check failed after \$max_attempts attempts"
-                                    sudo docker-compose logs backend
+                                    echo "Checking container status..."
+                                    sudo docker ps -a
+                                    echo "Backend container logs:"
+                                    sudo docker-compose logs --tail=100 backend
                                     exit 1
                                 fi
                                 
