@@ -4,15 +4,15 @@ pipeline {
     environment {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml'
         BACKEND_IMAGE = 'bluemarble-backend'
-        BRANCH_NAME = env.BRANCH_NAME ?: 'master'
+        BRANCH_NAME = "${env.BRANCH_NAME ?: 'master'}"
         EC2_HOST = 'j13d106.p.ssafy.io'
         EC2_USER = 'ubuntu'
         SSH_KEY_ID = 'J13D106T-pem'  // Jenkins Credentials에서 설정할 SSH Key ID
     }
     
-    tools {
-        gradle 'Gradle'
-    }
+    // tools {
+    //     gradle 'Gradle'
+    // }
     
     stages {
         stage('Checkout') {
@@ -29,8 +29,16 @@ pipeline {
                     // Copy environment file if it doesn't exist
                     sh '''
                         if [ ! -f .env ]; then
-                            cp .env.example .env
-                            echo "Environment file created from example"
+                            if [ -f .env.example ]; then
+                                cp .env.example .env
+                                echo "Environment file created from example"
+                            else
+                                echo "Warning: .env.example not found, creating minimal .env"
+                                echo "SPRING_PROFILE=docker" > .env
+                                echo "SERVER_PORT=8081" >> .env
+                            fi
+                        else
+                            echo ".env file already exists"
                         fi
                     '''
                 }
@@ -95,10 +103,15 @@ pipeline {
                             scp -o StrictHostKeyChecking=no -r ./* ${env.EC2_USER}@${env.EC2_HOST}:/home/ubuntu/bluemarble/
                         """
                         
-                        until curl -f http://localhost:8081/actuator/health || [ $attempt -eq $max_attempts ]; do
-                            echo "Health check attempt $((++attempt))/$max_attempts"
-                            sleep 10
-                        done
+                        // Deploy on EC2
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
+                                cd /home/ubuntu/bluemarble &&
+                                sudo docker-compose down --remove-orphans &&
+                                sudo docker-compose build backend &&
+                                sudo docker-compose up -d
+                            '
+                        """
                         
                         // Health check on EC2
                         sh """
