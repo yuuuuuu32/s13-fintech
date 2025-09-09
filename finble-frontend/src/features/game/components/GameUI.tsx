@@ -1,218 +1,260 @@
 import { useState, useEffect, useRef } from 'react'
 import { useGameStore } from '../store/useGameStore.ts'
 import { useNavigate } from 'react-router-dom';
-import { boardData } from '../data/boardData.ts';
+import { BuildingType } from '../data/boardData.ts';
+import type { TileData } from '../data/boardData.ts';
+import { currentUser } from '../../lobby/store/useLobbyStore.ts';
+import { Modal, Box, Typography, Button, Card, CardContent, Grid, LinearProgress, List, ListItem, ListItemButton, ListItemText } from '@mui/material';
+
+const BAIL_AMOUNT = 500000; 
+
+const calculateTotalAssets = (player, board: TileData[]) => {
+  const propertyValue = player.properties.reduce((sum, index) => {
+    const tile = board[index];
+    if (!tile) return sum;
+    let value = tile.price || 0;
+    if (tile.type === 'city' && tile.buildings && tile.buildingPrice) {
+      value += tile.buildings.level * tile.buildingPrice;
+    }
+    return sum + value;
+  }, 0);
+  return player.money + propertyValue;
+};
 
 export function GameUI() {
-  const {
-    players,
-    currentPlayerIndex,
-    gamePhase,
-    winnerId,
-    modal,
-    totalTurns,
-    currentTurn,
-    buyProperty,
-    acquireProperty,
-    payToll,
-    endTurn,
-    setDicePower,
-    payBail,
-    handleJail,
-    selectExpoProperty,
-    selectTravelDestination,
-  } = useGameStore(state => state);
+  const players = useGameStore(state => state.players);
+  const currentPlayerIndex = useGameStore(state => state.currentPlayerIndex);
+  const gamePhase = useGameStore(state => state.gamePhase);
+  const winnerId = useGameStore(state => state.winnerId);
+  const modal = useGameStore(state => state.modal);
+  const totalTurns = useGameStore(state => state.totalTurns);
+  const currentTurn = useGameStore(state => state.currentTurn);
+  const board = useGameStore(state => state.board);
+  const setDicePower = useGameStore(state => state.setDicePower);
+  const buyProperty = useGameStore(state => state.buyProperty);
+  const endTurn = useGameStore(state => state.endTurn);
+  const acquireProperty = useGameStore(state => state.acquireProperty);
+  const payToll = useGameStore(state => state.payToll);
+  const payBail = useGameStore(state => state.payBail);
+  const handleJail = useGameStore(state => state.handleJail);
+  const selectExpoProperty = useGameStore(state => state.selectExpoProperty);
+  const buildBuilding = useGameStore(state => state.buildBuilding);
 
   const navigate = useNavigate();
 
-  const [gauge, setGauge] = useState(0)
-  const gaugeRef = useRef<any>(null)
-  const [isCharging, setIsCharging] = useState(false)
-  const [showWorldTravelPicker, setShowWorldTravelPicker] = useState(false);
+  const [gauge, setGauge] = useState(0);
+  const gaugeRef = useRef<any>(null);
+  const [isCharging, setIsCharging] = useState(false);
+
+  
 
   useEffect(() => {
     return () => clearInterval(gaugeRef.current)
-  }, [])
+  }, []);
 
   const handleChargeStart = () => {
-    if (gamePhase !== 'WAITING_FOR_ROLL') return
-    
-    setIsCharging(true)
-    setGauge(0)
-    let power = 0
-    let direction = 1
+    if (gamePhase !== 'WAITING_FOR_ROLL') return;
+    setIsCharging(true);
+    setGauge(0);
+    let power = 0;
+    let direction = 1;
     const interval = setInterval(() => {
-      power += direction * 2
+      power += direction * 2;
       if (power > 100) { power = 100; direction = -1; }
       if (power < 0) { power = 0; direction = 1; }
-      setGauge(power)
-    }, 20)
-    gaugeRef.current = interval
+      setGauge(power);
+    }, 20);
+    gaugeRef.current = interval;
   }
 
   const handleChargeEnd = () => {
     if (!isCharging) return;
-
-    setIsCharging(false)
-    clearInterval(gaugeRef.current)
-    setDicePower(gauge)
-    window.dispatchEvent(new Event('roll-dice'))
+    setIsCharging(false);
+    clearInterval(gaugeRef.current);
+    setDicePower(gauge);
+    window.dispatchEvent(new Event('roll-dice'));
   }
 
   const handleGoToLobby = () => {
-    // 여기에 게임 상태 초기화 로직을 추가할 수 있습니다.
     navigate('/lobby');
   };
   
-  useEffect(() => {
-    setShowWorldTravelPicker(modal.type === 'WORLD_TRAVEL_PICKER');
-  }, [modal.type]);
-
   const winner = winnerId ? players.find(p => p.id === winnerId) : null;
   const isGameOver = gamePhase === 'GAME_OVER';
   const currentPlayer = players[currentPlayerIndex];
 
+  const modalStyle = {
+    position: 'absolute' as 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: 450,
+    bgcolor: 'background.paper',
+    border: '2px solid #000',
+    boxShadow: 24,
+    p: 4,
+    color: 'black',
+    borderRadius: 2,
+    textAlign: 'center',
+  };
+
   return (
-    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', color: 'white', fontFamily: 'Arial, sans-serif' }}>
-      {/* 남은 턴 / 현재 턴 표시 */}
-      <div style={{ position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', padding: '10px 20px', backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: '10px', fontSize: '1.5rem', fontWeight: 'bold' }}>
-        {currentTurn} / {totalTurns} 턴
-      </div>
+    <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', color: 'white', fontFamily: 'Arial, sans-serif', zIndex: 999 }}>
+      <Box sx={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', p: '10px 20px', bgcolor: 'rgba(0,0,0,0.7)', borderRadius: '10px' }}>
+        <Typography variant="h5" fontWeight="bold">{currentTurn} / {totalTurns} 턴</Typography>
+      </Box>
 
-      {players.map((player, index) => (
-        <div 
-          key={player.id}
-          style={{
-            position: 'absolute',
-            ...(index === 0 && { top: '20px', left: '20px' }),
-            ...(index === 1 && { top: '20px', right: '20px' }),
-            padding: '10px',
-            backgroundColor: `rgba(0,0,0,${player.money <= 0 ? 0.3 : 0.7})`, // 파산 시 반투명
-            border: `2px solid ${index === currentPlayerIndex && gamePhase !== 'GAME_OVER' ? 'yellow' : 'white'}`,
-            borderRadius: '8px',
-            transition: 'background-color 0.3s'
-          }}
-        >
-          <h3>{player.name} {player.money <= 0 ? '(파산)' : ''}</h3>
-          <p>자산: {player.money.toLocaleString()}원</p>
-          <p>소유도시: {player.properties.length}개</p>
-        </div>
-      ))}
+      <Grid container spacing={2} sx={{ p: 2, pointerEvents: 'all' }}>
+        {players.map((player, index) => {
+          const isMyPlayer = player.id === currentUser.id;
+          const totalAssets = calculateTotalAssets(player, board);
+          return (
+            <Grid item xs={6} key={player.id} sx={{ display: 'flex', justifyContent: index === 0 ? 'flex-start' : 'flex-end' }}>
+              <Card sx={{ 
+                minWidth: 250, 
+                bgcolor: `rgba(0,0,0,${player.money < 0 ? 0.3 : 0.7})`, 
+                border: `3px solid ${index === currentPlayerIndex && !isGameOver ? 'yellow' : 'white'}`,
+                color: 'white',
+                transition: 'border-color 0.3s'
+              }}>
+                <CardContent>
+                  <Typography variant="h6" component="div" fontWeight="bold">
+                    {player.name} {isMyPlayer ? '(나)' : ''} {player.money < 0 ? '(파산)' : ''}
+                  </Typography>
+                  <Typography>현금: {player.money.toLocaleString()}원</Typography>
+                  <Typography>총 자산: {totalAssets.toLocaleString()}원</Typography>
+                  <Typography>소유 도시: {player.properties.length}개</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          )
+        })}
+      </Grid>
 
-      <div style={{ position: 'absolute', bottom: '5%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'all', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Box sx={{ position: 'absolute', bottom: '5%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'all', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
         {gamePhase === 'WAITING_FOR_ROLL' && (
-          <div style={{ width: '300px', height: '30px', backgroundColor: '#4a5568', borderRadius: '15px', overflow: 'hidden', border: '2px solid white', marginBottom: '1rem' }}>
-            <div style={{ width: `${gauge}%`, height: '100%', backgroundColor: '#f56565', transition: 'width 0.02s linear' }} />
-          </div>
+           <Box sx={{ width: 300 }}>
+             <LinearProgress variant="determinate" value={gauge} color="secondary" sx={{ height: 10, borderRadius: 5 }} />
+           </Box>
         )}
-        <button 
+        <Button 
+          variant="contained"
+          size="large"
           onMouseDown={handleChargeStart}
           onMouseUp={handleChargeEnd}
           onMouseLeave={handleChargeEnd}
           disabled={gamePhase !== 'WAITING_FOR_ROLL'}
-          style={{ padding: '20px 40px', fontSize: '24px', cursor: 'pointer', opacity: gamePhase !== 'WAITING_FOR_ROLL' ? 0.5 : 1 }}
+          sx={{ width: 250, height: 60, fontSize: '1.2rem' }}
         >
           {currentPlayer.isInJail ? '무인도...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
-        </button>
-      </div>
-
-      {(modal.type !== 'NONE' || isGameOver || showWorldTravelPicker) && (
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'all', zIndex: 10 }}>
-          <div style={{ padding: '30px', backgroundColor: 'white', color: 'black', borderRadius: '10px', textAlign: 'center', minWidth: '350px' }}>
-            {modal.type === 'BUY_PROPERTY' && (
-              <>
-                <h2>{modal.tile?.name}</h2>
-                <p>가격: {modal.tile?.price?.toLocaleString()}원</p>
-                <p>구매하시겠습니까?</p>
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                  <button onClick={buyProperty} style={{ padding: '10px 20px' }}>구매</button>
-                  <button onClick={endTurn} style={{ padding: '10px 20px' }}>패스</button>
-                </div>
-              </>
-            )}
-             {modal.type === 'ACQUIRE_PROPERTY' && (
-              <>
-                <h2>{modal.tile?.name} 인수</h2>
-                <p>통행료: {modal.toll?.toLocaleString()}원</p>
-                <p>인수 비용: {modal.acquireCost?.toLocaleString()}원</p>
-                <p>인수하시겠습니까?</p>
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                  <button onClick={acquireProperty} style={{ padding: '10px 20px' }}>인수</button>
-                  <button onClick={payToll} style={{ padding: '10px 20px' }}>통행료만 지불</button>
-                </div>
-              </>
-            )}
-            {modal.type === 'CHANCE_CARD' && (
-              <>
-                <h2>★ 찬스 카드 ★</h2>
-                <p style={{ fontSize: '1.2rem', margin: '20px 0' }}>{modal.text}</p>
-                <button onClick={endTurn} style={{ padding: '10px 20px' }}>확인</button>
-              </>
-            )}
-            {modal.type === 'INFO' && (
-              <>
-                <h2>알림</h2>
-                <p style={{ fontSize: '1.1rem', margin: '20px 0' }}>{modal.text}</p>
-                <button onClick={endTurn} style={{ padding: '10px 20px' }}>확인</button>
-              </>
-            )}
-             {modal.type === 'JAIL' && (
-              <>
-                <h2>무인도 도착</h2>
-                <p>보석금을 내고 즉시 탈출하거나, 3턴 동안 머물러야 합니다.</p>
-                <p>(남은 턴: {currentPlayer.jailTurns})</p>
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                  <button onClick={payBail} style={{ padding: '10px 20px' }}>보석금 ({ (500000).toLocaleString() }원) 지불</button>
-                  <button onClick={handleJail} style={{ padding: '10px 20px' }}>머물기</button>
-                </div>
-              </>
-            )}
-             {modal.type === 'EXPO' && (
-              <>
-                <h2>박람회 개최!</h2>
-                <p>소유한 땅 중 하나의 통행료를 2배로 올릴 수 있습니다.</p>
-                <div style={{ maxHeight: '200px', overflowY: 'auto', margin: '20px 0', border: '1px solid #ccc', borderRadius: '5px' }}>
-                  {modal.properties?.map(prop => (
-                    <button key={prop.index} onClick={() => selectExpoProperty(prop.index)} style={{ display: 'block', width: '100%', padding: '10px', textAlign: 'left' }}>
-                      {prop.name}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            {showWorldTravelPicker && (
-              <>
-                <h2>세계여행</h2>
-                <p>이동하고 싶은 타일을 클릭하세요.</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '4px', marginTop: '1rem', pointerEvents: 'all' }}>
-                  {boardData.map((tile, index) => (
-                    <button 
-                      key={index} 
-                      onClick={() => {
-                        setShowWorldTravelPicker(false);
-                        selectTravelDestination(index);
-                      }}
-                      style={{ padding: '8px 4px', fontSize: '10px', border: '1px solid #eee' }}
-                      title={tile.name}
-                    >
-                      {tile.name.substring(0, 3)}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            {isGameOver && (
-              <>
-                <h2>게임 종료!</h2>
-                <p style={{ fontSize: '1.5rem', margin: '20px 0' }}>
-                  {winner ? `${winner.name}님이 최종 승리했습니다!` : '모든 플레이어가 파산했습니다.'}
-                </p>
-                <button onClick={handleGoToLobby} style={{ padding: '10px 20px' }}>로비로 돌아가기</button>
-              </>
-            )}
-          </div>
-        </div>
+        </Button>
+      </Box>
+      
+      {gamePhase === 'WORLD_TRAVEL_MOVE' && (
+          <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', p: 3, bgcolor: 'rgba(0,0,0,0.8)', borderRadius: 2 }}>
+              <Typography variant="h4">세계여행</Typography>
+              <Typography variant="h6">이동하고 싶은 타일을 보드에서 직접 클릭하세요.</Typography>
+          </Box>
       )}
-    </div>
+
+      <Modal open={modal.type !== 'NONE' || isGameOver} sx={{ pointerEvents: 'all' }}>
+        <Box sx={modalStyle}>
+          {modal.type === 'BUY_PROPERTY' && (
+            <>
+              <Typography variant="h5" component="h2" fontWeight="bold">{modal.tile?.name}</Typography>
+              <Typography sx={{ mt: 2 }}>가격: {modal.tile?.price?.toLocaleString()}원</Typography>
+              <Typography sx={{ mt: 1 }}>구매하시겠습니까?</Typography>
+              <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+                <Button variant="contained" onClick={() => { buyProperty(); endTurn(); }}>구매</Button>
+                <Button variant="outlined" onClick={endTurn}>패스</Button>
+              </Box>
+            </>
+          )}
+          {modal.type === 'ACQUIRE_PROPERTY' && (
+            <>
+              <Typography variant="h5" component="h2" fontWeight="bold">{modal.tile?.name} 인수</Typography>
+              <Typography sx={{ mt: 2 }}>통행료: {modal.toll?.toLocaleString()}원</Typography>
+              <Typography sx={{ mt: 1 }}>인수 비용: {modal.acquireCost?.toLocaleString()}원</Typography>
+              <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+                <Button variant="contained" onClick={() => { acquireProperty(); endTurn(); }} disabled={currentPlayer.money < (modal.acquireCost || 0)}>인수</Button>
+                <Button variant="outlined" onClick={() => { payToll(); endTurn(); }}>통행료만 지불</Button>
+              </Box>
+            </>
+          )}
+          {modal.type === 'CHANCE_CARD' && (
+              <>
+                <Typography variant="h5" component="h2" fontWeight="bold">찬스!</Typography>
+                <Typography sx={{ mt: 2 }}>{modal.text}</Typography>
+                <Button sx={{ mt: 3 }} variant="contained" onClick={modal.onConfirm}>확인</Button>
+              </>
+          )}
+          {modal.type === 'INFO' && (
+              <>
+                <Typography variant="h6" component="h2">알림</Typography>
+                <Typography sx={{ mt: 2 }}>{modal.text}</Typography>
+                <Button sx={{ mt: 3 }} variant="contained" onClick={modal.onConfirm || endTurn}>확인</Button>
+              </>
+          )}
+          {modal.type === 'JAIL' && (
+              <>
+                <Typography variant="h5" component="h2">무인도</Typography>
+                <Typography sx={{ mt: 2 }}>3턴 동안 갖혀있게 됩니다.</Typography>
+                <Typography sx={{ mt: 1 }}>보석금을 내고 즉시 탈출할 수 있습니다.</Typography>
+                <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+                  <Button variant="contained" onClick={payBail}>보석금 ({ BAIL_AMOUNT.toLocaleString() }원)</Button>
+                  <Button variant="outlined" onClick={handleJail}>머물기</Button>
+                </Box>
+              </>
+          )}
+          {modal.type === 'EXPO' && (
+            <>
+              <Typography variant="h5" component="h2">박람회 개최!</Typography>
+              <Typography sx={{ mt: 2 }}>소유한 땅 중 하나의 통행료를 2배로 올릴 수 있습니다.</Typography>
+              <Box sx={{ maxHeight: 200, overflow: 'auto', mt: 2, border: '1px solid #ccc', borderRadius: 1 }}>
+                <List>
+                  {(modal.properties?.length > 0) ? modal.properties?.map(prop => (
+                    <ListItem disablePadding key={prop.index}>
+                      <ListItemButton onClick={() => selectExpoProperty(prop.index)}>
+                        <ListItemText primary={prop.name} />
+                      </ListItemButton>
+                    </ListItem>
+                  )) : <ListItem><ListItemText primary="선택할 땅이 없습니다." /></ListItem>}
+                </List>
+              </Box>
+            </>
+          )}
+           {modal.type === 'MANAGE_PROPERTY' && (
+            <>
+              <Typography variant="h5" component="h2">{modal.tile?.name} 관리</Typography>
+              <Typography sx={{ mt: 2 }}>건물을 건설하여 통행료를 올릴 수 있습니다.</Typography>
+              <Typography sx={{ mt: 1, color: 'blue' }}>다음 건설: {BuildingType[(modal.tile?.buildings?.level ?? 0) + 1] || '최대 레벨'}</Typography>
+              <Typography sx={{ mt: 1 }}>비용: {modal.tile?.buildingPrice?.toLocaleString()}원</Typography>
+              <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+                <Button 
+                  variant="contained" 
+                  onClick={() => buildBuilding(board.findIndex(t => t.name === modal.tile?.name))}
+                  disabled={currentPlayer.lapCount <= (modal.tile?.buildings?.level ?? 0) || (modal.tile?.buildings?.level ?? 0) >= 3}
+                >
+                  건설
+                </Button>
+                <Button variant="outlined" onClick={endTurn}>다음에</Button>
+              </Box>
+              <Typography sx={{ mt: 2, fontSize: '0.8rem', color: 'gray' }}>
+                (필요 랩 수: {(modal.tile?.buildings?.level ?? 0) + 1} / 현재 랩 수: {currentPlayer.lapCount})
+              </Typography>
+            </>
+          )}
+          {isGameOver && (
+             <Box sx={modalStyle}>
+                <Typography variant="h4" component="h2">게임 종료!</Typography>
+                <Typography sx={{ mt: 2, fontSize: '1.5rem' }}>
+                  {winner ? `${winner.name}님이 최종 승리했습니다!` : '승자 없이 게임이 종료되었습니다.'}
+                </Typography>
+                <Button sx={{ mt: 3 }} variant="contained" size="large" onClick={handleGoToLobby}>로비로 돌아가기</Button>
+            </Box>
+          )}
+        </Box>
+      </Modal>
+    </Box>
   )
 }

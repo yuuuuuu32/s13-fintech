@@ -22,6 +22,7 @@ interface LobbyState {
 }
 
 // 가짜 유저 데이터 (로그인 기능 구현 전 임시 사용)
+// 다른 파일에서 이 정보를 가져다 쓸 수 있도록 export 키워드를 추가했습니다.
 export const currentUser = { id: 'user-me', name: '나' }
 
 export const useLobbyStore = create<LobbyState>((set) => ({

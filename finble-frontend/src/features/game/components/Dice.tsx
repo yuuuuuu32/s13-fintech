@@ -1,65 +1,26 @@
-import { Box } from '@react-three/drei';
+import { Box, useTexture } from '@react-three/drei';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { useFrame } from '@react-three/fiber';
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore.ts';
 
-// 각 주사위 면에 대한 텍스처를 동적으로 생성하는 함수입니다.
-// Canvas API를 사용해 주사위 눈을 그린 뒤 이미지 텍스처로 만듭니다.
-const createDiceFaceTexture = (value: number) => {
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
-  const size = 256; // 텍스처 해상도
-  canvas.width = size;
-  canvas.height = size;
-
-  if (!context) {
-    // 컨텍스트를 가져오지 못하면 null 반환
-    return null;
-  }
-
-  // 흰색 배경을 그립니다.
-  context.fillStyle = 'white';
-  context.fillRect(0, 0, size, size);
-  
-  // 검은색으로 주사위 눈을 그립니다.
-  context.fillStyle = 'black';
-
-  const pipRadius = size * 0.1;
-  const positions: { [key: number]: [number, number][] } = {
-    1: [[0.5, 0.5]],
-    2: [[0.25, 0.25], [0.75, 0.75]],
-    3: [[0.25, 0.25], [0.5, 0.5], [0.75, 0.75]],
-    4: [[0.25, 0.25], [0.25, 0.75], [0.75, 0.25], [0.75, 0.75]],
-    5: [[0.25, 0.25], [0.25, 0.75], [0.75, 0.25], [0.75, 0.75], [0.5, 0.5]],
-    6: [[0.25, 0.25], [0.25, 0.5], [0.25, 0.75], [0.75, 0.25], [0.75, 0.5], [0.75, 0.75]],
-  };
-
-  const pips = positions[value];
-  if (pips) {
-    pips.forEach(([x, y]) => {
-      context.beginPath();
-      context.arc(x * size, y * size, pipRadius, 0, 2 * Math.PI);
-      context.fill();
-    });
-  }
-
-  // 그려진 canvas를 바탕으로 3D 텍스처를 생성하여 반환합니다.
-  return new THREE.CanvasTexture(canvas);
-};
-
 // 주사위 한 개를 렌더링하는 컴포넌트
 const Die = () => {
-  // useMemo를 사용해 텍스처가 렌더링마다 재생성되지 않도록 최적화합니다.
-  const materials = useMemo(() => [
-    new THREE.MeshStandardMaterial({ map: createDiceFaceTexture(4) }), // +X (오른쪽)
-    new THREE.MeshStandardMaterial({ map: createDiceFaceTexture(3) }), // -X (왼쪽)
-    new THREE.MeshStandardMaterial({ map: createDiceFaceTexture(6) }), // +Y (위)
-    new THREE.MeshStandardMaterial({ map: createDiceFaceTexture(1) }), // -Y (아래)
-    new THREE.MeshStandardMaterial({ map: createDiceFaceTexture(5) }), // +Z (앞)
-    new THREE.MeshStandardMaterial({ map: createDiceFaceTexture(2) }), // -Z (뒤)
-  ], []);
+  // useTexture를 사용해 public 폴더의 이미지로 텍스처를 적용합니다.
+  const textures = useTexture([
+    '/dice/4.png', // +X (오른쪽)
+    '/dice/3.png', // -X (왼쪽)
+    '/dice/6.png', // +Y (위)
+    '/dice/1.png', // -Y (아래)
+    '/dice/5.png', // +Z (앞)
+    '/dice/2.png', // -Z (뒤)
+  ]);
+
+  // useMemo를 사용해 재질이 렌더링마다 재생성되지 않도록 최적화합니다.
+  const materials = useMemo(() => textures.map(texture => 
+    new THREE.MeshStandardMaterial({ map: texture })
+  ), [textures]);
 
   // Box에 6개의 면 재질을 배열로 전달합니다.
   return (
@@ -98,11 +59,13 @@ const initialDicePositions: [number, number, number][] = [[-2, 5, 0], [2, 5, 0]]
 export function Dice() {
   const diceRefs = [useRef<any>(null!), useRef<any>(null!)]
   const [isRolling, setIsRolling] = useState(false)
+  const hasMoved = useRef(false);
 
   const gamePhase = useGameStore((state) => state.gamePhase)
   const dicePower = useGameStore((state) => state.dicePower)
   const rollDiceAction = useGameStore((state) => state.rollDice)
   const movePlayer = useGameStore((state) => state.movePlayer)
+  const board = useGameStore((state) => state.board);
 
   useEffect(() => {
     const triggerRoll = () => {
@@ -117,13 +80,13 @@ export function Dice() {
   useEffect(() => {
     if (gamePhase === 'DICE_ROLLING') {
       setIsRolling(true)
+      hasMoved.current = false; // Reset when rolling starts
       diceRefs.forEach((ref, i) => {
         if (ref.current) {
           ref.current.setTranslation({ x: initialDicePositions[i][0], y: initialDicePositions[i][1], z: initialDicePositions[i][2] }, true)
           ref.current.setLinvel({ x: 0, y: 0, z: 0 }, true)
           ref.current.setAngvel({ x: 0, y: 0, z: 0 }, true)
           
-          // 주사위를 던지는 힘과 회전력을 약간 줄여 안정성을 높입니다.
           const force = 4 + (dicePower / 100) * 12;
           const torque = 8 + (dicePower / 100) * 15;
 
@@ -135,18 +98,20 @@ export function Dice() {
   }, [gamePhase, dicePower]);
 
   useFrame(() => {
-    if (!isRolling) return
+    if (!isRolling || hasMoved.current) return
 
     const isStopped = diceRefs.every(ref => {
       if (!ref.current) return false
       const linvel = ref.current.linvel()
       const angvel = ref.current.angvel()
-      const threshold = 0.1;
+      // threshold 값을 0.1 -> 0.2로 높여서 더 빨리 멈춘 것으로 간주합니다. (시간 단축)
+      const threshold = 0.2;
       return Math.abs(linvel.x) < threshold && Math.abs(linvel.y) < threshold && Math.abs(linvel.z) < threshold &&
              Math.abs(angvel.x) < threshold && Math.abs(angvel.y) < threshold && Math.abs(angvel.z) < threshold
     })
 
     if (isStopped) {
+      hasMoved.current = true;
       setIsRolling(false)
       const diceValues = diceRefs.map(ref => getDiceValue(ref.current.rotation())) as [number, number]
       console.log(`주사위 결과: ${diceValues[0]}, ${diceValues[1]}`)
@@ -155,33 +120,56 @@ export function Dice() {
   })
   
   const TILES_PER_SIDE = 8;
-  const TILE_WIDTH = 3;
-  const TILE_DEPTH = 4.5;
+  const TILE_WIDTH = 4;
+  const TILE_DEPTH = 6;
   const BOARD_SIZE = TILES_PER_SIDE * TILE_WIDTH;
   const GREEN_AREA_SIZE = BOARD_SIZE - TILE_DEPTH * 2;
   const HALF_GREEN_AREA_SIZE = GREEN_AREA_SIZE / 2;
   
-  // 벽의 두께를 늘립니다. (0.5 -> 2)
   const WALL_THICKNESS = 2;
   const HALF_WALL_THICKNESS = WALL_THICKNESS / 2;
 
   return (
     <>
-      {/* 투명 벽의 두께를 늘려 주사위가 뚫고 나가는 현상을 방지합니다. */}
-      <RigidBody type="fixed" colliders={false}>
-          {/* Z축 방향 벽 (위, 아래) */}
-          <CuboidCollider args={[HALF_GREEN_AREA_SIZE, 10, HALF_WALL_THICKNESS]} position={[0, 5, HALF_GREEN_AREA_SIZE + HALF_WALL_THICKNESS]} />
-          <CuboidCollider args={[HALF_GREEN_AREA_SIZE, 10, HALF_WALL_THICKNESS]} position={[0, 5, -(HALF_GREEN_AREA_SIZE + HALF_WALL_THICKNESS)]} />
-          {/* X축 방향 벽 (왼쪽, 오른쪽) */}
-          <CuboidCollider args={[HALF_WALL_THICKNESS, 10, HALF_GREEN_AREA_SIZE]} position={[HALF_GREEN_AREA_SIZE + HALF_WALL_THICKNESS, 5, 0]} />
-          <CuboidCollider args={[HALF_WALL_THICKNESS, 10, HALF_GREEN_AREA_SIZE]} position={[-(HALF_GREEN_AREA_SIZE + HALF_WALL_THICKNESS), 5, 0]} />
-      </RigidBody>
-      
+      {/* 주사위 */}
       {diceRefs.map((ref, i) => (
-        <RigidBody key={i} ref={ref} colliders="cuboid" position={initialDicePositions[i]} friction={0.8} restitution={0.2} >
+        <RigidBody key={i} ref={ref} position={initialDicePositions[i]} colliders="cuboid">
           <Die />
         </RigidBody>
       ))}
+
+      {/* 주사위가 밖으로 나가지 않도록 하는 투명한 벽 */}
+      {/* Front Wall */}
+      <RigidBody type="fixed" colliders="cuboid">
+        <mesh position={[0, 0.5, HALF_GREEN_AREA_SIZE + HALF_WALL_THICKNESS]}>
+          <boxGeometry args={[GREEN_AREA_SIZE + WALL_THICKNESS, 100, WALL_THICKNESS]} />
+          <meshStandardMaterial visible={false} />
+        </mesh>
+      </RigidBody>
+
+      {/* Back Wall */}
+      <RigidBody type="fixed" colliders="cuboid">
+        <mesh position={[0, 0.5, -(HALF_GREEN_AREA_SIZE + HALF_WALL_THICKNESS)]}>
+          <boxGeometry args={[GREEN_AREA_SIZE + WALL_THICKNESS, 100, WALL_THICKNESS]} />
+          <meshStandardMaterial visible={false} />
+        </mesh>
+      </RigidBody>
+
+      {/* Right Wall */}
+      <RigidBody type="fixed" colliders="cuboid">
+        <mesh position={[HALF_GREEN_AREA_SIZE + HALF_WALL_THICKNESS, 0.5, 0]}>
+          <boxGeometry args={[WALL_THICKNESS, 100, GREEN_AREA_SIZE + WALL_THICKNESS]} />
+          <meshStandardMaterial visible={false} />
+        </mesh>
+      </RigidBody>
+
+      {/* Left Wall */}
+      <RigidBody type="fixed" colliders="cuboid">
+        <mesh position={[-(HALF_GREEN_AREA_SIZE + HALF_WALL_THICKNESS), 0.5, 0]}>
+          <boxGeometry args={[WALL_THICKNESS, 100, GREEN_AREA_SIZE + WALL_THICKNESS]} />
+          <meshStandardMaterial visible={false} />
+        </mesh>
+      </RigidBody>
     </>
   )
 }
