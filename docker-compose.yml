@@ -59,9 +59,9 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redispassword}
-      JWT_SECRET: ${JWT_SECRET:-bluemarble-jwt-secret-key-for-finble-game-project-2024-very-long-secure-key-minimum-256-bits-required}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-6f8d3a1c2b4e5f60718293ab4cd5ef60718293ab4cd5ef60a1b2c3d4e5f60718}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dummy-client-id}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-dummy-client-secret}
     depends_on:
       mysql:
         condition: service_healthy

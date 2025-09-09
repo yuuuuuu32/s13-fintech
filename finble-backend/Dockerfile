@@ -1,5 +1,5 @@
 # Multi-stage build for Spring Boot application
-FROM gradle:8.5-jdk21 AS build
+FROM gradle:8.5-jdk17 AS build
 
 # Set working directory
 WORKDIR /app
@@ -18,7 +18,7 @@ COPY src ./src
 RUN gradle clean build --no-daemon -x test
 
 # Runtime stage
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:17-jre-alpine
 
 # Set working directory
 WORKDIR /app
