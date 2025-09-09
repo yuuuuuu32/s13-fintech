@@ -44,7 +44,7 @@ spring:
               - profile
   
   jwt:
-    secret: ${JWT_SECRET:bluemarble-jwt-secret-key-for-finble-game-project-2024}
+    secret: ${JWT_SECRET:bluemarble-jwt-secret-key-for-finble-game-project-2024-very-long-secure-key-minimum-256-bits-required}
     expiration: 86400000  # 24시간
     refresh-expiration: 604800000 # 7일
 
