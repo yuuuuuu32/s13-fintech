@@ -254,7 +254,6 @@ export const useGameStore = create<GameState>()((set, get) => ({
       }
       return { modal: { type: 'INFO', text: '자산이 부족하여 구매할 수 없습니다.' } };
     });
-    get().endTurn();
   },
 
   acquireProperty: () => {
@@ -283,7 +282,6 @@ export const useGameStore = create<GameState>()((set, get) => ({
       }
       return { modal: { type: 'INFO', text: '자산이 부족하여 인수할 수 없습니다.' } };
     });
-    get().endTurn();
   },
 
   payToll: () => {

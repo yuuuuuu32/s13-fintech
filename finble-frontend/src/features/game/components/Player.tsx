@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 import { useSpring, animated } from '@react-spring/three'
 import type { Player as PlayerData } from '../store/useGameStore'
 import { useGameStore } from '../store/useGameStore'
-
+import { useFrame } from '@react-three/fiber'
 
 
 const getTilePosition = (index: number): [number, number, number] => {
@@ -59,36 +59,40 @@ interface PlayerProps {
 }
 
 export function Player({ player }: PlayerProps) {
-  console.log('Rendering player:', player);
   const handleTileAction = useGameStore(state => state.handleTileAction);
   const gamePhase = useGameStore(state => state.gamePhase);
   const isMyTurn = useGameStore(state => state.players[state.currentPlayerIndex]?.id === player.id);
-  const dice1 = useGameStore(state => state.dice[0]);
-  const dice2 = useGameStore(state => state.dice[1]);
+  const dice = useGameStore(state => state.dice);
   const boardLength = useGameStore(state => state.board.length);
 
   const prevPositionRef = useRef(player.position);
+  const meshRef = useRef<THREE.Mesh>(null!); // Ref for the animated mesh
 
+  // Initialize useSpring with the player's current position
   const [springs, api] = useSpring(() => ({
-    position: getTilePosition(player.position),
+    position: getTilePosition(player.position), // Initialize with actual player position
     config: { duration: 200 }, 
   }));
 
+  // This useEffect will handle all position updates
   useEffect(() => {
-    const startPos = prevPositionRef.current;
-    const endPos = player.position;
+    const targetPosition = getTilePosition(player.position);
+    const currentVisualPosition = meshRef.current?.position.toArray(); // Get current visual position
 
-    if (startPos !== endPos) {
-      if (isMyTurn) {
-        let path;
-        if (gamePhase === 'PLAYER_MOVING') {
-          const diceSum = dice1 + dice2;
-          path = calculatePath(startPos, endPos, diceSum, boardLength);
-        } else {
-          path = [getTilePosition(endPos)];
-        }
+    console.log(`Player ${player.id}: Current Pos: ${player.position}, Prev Pos Ref: ${prevPositionRef.current}, Game Phase: ${gamePhase}, Is My Turn: ${isMyTurn}, Dice: ${dice[0]}, ${dice[1]}`);
+    if (currentVisualPosition) {
+      console.log(`Player ${player.id}: Current Visual Mesh Position:`, currentVisualPosition);
+    }
+
+    // Only animate if the player's position has actually changed in the state
+    if (player.position !== prevPositionRef.current) {
+      if (isMyTurn && gamePhase === 'PLAYER_MOVING') {
+        // This is a dice roll move, animate step-by-step
+        const diceSum = dice[0] + dice[1];
+        const path = calculatePath(prevPositionRef.current, player.position, diceSum, boardLength);
         
         api.start({
+          from: getTilePosition(prevPositionRef.current), // Start from the actual previous position
           to: async (next) => {
             for (const pos of path) {
               await next({ position: pos });
@@ -96,21 +100,34 @@ export function Player({ player }: PlayerProps) {
           },
           config: { duration: path.length > 1 ? 200 : 400 },
           onRest: () => {
-            if (isMyTurn && gamePhase === 'PLAYER_MOVING') {
+            // Only call handleTileAction if it's still PLAYER_MOVING phase
+            // This prevents double calls if gamePhase changes quickly
+            if (isMyTurn && useGameStore.getState().gamePhase === 'PLAYER_MOVING') {
+              console.log(`Player ${player.id}: Calling handleTileAction from onRest`);
               handleTileAction();
             }
           }
         });
       } else {
-         api.start({ to: { position: getTilePosition(endPos) }, immediate: true});
+        // This is a non-animated position change (e.g., teleport from chance card, world travel, or other player's move)
+        // Directly set the spring's value to the new position.
+        api.set({ position: targetPosition });
+        console.log(`Player ${player.id}: Directly setting mesh position to:`, targetPosition);
       }
     }
     
-    prevPositionRef.current = endPos;
-  }, [player.position, api, boardLength, dice1, dice2, gamePhase, handleTileAction, isMyTurn]);
+    // Always update prevPositionRef to the current player.position for the next render cycle
+    prevPositionRef.current = player.position;
+  }, [player.position, api, boardLength, dice, gamePhase, handleTileAction, isMyTurn]);
+
+  useFrame(() => {
+    if (meshRef.current) {
+      // console.log(`Player ${player.id}: Mesh Position:`, meshRef.current.position.toArray()); // Keep this for now
+    }
+  });
 
   return (
-    <animated.mesh position={springs.position as any} castShadow>
+    <animated.mesh ref={meshRef} position={springs.position as any} castShadow>
       {player.character === 'cone' && <Cone args={[0.5, 1]}><meshStandardMaterial color="royalblue" /></Cone>}
       {player.character === 'sphere' && <Sphere args={[0.5]}><meshStandardMaterial color="hotpink" /></Sphere>}
     </animated.mesh>

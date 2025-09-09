@@ -1,4 +1,4 @@
-import { Box, useTexture } from '@react-three/drei';
+import { Box, useTexture, Html } from '@react-three/drei';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { useFrame } from '@react-three/fiber';
 import React, { useRef, useEffect, useState, useMemo } from 'react';
@@ -60,6 +60,7 @@ export function Dice() {
   const diceRefs = [useRef<any>(null!), useRef<any>(null!)]
   const [isRolling, setIsRolling] = useState(false)
   const hasMoved = useRef(false);
+  const [displayDiceSum, setDisplayDiceSum] = useState<number | null>(null);
 
   const gamePhase = useGameStore((state) => state.gamePhase)
   const dicePower = useGameStore((state) => state.dicePower)
@@ -116,6 +117,8 @@ export function Dice() {
       const diceValues = diceRefs.map(ref => getDiceValue(ref.current.rotation())) as [number, number]
       console.log(`주사위 결과: ${diceValues[0]}, ${diceValues[1]}`)
       movePlayer(diceValues)
+      setDisplayDiceSum(diceValues[0] + diceValues[1]);
+      setTimeout(() => { setDisplayDiceSum(null); }, 2000);
     }
   })
   
@@ -137,6 +140,18 @@ export function Dice() {
           <Die />
         </RigidBody>
       ))}
+
+      {displayDiceSum !== null && (
+        <Html position={[0, 2, 0]} center>
+          <div style={{
+            color: 'white',
+            fontSize: '3em',
+            textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
+          }}>
+            {displayDiceSum}
+          </div>
+        </Html>
+      )}
 
       {/* 주사위가 밖으로 나가지 않도록 하는 투명한 벽 */}
       {/* Front Wall */}
