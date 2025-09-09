@@ -12,7 +12,8 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-password}
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
     networks:
       - bluemarble-network
     restart: unless-stopped
