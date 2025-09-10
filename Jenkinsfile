@@ -1,6 +1,10 @@
 pipeline {
     agent any
     
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
+    
     environment {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml'
         BACKEND_IMAGE = 'bluemarble-backend'
