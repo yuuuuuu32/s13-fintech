@@ -7,6 +7,7 @@ import com.ssafy.BlueMarble.domain.game.dto.MapCell;
 import com.ssafy.BlueMarble.domain.game.entity.GameState;
 import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.game.repository.TileRepository;
+import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
@@ -18,7 +19,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
- 
+import org.springframework.web.socket.WebSocketSession;
+
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,6 +36,7 @@ public class MapService {
     private final ObjectMapper objectMapper;
     private final UserRedisService userRedisService;
     private final RedisTemplate<String, String> redisTemplate;
+    private final RoomService roomService;
 
     private static final int MAP_SIZE = 32;
     private static final Random random = new Random();
@@ -49,10 +52,13 @@ public class MapService {
     /**
      * 새로운 게임 맵 상태 생성 (방에서 게임 시작할 때 호출)
      */
-    public void createNewGameMapState(String roomId) {
+    public void createNewGameMapState(WebSocketSession session) {
+        String roomId = roomService.getRoom(session.getId());
+        if (roomId == null) {
+            throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
+        }
         String usersKey = "room:" + roomId + ":users";
         Set<String> playerIds = redisTemplate.opsForSet().members(usersKey);
-
         if (playerIds == null || playerIds.isEmpty()) {
             throw new BusinessException(BusinessError.USER_ID_NOT_FOUND);
         }

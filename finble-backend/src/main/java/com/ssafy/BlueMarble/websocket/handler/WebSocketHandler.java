@@ -132,7 +132,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 break;
             case START_GAME:
                 log.info("[WebSocket] 게임 시작 요청: roomId={}, sessionId={}", roomId, session.getId());
-                mapService.createNewGameMapState(roomId);
+                mapService.createNewGameMapState(session);
                 break;
             case TRADE_LAND:
                 TradeLandRequest tradeLandRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), TradeLandRequest.class);
