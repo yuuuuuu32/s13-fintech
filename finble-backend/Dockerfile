@@ -18,16 +18,16 @@ COPY src ./src
 RUN gradle clean build --no-daemon -x test
 
 # Runtime stage (use non-Alpine variant for broader arch support)
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:17-jre-alpine
 
 # Set working directory
 WORKDIR /app
 
 # Install curl for health check (before switching to non-root user)
-RUN microdnf install -y curl || (apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*)
+RUN apk add --no-cache curl
 
 # Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 # Create logs directory with proper permissions
 RUN mkdir -p /app/logs && chown -R appuser:appuser /app/logs
