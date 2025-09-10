@@ -184,9 +184,9 @@ public class MapService {
 
         int tileIdx = 0;
         for (int i = 0; i < MAP_SIZE; i++) {
-            if (mapCells.get(i) == null && tileIdx < tilePool.size()) {
-                Tile tile = tilePool.get(tileIdx++);
-                mapCells.set(i, createTileCell(i, tile));
+            if (mapCells.get(i) == null && tileIdx < cityPool.size()) {
+                Tile tile = cityPool.get(tileIdx++);
+                mapCells.set(i, createCityCell(i, tile));
             }
         }
 
