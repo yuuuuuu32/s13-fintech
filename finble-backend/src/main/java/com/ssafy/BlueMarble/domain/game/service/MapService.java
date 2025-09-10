@@ -18,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.socket.WebSocketSession;
+ 
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -49,8 +49,7 @@ public class MapService {
     /**
      * 새로운 게임 맵 상태 생성 (방에서 게임 시작할 때 호출)
      */
-    public void createNewGameMapState(WebSocketSession session, CreateMapPayload createMapPayload) {
-        String roomId = createMapPayload.getRoomId();
+    public void createNewGameMapState(String roomId) {
         String usersKey = "room:" + roomId + ":users";
         Set<String> playerIds = redisTemplate.opsForSet().members(usersKey);
 
