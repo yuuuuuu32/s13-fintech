@@ -7,13 +7,12 @@ services:
       - "3307:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${DB_NAME:-bluemarble}
-      MYSQL_USER: ${DB_USER:-bluemarble_user}
+      MYSQL_DATABASE: ${DB_NAME:-finble}
+      MYSQL_USER: ${DB_USER:-finble_user}
       MYSQL_PASSWORD: ${DB_PASSWORD:-password}
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
     networks:
       - bluemarble-network
     restart: unless-stopped
@@ -28,14 +27,14 @@ services:
     container_name: bluemarble-redis
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redispassword}
+    command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
     networks:
       - bluemarble-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redispassword}", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -53,12 +52,11 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-docker}
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_NAME: ${DB_NAME:-bluemarble}
-      DB_USERNAME: ${DB_USER:-bluemarble_user}
+      DB_NAME: ${DB_NAME:-finble}
+      DB_USERNAME: ${DB_USER:-finble_user}
       DB_PASSWORD: ${DB_PASSWORD:-password}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-redispassword}
       JWT_SECRET: ${JWT_SECRET:-bluemarble-jwt-secret-key-for-finble-game-project-2024-very-long-secure-key-minimum-256-bits-required}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}

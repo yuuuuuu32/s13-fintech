@@ -1,10 +1,10 @@
--- Initial database setup for BlueMarble
-CREATE DATABASE IF NOT EXISTS bluemarble;
+-- Initial database setup for Finble
+CREATE DATABASE IF NOT EXISTS finble;
 
-USE bluemarble;
+USE finble;
 
 -- Grant privileges to the application user
-GRANT ALL PRIVILEGES ON bluemarble.* TO 'bluemarble_user'@'%';
+GRANT ALL PRIVILEGES ON finble.* TO 'finble_user'@'%';
 FLUSH PRIVILEGES;
 
 -- Wait for Spring Boot to create tables, then insert data
