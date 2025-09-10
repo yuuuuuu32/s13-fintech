@@ -3,14 +3,12 @@ import { getRoomList } from '../../../api/rooms';
 import { sendMessage, subscribeToTopic } from '../../../utils/websocket';
 import { useUserStore } from '../../../stores/useUserStore';
 
-// 각 플레이어의 정보를 정의합니다.
 export interface Player {
   id: string;
   name: string;
   isOwner: boolean;
 }
 
-// GameRoom 타입에서 map과 mode를 제거합니다.
 export interface GameRoom {
   id: string;
   name: string;

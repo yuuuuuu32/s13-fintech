@@ -1,0 +1,45 @@
+.room-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 3rem;
+}
+
+.leave-room-button, .start-game-button {
+  padding: 0.8rem 2.5rem;
+  font-size: 1rem;
+  font-weight: bold;
+  font-family: 'Orbitron', sans-serif;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+}
+
+.leave-room-button {
+  background-color: transparent;
+  color: #ff00ff;
+  border: 2px solid #ff00ff;
+}
+.leave-room-button:hover {
+  background: #ff00ff;
+  color: #000;
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+}
+
+.start-game-button {
+  background-color: #00ffff;
+  color: #000;
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
+}
+.start-game-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 1);
+}
+.start-game-button:disabled {
+  background-color: #555;
+  color: #999;
+  cursor: not-allowed;
+  box-shadow: none;
+  border-color: #555;
+}

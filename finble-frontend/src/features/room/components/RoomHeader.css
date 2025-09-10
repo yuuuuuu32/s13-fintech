@@ -1,0 +1,24 @@
+/* 헤더를 감싸는 컨테이너 */
+.room-header {
+  text-align: center;
+  width: 100%;
+  padding-top: 2rem;
+  color: white;
+}
+
+/* 방 제목 스타일 */
+.room-title {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 2.5rem;
+  font-weight: bold;
+  /* 텍스트에 약간의 그림자 효과를 주어 입체감을 더함 */
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* 플레이어 인원 수 텍스트 스타일 */
+.room-player-count {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #ccc; /* 제목보다 약간 옅은 색상 */
+}

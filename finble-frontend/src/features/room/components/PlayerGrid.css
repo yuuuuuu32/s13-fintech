@@ -1,0 +1,17 @@
+.player-grid {
+  width: 100%;
+  max-width: 800px; /* 최대 너비를 조정하여 카드와 더 잘 어울리게 함 */
+  display: grid;
+  /* 화면 너비에 따라 180px 이상의 카드를 최대한 채워넣는 반응형 그리드 */
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1.5rem;
+  margin: auto 0; /* 상위 flex 컨테이너의 중앙에 위치하도록 함 */
+}
+
+/* 모바일 화면 등 작은 화면에서는 2열로 고정 */
+@media (max-width: 768px) {
+  .player-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
