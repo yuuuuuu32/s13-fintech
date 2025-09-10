@@ -15,7 +15,7 @@ export const RoomCard = ({ room }: RoomCardProps) => {
   };
 
   const handleJoinButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation(); // Prevent card's onClick from firing
+    e.stopPropagation();
     handleJoinRoom();
   };
 
@@ -38,14 +38,7 @@ export const RoomCard = ({ room }: RoomCardProps) => {
             <span className="label">Players:</span>
             <span className="value">{room.players.length}/{room.maxPlayers}</span>
           </div>
-          <div className="room-detail">
-            <span className="label">Map:</span>
-            <span className="value">{room.map}</span>
-          </div>
-          <div className="room-detail">
-            <span className="label">Mode:</span>
-            <span className="value">{room.mode}</span>
-          </div>
+          {/* map과 mode를 표시하는 부분을 제거합니다. */}
         </div>
         <button className="join-button" onClick={handleJoinButtonClick}>
           <span>JOIN</span>
