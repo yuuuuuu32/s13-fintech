@@ -7,13 +7,12 @@ services:
       - "3307:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${DB_NAME:-bluemarble}
-      MYSQL_USER: ${DB_USER:-bluemarble_user}
+      MYSQL_DATABASE: ${DB_NAME:-finble}
+      MYSQL_USER: ${DB_USER:-finble_user}
       MYSQL_PASSWORD: ${DB_PASSWORD:-password}
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
     networks:
       - bluemarble-network
     restart: unless-stopped
@@ -53,8 +52,8 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-docker}
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_NAME: ${DB_NAME:-bluemarble}
-      DB_USERNAME: ${DB_USER:-bluemarble_user}
+      DB_NAME: ${DB_NAME:-finble}
+      DB_USERNAME: ${DB_USER:-finble_user}
       DB_PASSWORD: ${DB_PASSWORD:-password}
       REDIS_HOST: redis
       REDIS_PORT: 6379
