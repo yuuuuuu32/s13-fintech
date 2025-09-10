@@ -7,6 +7,7 @@ import com.ssafy.BlueMarble.domain.game.dto.MapCell;
 import com.ssafy.BlueMarble.domain.game.dto.request.ConstructRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.TradeLandRequest;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
+import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
@@ -17,11 +18,13 @@ import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.util.ArrayList;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LandService {
@@ -30,6 +33,7 @@ public class LandService {
     private final RoomService roomService;
     private final ObjectMapper objectMapper;
     private final SessionMessageService  sessionMessageService;
+    private final UserRedisService userRedisService;
     /**
      * 땅 구매
      */
@@ -96,9 +100,18 @@ public class LandService {
     public void constructBuilding(WebSocketSession session, ConstructRequest constructRequest) {
         //1. 건설 하려는 사람의 정보를 가져온다.
         String roomId = roomService.getRoom(session.getId());
-        CreateMapPayload.PlayerState user = gameRedisService.getPlayerState(roomId, constructRequest.getUsername());
+        String userId = userRedisService.getUserIdByNickname(constructRequest.getNickname());
+
+        log.info("[CONSTRUCT] roomId={}, req.nickname={}, mapped.userId={}", roomId, constructRequest.getNickname(), userId);
         //2. 맵 정보를 가져온다.
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
+        CreateMapPayload.PlayerState user = gameState.getPlayers().get(userId);
+
+        if (gameState != null && gameState.getPlayers() != null) {
+            log.info("[CONSTRUCT] players keys(userIds)={}", gameState.getPlayers().keySet());
+            log.info("[CONSTRUCT] players={}", gameState.getPlayers());
+        }
+        log.info("[CONSTRUCT] player null? {}", user == null);
         GameMap mapData = gameState.getCurrentMap();
         //3. 건설시도 ( 건설 자금이 충분한지 / 현재 건설하려는 땅을 소유하고 있는지 체크해야함)
         MapCell targetCell = mapData.getCells().get(constructRequest.getLandNum());
@@ -107,8 +120,12 @@ public class LandService {
         if(targetCell.getToll() * 10 > user.getMoney()) {
             throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
         }
+        //3.1 이땅의 주인이 없는지 체크
+        if (targetCell.getOwnerName() == null) {
+            throw new BusinessException(BusinessError.LAND_NOT_FOUND); // 또는 NOT_OWNER 유사 에러
+        }
         //3.2 건설하려는 땅을 소유하고 있는가?
-        if(!targetCell.getOwnerName().equals(constructRequest.getUsername())){
+        if(!targetCell.getOwnerName().equals(constructRequest.getNickname())){
             throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
         }
 
@@ -130,7 +147,7 @@ public class LandService {
         //5. 메시지 전달
         ConstructPayload payload = ConstructPayload.builder()
                 .result(true)
-                .userName(constructRequest.getUsername())
+                .nickname(constructRequest.getNickname())
                 .landNum(constructRequest.getLandNum())
                 .buildingType(targetCell.getBuildingType())
                 .updatedAsset(
