@@ -18,7 +18,6 @@ import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.domain.game.dto.request.TradeLandRequest;
-import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.UseCardPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.DrawCardPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.CreateRoomPayload;
@@ -133,10 +132,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 break;
             case START_GAME:
                 log.info("[WebSocket] 게임 시작 요청: roomId={}, sessionId={}", roomId, session.getId());
-                if ("null".equals(roomId))
-                    throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
-                CreateMapPayload createMapPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), CreateMapPayload.class);
-                mapService.createNewGameMapState(session, createMapPayload);
+                mapService.createNewGameMapState(session);
                 break;
             case TRADE_LAND:
                 TradeLandRequest tradeLandRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), TradeLandRequest.class);
