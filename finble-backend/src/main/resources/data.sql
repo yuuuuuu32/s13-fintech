@@ -1,31 +1,32 @@
 -- Initial data for Finble game
+-- Note: cities table does not exist, commenting out data insertion
 
--- cities 데이터 삽입
-INSERT IGNORE INTO cities (name, korean_name, price)
-VALUES ('IKSAN', '익산', 50),
-       ('SUNCHEON', '순천', 60),
-       ('ASAN', '아산', 70),
-       ('BUSAN', '부산', 200),
-       ('CHEONGJU', '청주', 90),
-       ('CHEONAN', '천안', 100),
-       ('MOKPO', '목포', 110),
-       ('YEOSU', '여수', 120),
-       ('NAJU', '나주', 130),
-       ('GWANGJU', '광주', 180),
-       ('POHANG', '포항', 150),
-       ('GIMCHEON', '김천', 160),
-       ('DAEGU', '대구', 170),
-       ('GUMI', '구미', 160),
-       ('DAEJEON', '대전', 180),
-       ('SUWON', '수원', 200),
-       ('INCHEON', '인천', 210),
-       ('GOYANG', '고양', 220),
-       ('CHANGWON', '창원', 230),
-       ('SEOUL', '서울', 220),
-       ('SEONGNAM', '성남', 250),
-       ('GWACHEON', '과천', 270),
-       ('HANAM', '하남', 285),
-       ('INCHEON2', '인천', 300);
+-- cities 데이터 삽입 (주석 처리: cities 테이블이 존재하지 않음)
+-- INSERT IGNORE INTO cities (name, korean_name, price)
+-- VALUES ('IKSAN', '익산', 50),
+--        ('SUNCHEON', '순천', 60),
+--        ('ASAN', '아산', 70),
+--        ('BUSAN', '부산', 200),
+--        ('CHEONGJU', '청주', 90),
+--        ('CHEONAN', '천안', 100),
+--        ('MOKPO', '목포', 110),
+--        ('YEOSU', '여수', 120),
+--        ('NAJU', '나주', 130),
+--        ('GWANGJU', '광주', 180),
+--        ('POHANG', '포항', 150),
+--        ('GIMCHEON', '김천', 160),
+--        ('DAEGU', '대구', 170),
+--        ('GUMI', '구미', 160),
+--        ('DAEJEON', '대전', 180),
+--        ('SUWON', '수원', 200),
+--        ('INCHEON', '인천', 210),
+--        ('GOYANG', '고양', 220),
+--        ('CHANGWON', '창원', 230),
+--        ('SEOUL', '서울', 220),
+--        ('SEONGNAM', '성남', 250),
+--        ('GWACHEON', '과천', 270),
+--        ('HANAM', '하남', 285),
+--        ('INCHEON2', '인천', 300);
 
 -- tiles 데이터 삽입 (게임판 칸 정보)
 INSERT IGNORE INTO tiles (id, name, type, land_price, house_price, building_price, hotel_price, description) VALUES
@@ -104,7 +105,7 @@ INSERT IGNORE INTO tiles (id, name, type, land_price, house_price, building_pric
 (31, '인천', 'NORMAL', 300, 120, 210, 300, '일반 도시');
 
 -- cards 데이터 삽입 (찬스카드)
-INSERT IGNORE INTO cards (card_name, card_type, description, effect_value)
+INSERT IGNORE INTO cards (name, card_type, description, effect_value)
 VALUES
 -- 천사카드 (보유 가능)
 ('천사카드', 'ANGEL', '부정적인 효과가 발생할 때 사용하여 회피 가능', 0),

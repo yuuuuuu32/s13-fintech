@@ -16,7 +16,7 @@ jar {
 }
 
 springBoot {
-    mainClass = 'com.ssafy.BlueMarble.MafiaApplication'
+    mainClass = 'com.ssafy.BlueMarble.MainApplication'
 }
 
 repositories {
