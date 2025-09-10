@@ -1,44 +1,48 @@
+import React from 'react';
 import './UserInfo.css';
-import defaultAvatar from '../../../assets/default_avatar.png'; // ✅ 수정된 경로
+import defaultAvatarUrl from '../../../assets/default_avatar.png';
 
-const CyberAvatar = () => (
-  <div className="relative">
-    <img src={defaultAvatar} alt="Default Avatar" className="avatar-img" />
-    <div className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400/20 to-purple-400/20 animate-pulse"></div>
-  </div>
-);
+export function UserInfo() {
+  const user = {
+    name: 'CyberCamper',
+    suffix: '_2077',
+    level: 15,
+    rank: 5,
+    currentXp: 1250,
+    xpToNextLevel: 2000,
+  };
 
-export const UserInfo = () => {
+  const xpPercentage = (user.currentXp / user.xpToNextLevel) * 100;
+
   return (
-    <div className="glass-panel user-info-panel">
-      <div className="panel-header">
-        <h2>USER INFO</h2>
-        <div className="header-glow"></div>
-      </div>
-      <div className="user-info-content">
+    <aside className="user-info-panel">
+      <h2 className="panel-title">USER INFO</h2>
+      <div className="profile-summary">
         <div className="avatar-container">
-          <CyberAvatar />
-          <div className="avatar-status online"></div>
+          <img src={defaultAvatarUrl} alt="User Avatar" className="avatar-image" />
         </div>
-        <div className="user-details">
-          <h3 className="username">CyberCamper_<span className="user-id">2077</span></h3>
-          <div className="user-stats">
-            <div className="stat-item">
-              <span className="stat-value">15</span>
-              <span className="stat-label">WINS</span>
-            </div>
-            <div className="stat-divider">|</div>
-            <div className="stat-item">
-              <span className="stat-value">5</span>
-              <span className="stat-label">LOSSES</span>
-            </div>
-          </div>
-          <div className="level-bar">
-            <div className="level-fill" style={{width: '75%'}}></div>
-            <span className="level-text">LVL 24</span>
-          </div>
+        <div className="user-name-container">
+          <span className="user-name">
+            {user.name}<span className="user-name-suffix">{user.suffix}</span>
+          </span>
+          <span className="online-indicator" aria-label="Online"></span>
         </div>
       </div>
-    </div>
+      <div className="stats-container">
+        <div className="stat-item">
+          <span className="stat-value">{user.level}</span>
+          <span className="stat-label">LVL</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-value">{user.rank}</span>
+          <span className="stat-label">RANK</span>
+        </div>
+      </div>
+      <div className="xp-bar-container">
+        <div className="xp-bar">
+          <div className="xp-bar-progress" style={{ width: `${xpPercentage}%` }}></div>
+        </div>
+      </div>
+    </aside>
   );
-};
+}

@@ -1,92 +1,43 @@
-/* Cyber Buttons */
-.cyber-button {
-  position: relative;
-  padding: 1rem 2rem;
-  background: transparent;
-  border: 2px solid;
-  border-radius: 0;
-  color: currentColor;
-  font-family: inherit;
-  font-weight: bold;
-  text-transform: uppercase;
-  cursor: pointer;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  font-size: 0.9rem;
-}
-
-.cyber-button.primary {
-  border-color: #00ffff;
-  color: #00ffff;
-  text-shadow: 0 0 5px #00ffff;
-}
-
-.cyber-button.secondary {
-  border-color: #ff00ff;
-  color: #ff00ff;
-  text-shadow: 0 0 5px #ff00ff;
-}
-
-.cyber-button:hover {
-  background: currentColor;
-  color: #000;
-  text-shadow: none;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 255, 255, 0.4);
-}
-
-.cyber-button span {
-  position: relative;
-  z-index: 2;
-}
-
-.button-circuits {
-  position: absolute;
-  top: 0;
-  left: -100%;
+.lobby-header {
   width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-  transition: left 0.6s;
+  background-color: rgba(10, 11, 23, 0.8);
+  box-shadow: 0 1px 0 0 rgba(0, 255, 255, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(5px);
 }
 
-.cyber-button:hover .button-circuits {
-  left: 100%;
+.header-content {
+  display: flex;
+  justify-content: flex-start; /* Align logo to the left */
+  align-items: center;
+  max-width: 1400px;
+  margin: 0 auto;
+  height: 60px;
+  padding: 0 2rem;
+  box-sizing: border-box;
 }
 
-/* ✅ 새롭게 추가: 큰 버튼 스타일 */
-.cyber-button.large-button {
-  padding: 1.2rem 2.5rem;
-  font-size: 1.1rem;
-  min-width: 180px;
-  margin: 0 0.5rem;
-  box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+.logo {
+  height: 50px; /* Increased height for better visibility */
+  width: auto;
+  /* Applying a similar glow effect as on the login page */
+  filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.6));
+  cursor: pointer; /* Suggests it's clickable, maybe to go home/lobby */
+  transition: filter 0.3s ease;
 }
 
-.cyber-button.large-button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0, 255, 255, 0.4);
+.logo:hover {
+  filter: drop-shadow(0 0 12px rgba(0, 255, 255, 0.9));
 }
 
-/* Glitch Effect for Title */
-@keyframes glitch {
-  0%, 100% {
-    transform: translate(0);
+@media (max-width: 992px) {
+  .header-content {
+    height: 50px;
+    padding: 0 1rem;
   }
-  20% {
-    transform: translate(-2px, 2px);
+  .logo {
+    height: 40px; /* Adjust height for mobile */
   }
-  40% {
-    transform: translate(-2px, -2px);
-  }
-  60% {
-    transform: translate(2px, 2px);
-  }
-  80% {
-    transform: translate(2px, -2px);
-  }
-}
-
-.header-title h1:hover {
-  animation: glitch 0.3s ease-in-out;
 }
