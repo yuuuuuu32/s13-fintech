@@ -6,7 +6,6 @@ import { Tile } from './Tile.tsx'
 const getPosition = (index: number): [number, number, number] => {
   const TILES_PER_SIDE = 8; 
   const TILE_WIDTH = 4;
-  const TILE_DEPTH = 6;
   const HALF_BOARD_WIDTH = (TILES_PER_SIDE * TILE_WIDTH) / 2 - TILE_WIDTH / 2;
   const HALF_BOARD_DEPTH = (TILES_PER_SIDE * TILE_WIDTH) / 2 - TILE_WIDTH / 2;
 

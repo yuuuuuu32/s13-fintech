@@ -1,9 +1,10 @@
 import SockJS from 'sockjs-client';
-import { Client, IMessage } from 'stompjs';
+import * as Stomp from 'stompjs';
+import { IMessage } from 'stompjs';
 
 const WEBSOCKET_URL = 'http://localhost:8081/ws'; // Backend WebSocket endpoint
 
-let stompClient: Client | null = null;
+let stompClient: Stomp.Client | null = null;
 let reconnectTimeout: NodeJS.Timeout | null = null;
 
 interface WebSocketCallbacks {
@@ -20,7 +21,7 @@ export const connectWebSocket = (callbacks: WebSocketCallbacks) => {
 
   console.log('Connecting to WebSocket...');
   const socket = new SockJS(WEBSOCKET_URL);
-  stompClient = Client.over(socket);
+  stompClient = Stomp.over(socket);
 
   stompClient.connect(
     {},

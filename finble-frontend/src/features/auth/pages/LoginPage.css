@@ -55,6 +55,13 @@
   align-items: center;
 }
 
+.error-message {
+  color: #ff4d4d; /* Red color for error messages */
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-family: "Noto Sans KR", sans-serif; /* Consistent font */
+}
+
 .google-login-button {
   display: flex;
   align-items: center;

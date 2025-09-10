@@ -9,50 +9,115 @@ import './LoginPage.css';
 import { useGoogleLogin } from '@react-oauth/google';
 import apiClient from '../../../api/client'; // apiClient 임포트
 
+interface KakaoLoginResponse {
+  token_type: string;
+  access_token: string;
+  expires_in: number;
+  refresh_token: string;
+  refresh_token_expires_in: number;
+  scope: string;
+}
+
+interface KakaoError {
+  error: string;
+  error_description: string;
+  error_code?: string;
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [loginProvider, setLoginProvider] = useState<string | null>(null); // 'google', 'kakao', or null
   const [isModalOpen, setIsModalOpen] = useState(false); // 모달 상태 추가
+  const [isLoggingIn, setIsLoggingIn] = useState(false); // 로그인 중 상태 추가
+  const [errorMessage, setErrorMessage] = useState<string | null>(null); // 에러 메시지 상태 추가
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      setIsLoggingIn(true);
+      // No need to set isLoggingIn here, it's already true
+      setErrorMessage(null); // Clear previous errors
       console.log('Google Login Success:', tokenResponse);
       try {
         // 백엔드로 ID 토큰 전송
         const res = await apiClient.post('/auth/google', {
-          idToken: tokenResponse.access_token, // Google Identity Services는 access_token을 반환합니다.
+          idToken: tokenResponse.access_token,
         });
         console.log('Backend Response:', res.data);
         // 백엔드로부터 받은 JWT 등을 처리 (예: localStorage에 저장)
         // localStorage.setItem('jwt', res.data.jwt);
         setIsLoggingIn(false);
+        setLoginProvider(null);
         setIsModalOpen(true); // 로그인 후 로비 이동 대신 모달 열기
       } catch (error) {
         console.error('Backend login error:', error);
         setIsLoggingIn(false);
-        // 에러 처리 로직
+        setLoginProvider(null);
+        setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.'); // Set user-friendly error message
       }
     },
     onError: (errorResponse) => {
       console.error('Google Login Failed:', errorResponse);
       setIsLoggingIn(false);
+      setLoginProvider(null);
+      setErrorMessage('Google 로그인에 실패했습니다. 다시 시도해주세요.'); // Set user-friendly error message
     },
+    onNonOAuthError: (error) => {
+      console.error('Google Non-OAuth Error:', error);
+      setIsLoggingIn(false);
+      setLoginProvider(null);
+      if (error.type === 'popup_closed') {
+        setErrorMessage('Google 로그인 창을 닫았습니다.');
+      } else {
+        setErrorMessage('Google 로그인 중 오류가 발생했습니다.');
+      }
+    }
   });
 
   const handleGoogleLogin = () => {
     setIsLoggingIn(true);
+    setLoginProvider('google');
+    setErrorMessage(null); // Clear previous errors
     googleLogin(); // Google 로그인 흐름 시작
   };
 
   const handleKakaoLogin = () => {
+    setIsLoggingIn(true);
     setLoginProvider('kakao');
+    setErrorMessage(null);
 
-    // Simulate an API call for login
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
+      setIsLoggingIn(false);
       setLoginProvider(null);
-      setIsModalOpen(true);
-    }, 1500);
+      setErrorMessage('로그인 창이 닫혔거나 로그인에 실패했습니다. 다시 시도해주세요.');
+    }, 10000); // 10 seconds timeout for user action
+
+    window.Kakao.Auth.login({
+      success: function(authObj: KakaoLoginResponse) {
+        clearTimeout(timeoutId);
+        console.log('Kakao Login Success:', authObj);
+        apiClient.post('/auth/kakao', {
+          accessToken: authObj.access_token,
+        })
+        .then(res => {
+          console.log('Backend Response:', res.data);
+          setIsLoggingIn(false);
+          setLoginProvider(null);
+          setIsModalOpen(true);
+        })
+        .catch(error => {
+          console.error('Backend login error:', error);
+          setIsLoggingIn(false);
+          setLoginProvider(null);
+          setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
+        });
+      },
+      fail: function(err: KakaoError) {
+        clearTimeout(timeoutId);
+        console.error('Kakao Login Failed:', err);
+        setIsLoggingIn(false);
+        setLoginProvider(null);
+        setErrorMessage('Kakao 로그인에 실패했습니다. 다시 시도해주세요.');
+      },
+    });
   };
 
 
@@ -73,12 +138,13 @@ export default function LoginPage() {
       </div>
 
       <div className="login-actions">
+        {errorMessage && <p className="error-message">{errorMessage}</p>} {/* 에러 메시지 표시 */}
         <button
           onClick={handleGoogleLogin}
           className="google-login-button"
-          disabled={!!loginProvider}
+          disabled={isLoggingIn}
         >
-          {loginProvider === 'google' ? (
+          {isLoggingIn && loginProvider === 'google' ? (
             '구글로 로그인 중...'
           ) : (
             <>
@@ -90,9 +156,9 @@ export default function LoginPage() {
         <button
           onClick={handleKakaoLogin}
           className="kakao-login-button"
-          disabled={!!loginProvider}
+          disabled={isLoggingIn}
         >
-          {loginProvider === 'kakao' ? (
+          {isLoggingIn && loginProvider === 'kakao' ? (
             '카카오로 로그인 중...'
           ) : (
             <>

@@ -127,7 +127,7 @@ export function Player({ player }: PlayerProps) {
   });
 
   return (
-    <animated.mesh ref={meshRef} position={springs.position as any} castShadow>
+    <animated.mesh ref={meshRef} position={springs.position as unknown as [number, number, number]} castShadow>
       {player.character === 'cone' && <Cone args={[0.5, 1]}><meshStandardMaterial color="royalblue" /></Cone>}
       {player.character === 'sphere' && <Sphere args={[0.5]}><meshStandardMaterial color="hotpink" /></Sphere>}
     </animated.mesh>
