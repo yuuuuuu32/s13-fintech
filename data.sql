@@ -1,5 +1,5 @@
 -- Initial data for BlueMarble game
-USE bluemarble;
+USE finble;
 
 -- cities 데이터 삽입
 INSERT IGNORE INTO cities (name, korean_name, price)

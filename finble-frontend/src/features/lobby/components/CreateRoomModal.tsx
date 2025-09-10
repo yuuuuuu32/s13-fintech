@@ -1,12 +1,27 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useLobbyStore } from '../store/useLobbyStore'; // Re-add store import
 import './CreateRoomModal.css';
 
 export const CreateRoomModal = ({ isOpen, onClose }) => {
+  const [roomName, setRoomName] = useState('');
+  const [maxPlayers, setMaxPlayers] = useState(4);
+  const navigate = useNavigate();
+  const addRoom = useLobbyStore((state) => state.addRoom); // Get addRoom from store
+
   if (!isOpen) return null;
 
+  // Revert handleSubmit to use the mock store function
   const handleSubmit = (e) => {
     e.preventDefault();
-    // 방 생성 로직 (API 호출 등)
-    onClose(); // 생성 후 모달 닫기 (실제론 생성 성공 후 닫아야 함)
+    if (!roomName.trim()) {
+      alert('Please enter a room name.');
+      return;
+    }
+    // Use the mock addRoom function instead of the API call
+    const newRoomId = addRoom(roomName.trim(), maxPlayers, 'Battle Royale');
+    onClose();
+    navigate(`/room/${newRoomId}`);
   };
 
   return (
@@ -19,25 +34,20 @@ export const CreateRoomModal = ({ isOpen, onClose }) => {
         <form className="modal-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Room Name</label>
-            <input type="text" placeholder="Enter room name..." required />
+            <input
+              type="text"
+              placeholder="Enter room name..."
+              required
+              value={roomName}
+              onChange={(e) => setRoomName(e.target.value)}
+            />
           </div>
           <div className="form-group">
             <label>Max Players</label>
-            <select required>
-              <option value="">Select...</option>
-              <option>2</option>
-              <option>4</option>
-              <option>8</option>
-              <option>16</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Game Mode</label>
-            <select required>
-              <option value="">Select...</option>
-              <option>Battle Royale</option>
-              <option>Team Deathmatch</option>
-              <option>Capture the Flag</option>
+            <select value={maxPlayers} onChange={(e) => setMaxPlayers(Number(e.target.value))}>
+              <option value={2}>2</option>
+              <option value={3}>3</option>
+              <option value={4}>4</option>
             </select>
           </div>
           <div className="form-actions">

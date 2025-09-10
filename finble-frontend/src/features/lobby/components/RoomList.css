@@ -1,100 +1,102 @@
-/* Glass Panel Effect (중복 방지 위해 최소화) */
-.glass-panel {
-  background: rgba(0, 20, 40, 0.3);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  border: 1px solid rgba(0, 255, 255, 0.3);
-  box-shadow: 
-    0 0 20px rgba(0, 255, 255, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  position: relative;
-  z-index: 2;
-}
+/* RoomList.css */
 
-.room-grid-container {
-  flex: 1;
-  padding: 1.5rem;
-  overflow: hidden;
-  display: flex;
+/* --- RoomList 컴포넌트의 최상위 컨테이너 --- */
+.room-list-container {
+  display: flex; /* 내부 요소를 세로로 배치하기 위해 flex 사용 */
   flex-direction: column;
+  min-height: 0; /* Grid/Flex 중첩 시 높이 계산 오류를 방지하는 핵심 속성 */
+  min-width: 0;
+  
+  /* --- 디자인 스타일 --- */
+  padding: 1.5rem 2rem;
+  background: rgba(10, 11, 23, 0.7);
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  border-radius: 8px;
+  box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.1);
 }
 
-.room-grid-header {
-  position: relative;
+/* --- 'ACTIVE ROOMS' 헤더 부분 --- */
+.room-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.2);
 }
 
-.room-grid-header h3 {
-  font-size: 1.3rem;
-  color: #00ffff;
+.room-list-header h2 {
   margin: 0;
-  text-shadow: 0 0 10px #00ffff;
+  font-size: 1.5rem;
+  font-weight: 700;
 }
 
-.scan-line {
-  position: absolute;
-  bottom: -5px;
-  left: 0;
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #00ffff, transparent);
-  animation: scanLine 2s ease-in-out infinite;
-}
-
-@keyframes scanLine {
-  0%, 100% { transform: translateX(-100%); }
-  50% { transform: translateX(100%); }
-}
-
-.room-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+.header-actions {
+  display: flex;
   gap: 1rem;
-  overflow-y: auto;
-  padding-right: 10px;
 }
 
-/* Scrollbar Styling */
-.room-grid::-webkit-scrollbar {
-  width: 8px;
+/* --- 방 카드들이 들어가는 그리드 영역 --- */
+.rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+  overflow-y: auto; /* 내용이 많아지면 스크롤 생성 (핵심) */
+  flex-grow: 1; /* 부모(room-list-container)의 남는 세로 공간을 모두 차지 (핵심) */
 }
 
-.room-grid::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
+/* --- 방이 없을 때 메시지 --- */
+.no-rooms-message {
+  text-align: center;
+  padding: 3rem;
+  color: #888;
+  margin: auto; /* 세로 중앙 정렬 */
 }
 
-.room-grid::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #00ffff, #ff00ff);
-  border-radius: 4px;
-  box-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+.no-rooms-message p {
+  margin: 0;
 }
 
-.room-grid::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #ff00ff, #00ffff);
+/* --- 버튼 스타일 (Quick Join, Create Room) --- */
+.quick-join-button, .create-room-button {
+  padding: 0.6rem 1.2rem;
+  font-size: 0.8rem;
+  font-weight: bold;
+  font-family: 'Orbitron', sans-serif;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
 }
 
-/* Glass panel animation */
-.glass-panel::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #00ffff, transparent);
-  opacity: 0.3;
-  animation: dataFlow 4s ease-in-out infinite;
+.quick-join-button {
+  background-color: transparent;
+  color: #ff00ff;
+  border: 2px solid #ff00ff;
+}
+.quick-join-button:hover {
+  background: #ff00ff;
+  color: #000;
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
 }
 
-@keyframes dataFlow {
-  0% {
-    transform: translateX(-100%) scaleX(0);
-  }
-  50% {
-    transform: translateX(0) scaleX(1);
-  }
-  100% {
-    transform: translateX(100%) scaleX(0);
+.create-room-button {
+  background-color: #00ffff;
+  color: #000;
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
+}
+.create-room-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 1);
+}
+
+
+/* --- 반응형 디자인 --- */
+@media (max-width: 768px) {
+  .room-list-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
   }
 }

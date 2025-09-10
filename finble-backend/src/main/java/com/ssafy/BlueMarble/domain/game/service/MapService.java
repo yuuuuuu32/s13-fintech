@@ -4,10 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.GameMap;
 import com.ssafy.BlueMarble.domain.game.dto.MapCell;
-import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.game.entity.GameState;
+import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.game.repository.TileRepository;
-import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
@@ -15,7 +14,6 @@ import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
-import com.ssafy.BlueMarble.websocket.service.WebSocketSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -179,10 +177,10 @@ public class MapService {
             mapCells.set(eventCell.position(), createEventCell(eventCell.position(), eventCell.name(), eventCell.eventType()));
         }
 
-        // 일반땅 칸 배치 (NORMAL 타입 타일들로 배치)
-        List<Tile> normalTiles = tileRepository.findByType(Tile.TileType.NORMAL);
-        List<Tile> tilePool = new ArrayList<>(normalTiles);
-        Collections.shuffle(tilePool, random);
+        // 도시 칸 배치 (랜덤하게 배치함)
+        List<Tile> allCities = tileRepository.findAll();
+        List<Tile> cityPool = new ArrayList<>(allCities);
+        Collections.shuffle(cityPool, random);
 
         int tileIdx = 0;
         for (int i = 0; i < MAP_SIZE; i++) {
@@ -207,7 +205,7 @@ public class MapService {
                 .build();
     }
 
-    private MapCell createTileCell(int position, Tile tile) {
+    private MapCell createCityCell(int position, Tile tile) {
         return MapCell.builder()
                 .cellNumber(position)
                 .cellName(tile.getName())

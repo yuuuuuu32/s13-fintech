@@ -13,7 +13,8 @@ import lombok.NoArgsConstructor;
 public class Tile {
     
     @Id
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     
     @Column(nullable = false)
     private String name;
@@ -38,7 +39,7 @@ public class Tile {
     private String description;
     
     @Builder
-    public Tile(Integer id, String name, TileType type, int landPrice, 
+    public Tile(Long id, String name, TileType type, int landPrice,
                 int housePrice, int buildingPrice, int hotelPrice, String description) {
         this.id = id;
         this.name = name;
@@ -50,6 +51,7 @@ public class Tile {
         this.description = description;
     }
     
+    @Getter
     public enum TileType {
         START("시작"),
         NORMAL("일반땅"),
@@ -64,9 +66,6 @@ public class Tile {
         TileType(String description) {
             this.description = description;
         }
-        
-        public String getDescription() {
-            return description;
-        }
+
     }
 }

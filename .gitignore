@@ -27,14 +27,7 @@ coverage/
 .env.production
 .env.development
 .env.staging
-<<<<<<< HEAD
-<<<<<<< HEAD
 .env.example
-=======
->>>>>>> 358f37f (feature/back-server : 배포 세팅- Docker 세팅- Redis, DB 연결 준비)
-=======
-.env.example
->>>>>>> d809946 (style/back-server : gitignore 수정)
 
 # ────────────── Backend (Spring Boot) ──────────────
 # Maven / Gradle build 결과물
@@ -58,25 +51,11 @@ logs/
 nohup.out
 
 # 환경 설정 (개발자 로컬별 - 기본 application.yml은 제외)
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> ace104e954bf1f070f1f0ccaa8da53139a837e14
 # application-local.yml
 # application-dev.yml
 # application-prod.yml
 # application-test.yml
 # application-*.properties
-<<<<<<< HEAD
-=======
-application-local.yml
-application-dev.yml
-application-prod.yml
-application-test.yml
-application-*.properties
->>>>>>> 3041b10 (refactor/back-server : 백엔드 코드 수정)
-=======
->>>>>>> ace104e954bf1f070f1f0ccaa8da53139a837e14
 
 # ────────────── Docker ──────────────
 # Docker volumes
