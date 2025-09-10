@@ -1,9 +1,9 @@
 package com.ssafy.BlueMarble.domain.game.controller;
 
 import com.ssafy.BlueMarble.domain.game.entity.Tile;
-import com.ssafy.BlueMarble.domain.game.entity.ChanceCard;
+import com.ssafy.BlueMarble.domain.game.entity.Card;
 import com.ssafy.BlueMarble.domain.game.repository.TileRepository;
-import com.ssafy.BlueMarble.domain.game.repository.ChanceCardRepository;
+import com.ssafy.BlueMarble.domain.game.repository.CardRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,11 +15,11 @@ import java.util.List;
 public class MapController {
     
     private final TileRepository tileRepository;
-    private final ChanceCardRepository chanceCardRepository;
+    private final CardRepository cardRepository;
     
-    public MapController(TileRepository tileRepository, ChanceCardRepository chanceCardRepository) {
+    public MapController(TileRepository tileRepository, CardRepository cardRepository) {
         this.tileRepository = tileRepository;
-        this.chanceCardRepository = chanceCardRepository;
+        this.cardRepository = cardRepository;
     }
     
     @GetMapping("/tiles")
@@ -27,13 +27,13 @@ public class MapController {
         return tileRepository.findAll();
     }
     
-    @GetMapping("/chance-cards")
-    public List<ChanceCard> getAllChanceCards() {
-        return chanceCardRepository.findAll();
+    @GetMapping("/cards")
+    public List<Card> getAllCards() {
+        return cardRepository.findAll();
     }
     
     @GetMapping("/test")
     public String test() {
-        return "맵 DB 테스트 성공! Tiles: " + tileRepository.count() + ", ChanceCards: " + chanceCardRepository.count();
+        return "맵 DB 테스트 성공! Tiles: " + tileRepository.count() + ", Cards: " + cardRepository.count();
     }
 }

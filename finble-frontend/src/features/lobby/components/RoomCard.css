@@ -1,55 +1,147 @@
-/* Room Cards - New Style */
-.room-card { 
-  background: #2a2a2e; 
-  border: 1px solid #555; 
-  border-radius: 8px; 
-  overflow: hidden; 
-  transition: all 0.3s ease; 
-  cursor: pointer;
+.room-card {
+  background: rgba(0, 40, 80, 0.2);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
-.room-card:hover { 
-  border-color: #00ffff; 
-  box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
-  transform: translateY(-3px); 
+.room-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ffff, transparent);
+  transition: left 0.6s;
 }
 
-.room-card-inner { padding: 1.5rem; }
-.room-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.room-card:hover::before {
+  left: 100%;
+}
+
+.room-card:hover {
+  border-color: #00ffff;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+  transform: translateY(-5px);
+}
+
+.room-card-inner {
+  padding: 1.5rem;
+}
+
+.room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
 
 .room-name {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   color: #ffffff;
   margin: 0;
   text-shadow: 0 0 5px #00ffff;
 }
 
-.room-status { padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.7rem; text-transform: uppercase; font-weight: bold; }
-.room-status.waiting { background: rgba(0, 255, 0, 0.2); color: #00ff00; border: 1px solid #00ff00; }
-.room-status.in-game { background: rgba(255, 0, 255, 0.2); color: #ff00ff; border: 1px solid #ff00ff; }
-.room-info { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
-.room-detail { display: flex; justify-content: space-between; }
-.label { color: #aaa; font-size: 0.9rem; }
-.value { color: #00ffff; font-weight: bold; font-size: 0.9rem; }
+.room-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.room-status.waiting {
+  background: rgba(0, 255, 0, 0.2);
+  color: #00ff00;
+  border: 1px solid #00ff00;
+}
+
+.room-status.in-game {
+  background: rgba(255, 0, 255, 0.2);
+  color: #ff00ff;
+  border: 1px solid #ff00ff;
+}
+
+.room-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.room-detail {
+  display: flex;
+  justify-content: space-between;
+}
+
+.label {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.value {
+  color: #00ffff;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
 
 .join-button {
   width: 100%;
-  padding: 12px;
-  font-size: 1rem;
+  padding: 0.75rem;
+  background: rgba(0, 255, 255, 0.1);
+  border: 2px solid #00ffff;
+  color: #00ffff;
   font-weight: bold;
-  font-family: 'Orbitron', sans-serif;
   cursor: pointer;
-  border: none;
-  border-radius: 8px;
-  background-color: #00ffff;
-  color: #000;
-  box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
   text-transform: uppercase;
 }
 
 .join-button:hover {
+  background: rgba(0, 255, 255, 0.2);
   transform: translateY(-2px);
-  box-shadow: 0 0 12px rgba(0, 255, 255, 1);
+  box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3);
+}
+
+.button-glow {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
+  transition: left 0.6s;
+}
+
+.join-button:hover .button-glow {
+  left: 100%;
+}
+
+/* Holographic Effect */
+.room-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(0, 255, 255, 0.1) 50%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.room-card:hover::after {
+  opacity: 1;
 }

@@ -2,9 +2,9 @@ package com.ssafy.BlueMarble.domain.game.dto;
 
 import com.ssafy.BlueMarble.domain.game.entity.Card;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 
-@Getter
+@Data
 @Builder
 public class CardResponse {
     
@@ -17,14 +17,14 @@ public class CardResponse {
     public static CardResponse from(Card card) {
         return CardResponse.builder()
                 .id(card.getId())
-                .cardName(card.getCardName())
+                .cardName(card.getName())
                 .cardType(card.getCardType().name())
                 .description(card.getDescription())
                 .effectValue(card.getEffectValue())
                 .build();
     }
     
-    @Getter
+    @Data
     @Builder
     public static class DrawResult {
         private String userName;
@@ -34,7 +34,7 @@ public class CardResponse {
         private boolean isAngelCard;
     }
     
-    @Getter
+    @Data
     @Builder
     public static class UseResult {
         private boolean success;

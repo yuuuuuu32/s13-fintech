@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.GameMap;
 import com.ssafy.BlueMarble.domain.game.dto.MapCell;
-import com.ssafy.BlueMarble.domain.game.entity.City;
+import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.game.entity.GameState;
-import com.ssafy.BlueMarble.domain.game.repository.CityRepository;
+import com.ssafy.BlueMarble.domain.game.repository.TileRepository;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MapService {
 
     private final SessionMessageService sessionMessageService;
-    private final CityRepository cityRepository;
+    private final TileRepository tileRepository;
     private final GameRedisService gameRedisService;
     private final ObjectMapper objectMapper;
     private final UserRedisService userRedisService;
@@ -179,16 +179,16 @@ public class MapService {
             mapCells.set(eventCell.position(), createEventCell(eventCell.position(), eventCell.name(), eventCell.eventType()));
         }
 
-        // 도시 칸 배치 (랜덤하게 배치함)
-        List<City> allCities = cityRepository.findAll();
-        List<City> cityPool = new ArrayList<>(allCities);
-        Collections.shuffle(cityPool, random);
+        // 일반땅 칸 배치 (NORMAL 타입 타일들로 배치)
+        List<Tile> normalTiles = tileRepository.findByType(Tile.TileType.NORMAL);
+        List<Tile> tilePool = new ArrayList<>(normalTiles);
+        Collections.shuffle(tilePool, random);
 
-        int cityIdx = 0;
+        int tileIdx = 0;
         for (int i = 0; i < MAP_SIZE; i++) {
-            if (mapCells.get(i) == null) {
-                City city = cityPool.get(cityIdx++);
-                mapCells.set(i, createCityCell(i, city));
+            if (mapCells.get(i) == null && tileIdx < tilePool.size()) {
+                Tile tile = tilePool.get(tileIdx++);
+                mapCells.set(i, createTileCell(i, tile));
             }
         }
 
@@ -207,12 +207,12 @@ public class MapService {
                 .build();
     }
 
-    private MapCell createCityCell(int position, City city) {
+    private MapCell createTileCell(int position, Tile tile) {
         return MapCell.builder()
                 .cellNumber(position)
-                .cellName(city.getKoreanName())
+                .cellName(tile.getName())
                 .ownerName(null)
-                .toll(city.getPrice())
+                .toll(tile.getLandPrice())
                 .buildingType(MapCell.BuildingType.FIELD)
                 .eventType(null)
                 .build();

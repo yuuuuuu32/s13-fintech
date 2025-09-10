@@ -1,10 +1,11 @@
 import { create } from 'zustand'
-import { boardData } from '../data/boardData.ts'
+import { boardData as initialBoardData, BuildingType } from '../data/boardData.ts'
 import type { TileData } from '../data/boardData.ts'
+import { currentUser } from '../../lobby/store/useLobbyStore'
+import { connectWebSocket, disconnectWebSocket, sendMessage, subscribeToTopic } from '../../../utils/websocket'
 
-// 게임 단계, 모달 종류, 플레이어 상태에 새로운 타입들을 추가합니다.
-type GamePhase = 'WAITING_FOR_ROLL' | 'DICE_ROLLING' | 'PLAYER_MOVING' | 'TILE_ACTION' | 'WORLD_TRAVEL' | 'GAME_OVER'
-type ModalType = 'NONE' | 'BUY_PROPERTY' | 'ACQUIRE_PROPERTY' | 'CHANCE_CARD' | 'INFO' | 'JAIL' | 'EXPO' | 'WORLD_TRAVEL_PICKER'
+type GamePhase = 'WAITING_FOR_ROLL' | 'DICE_ROLLING' | 'PLAYER_MOVING' | 'TILE_ACTION' | 'WORLD_TRAVEL' | 'GAME_OVER' | 'MANAGE_PROPERTY' | 'WORLD_TRAVEL_MOVE'
+type ModalType = 'NONE' | 'BUY_PROPERTY' | 'ACQUIRE_PROPERTY' | 'CHANCE_CARD' | 'INFO' | 'JAIL' | 'EXPO' | 'MANAGE_PROPERTY' | 'INSUFFICIENT_FUNDS'
 
 export interface Player {
   id: string
@@ -13,39 +14,42 @@ export interface Player {
   position: number
   character: string
   properties: number[]
-  isInJail: boolean // 감옥 상태
-  jailTurns: number // 감옥에 남은 턴
-  isTraveling: boolean // 세계여행 중인지 여부
+  isInJail: boolean
+  jailTurns: number
+  isTraveling: boolean
+  lapCount: number
 }
 
-// 찬스 카드 종류를 추가합니다.
 const chanceCards = [
   { text: '정부 지원금 10만원을 받습니다.', action: (player: Player) => ({ ...player, money: player.money + 100000 }) },
   { text: '세금 15만원을 내세요.', action: (player: Player) => ({ ...player, money: player.money - 150000 }) },
-  { text: '뒤로 3칸 이동하세요.', action: (player: Player) => ({ ...player, position: (player.position - 3 + boardData.length) % boardData.length }) },
+  { text: '뒤로 3칸 이동하세요.', action: (player: Player) => ({ ...player, position: (player.position - 3 + initialBoardData.length) % initialBoardData.length }) },
   { text: '은행에서 20만원을 빌립니다.', action: (player: Player) => ({ ...player, money: player.money + 200000 })},
   { text: '가장 비싼 도시로 이동합니다. (통행료 면제)', action: (player: Player) => ({ ...player, position: 28 })}, // 송파
 ];
 
-// 게임 전체 상태 인터페이스
 interface GameState {
+  gameId: string | null;
   players: Player[]
+  board: TileData[] // 보드 데이터를 상태로 관리
   currentPlayerIndex: number
   gamePhase: GamePhase
   dice: [number, number]
   dicePower: number
   winnerId: string | null
-  // 모달 상태를 더 구체적으로 정의합니다.
-  modal: { 
+  modal: {
     type: ModalType
-    tile?: TileData, 
-    text?: string, 
-    acquireCost?: number, 
+    tile?: TileData,
+    text?: string,
+    acquireCost?: number,
     toll?: number
     properties?: { name: string, index: number }[]
+    requiredAmount?: number
+    onConfirm?: () => void
   }
-  totalTurns: number // 전체 턴 수
-  currentTurn: number // 현재 턴 수
+  totalTurns: number
+  currentTurn: number
+  expoLocation: number | null
   setDicePower: (power: number) => void
   rollDice: () => void
   movePlayer: (diceValues: [number, number]) => void
@@ -55,82 +59,127 @@ interface GameState {
   payToll: () => void
   endTurn: () => void
   checkGameOver: () => void
-  handleJail: () => void // 감옥 관련 액션
-  payBail: () => void // 보석금 지불
-  selectExpoProperty: (propertyIndex: number) => void // 박람회에서 땅 선택
-  selectTravelDestination: (tileIndex: number) => void // 세계여행 목적지 선택
+  handleJail: () => void
+  payBail: () => void
+  selectExpoProperty: (propertyIndex: number) => void
+  startWorldTravelSelection: () => void
+  selectTravelDestination: (tileIndex: number) => void
+  buildBuilding: (tileIndex: number) => void
+  connect: (gameId: string) => void;
+  disconnect: () => void;
+  send: (destination: string, body: any) => void;
+  updateGameState: (newState: Partial<GameState>) => void;
 }
 
-const BAIL_AMOUNT = 500000; // 보석금
+const BAIL_AMOUNT = 500000;
 
 export const useGameStore = create<GameState>()((set, get) => ({
-  // 초기 플레이어 상태 설정
+  gameId: null,
   players: [
-    { id: 'player-1', name: '플레이어 1', money: 2000000, position: 0, character: 'cone', properties: [], isInJail: false, jailTurns: 0, isTraveling: false },
-    { id: 'player-2', name: '플레이어 2', money: 2000000, position: 0, character: 'sphere', properties: [], isInJail: false, jailTurns: 0, isTraveling: false },
+    { id: currentUser.id, name: `${currentUser.name}`, money: 2200000, position: 0, character: 'cone', properties: [], isInJail: false, jailTurns: 0, isTraveling: false, lapCount: 0 },
+    { id: 'player-2', name: '플레이어 2', money: 2000000, position: 0, character: 'sphere', properties: [], isInJail: false, jailTurns: 0, isTraveling: false, lapCount: 0 },
   ],
+  board: JSON.parse(JSON.stringify(initialBoardData)), // 초기 보드 데이터 깊은 복사
   currentPlayerIndex: 0,
   gamePhase: 'WAITING_FOR_ROLL',
   dice: [1, 1],
   dicePower: 0,
   winnerId: null,
   modal: { type: 'NONE' },
-  totalTurns: 20, // 전체 턴 수
-  currentTurn: 1, // 현재 턴 수
+  totalTurns: 20,
+  currentTurn: 1,
+  expoLocation: null,
 
   setDicePower: (power) => set({ dicePower: power }),
 
+  connect: (gameId: string) => {
+    set({ gameId });
+    connectWebSocket({
+      onConnect: () => {
+        console.log('Game WebSocket connected!');
+        subscribeToTopic(`/topic/game/${gameId}`, (message) => {
+          console.log('Received game update:', message);
+          get().updateGameState(message);
+        });
+      },
+      onDisconnect: () => {
+        console.log('Game WebSocket disconnected.');
+      },
+      onMessage: (topic, message) => {
+        console.log(`Received message on ${topic}:`, message);
+        // Handle specific message types if needed, or let updateGameState handle it
+      },
+    });
+  },
+
+  disconnect: () => {
+    disconnectWebSocket();
+  },
+
+  send: (destination: string, body: any) => {
+    sendMessage(destination, body);
+  },
+
+  updateGameState: (newState: Partial<GameState>) => {
+    set(newState);
+  },
+
   rollDice: () => {
-    const { gamePhase, players, currentPlayerIndex } = get();
+    const { gamePhase, players, currentPlayerIndex, gameId, send } = get();
     const currentPlayer = players[currentPlayerIndex];
 
     if (gamePhase !== 'WAITING_FOR_ROLL') return;
 
-    // 감옥에 있을 경우 감옥 모달을 띄웁니다.
     if (currentPlayer.isInJail) {
-      get().handleJail();
+      set({ modal: { type: 'JAIL' } });
       return;
     }
 
-    // 세계여행 중일 경우 목적지 선택 모달을 띄웁니다.
     if (currentPlayer.isTraveling) {
-      set({ gamePhase: 'WORLD_TRAVEL', modal: { type: 'WORLD_TRAVEL_PICKER' } });
+      set({ modal: { type: 'INFO', text: '세계여행! 이동할 칸을 보드에서 직접 클릭하세요.', onConfirm: get().startWorldTravelSelection } });
       return;
     }
 
-    set({ gamePhase: 'DICE_ROLLING' });
+    if (gameId) {
+      send(`/app/game/${gameId}/roll-dice`, { playerId: currentPlayer.id });
+    } else {
+      console.warn('Game ID not set. Cannot send roll dice message.');
+      set({ gamePhase: 'DICE_ROLLING' }); // Fallback for local testing
+    }
   },
 
   movePlayer: (diceValues) => {
-    const { players, currentPlayerIndex } = get()
+    const { players, currentPlayerIndex, board } = get()
     const currentPlayer = players[currentPlayerIndex]
     const diceSum = diceValues[0] + diceValues[1]
-    
-    // 시작점을 지났는지 확인하고 월급을 지급합니다.
+
     const newPosition = (currentPlayer.position + diceSum)
     let updatedMoney = currentPlayer.money
-    if (newPosition >= boardData.length) {
-      updatedMoney += 200000; // 월급
+    let lapCount = currentPlayer.lapCount
+
+    if (newPosition >= board.length) {
+      updatedMoney += 200000;
+      lapCount += 1;
     }
-    
-    const finalPosition = newPosition % boardData.length;
+
+    const finalPosition = newPosition % board.length;
     const updatedPlayers = [...players]
-    updatedPlayers[currentPlayerIndex] = { ...currentPlayer, position: finalPosition, money: updatedMoney }
-    
+    updatedPlayers[currentPlayerIndex] = { ...currentPlayer, position: finalPosition, money: updatedMoney, lapCount }
+
     set({ players: updatedPlayers, dice: diceValues, gamePhase: 'PLAYER_MOVING' })
   },
   
-  // 타일 도착 후 액션 처리
   handleTileAction: () => {
-    const { players, currentPlayerIndex } = get()
+    set({ gamePhase: 'TILE_ACTION' });
+    const { players, currentPlayerIndex, board } = get()
     const currentPlayer = players[currentPlayerIndex]
     
-    if (currentPlayer.money <= 0) {
+    if (currentPlayer.money < 0) {
       get().checkGameOver()
       return;
     }
 
-    const currentTile = boardData[currentPlayer.position]
+    const currentTile = board[currentPlayer.position]
 
     switch (currentTile.type) {
       case 'city':
@@ -140,24 +189,52 @@ export const useGameStore = create<GameState>()((set, get) => ({
           if(currentPlayer.money >= (currentTile.price ?? 0)) {
             set({ modal: { type: 'BUY_PROPERTY', tile: currentTile } })
           } else {
-            get().endTurn() // 돈이 없으면 그냥 턴 종료
+            get().endTurn()
           }
         } else if (owner.id !== currentPlayer.id) {
-          const toll = currentTile.tolls?.[0] || 50000;
+          let toll = currentTile.tolls?.[currentTile.buildings?.level || 0] || 50000;
+          
+          if (get().expoLocation === currentPlayer.position) {
+            toll *= 2;
+          }
+
           const acquireCost = (currentTile.price || 0) * 2
           set({ modal: { type: 'ACQUIRE_PROPERTY', tile: currentTile, acquireCost, toll } })
         } else {
-          get().endTurn()
+          if (currentTile.type === 'city' && currentPlayer.lapCount > 0 && (currentTile.buildings?.level ?? 0) < 3) {
+            set({ gamePhase: 'MANAGE_PROPERTY', modal: { type: 'MANAGE_PROPERTY', tile: currentTile }})
+          } else {
+            get().endTurn()
+          }
         }
         break;
 
       case 'chance':
         const randomCard = chanceCards[Math.floor(Math.random() * chanceCards.length)];
         set(state => {
-          const updatedPlayers = [...state.players];
-          const updatedPlayer = randomCard.action(updatedPlayers[state.currentPlayerIndex]);
-          updatedPlayers[state.currentPlayerIndex] = updatedPlayer;
-          return { players: updatedPlayers, modal: { type: 'CHANCE_CARD', text: randomCard.text } };
+            const currentPlayer = state.players[state.currentPlayerIndex];
+            const originalPosition = currentPlayer.position;
+            const playerAfterAction = randomCard.action(currentPlayer);
+            const moved = playerAfterAction.position !== originalPosition;
+            const updatedPlayers = state.players.map(p => 
+                p.id === playerAfterAction.id ? playerAfterAction : p
+            );
+            
+            return { 
+                players: updatedPlayers, 
+                modal: { 
+                    type: 'CHANCE_CARD', 
+                    text: randomCard.text,
+                    onConfirm: () => {
+                      set({ modal: { type: 'NONE' } });
+                      if (moved) {
+                        get().handleTileAction(); // 이동이 발생했으면 다시 타일 액션
+                      } else {
+                        get().endTurn(); // 이동이 없었으면 턴 종료
+                      }
+                    }
+                } 
+            };
         });
         break;
 
@@ -166,27 +243,29 @@ export const useGameStore = create<GameState>()((set, get) => ({
           case '무인도':
             set(state => {
               const updatedPlayers = [...state.players];
-              updatedPlayers[state.currentPlayerIndex] = {
-                ...updatedPlayers[state.currentPlayerIndex],
-                isInJail: true,
-                jailTurns: 3
+              updatedPlayers[state.currentPlayerIndex] = { ...updatedPlayers[state.currentPlayerIndex], isInJail: true, jailTurns: 3 };
+              return { 
+                players: updatedPlayers, 
+                modal: { type: 'INFO', text: '무인도에 갇혔습니다! 다음 턴부터 3턴 동안 머물게 됩니다.', onConfirm: get().endTurn } 
               };
-              return { players: updatedPlayers, modal: { type: 'JAIL' } };
             });
             break;
           case '박람회':
-            const ownedProperties = currentPlayer.properties.map(index => ({ name: boardData[index].name, index }));
+            const ownedProperties = currentPlayer.properties.map(index => ({ name: board[index].name, index }));
             if (ownedProperties.length > 0) {
               set({ modal: { type: 'EXPO', properties: ownedProperties } });
             } else {
-              set({ modal: { type: 'INFO', text: '소유한 땅이 없어 박람회 효과를 받을 수 없습니다.' } });
+              set({ modal: { type: 'INFO', text: '소유한 땅이 없어 박람회 효과를 받을 수 없습니다.', onConfirm: get().endTurn } });
             }
             break;
           case '세계여행':
             set(state => {
               const updatedPlayers = [...state.players];
               updatedPlayers[state.currentPlayerIndex] = { ...updatedPlayers[state.currentPlayerIndex], isTraveling: true };
-              return { players: updatedPlayers, modal: { type: 'INFO', text: '세계여행! 다음 턴에 원하는 곳으로 이동할 수 있습니다.' } };
+              return { 
+                players: updatedPlayers, 
+                modal: { type: 'INFO', text: '세계여행! 다음 턴에 원하는 곳으로 이동할 수 있습니다.', onConfirm: get().endTurn }
+              };
             });
             break;
           default:
@@ -203,8 +282,8 @@ export const useGameStore = create<GameState>()((set, get) => ({
   
   buyProperty: () => {
     set(state => {
-      const { players, currentPlayerIndex, modal } = state;
-      const tileIndex = boardData.findIndex(t => t.name === modal.tile?.name);
+      const { players, currentPlayerIndex, modal, board } = state;
+      const tileIndex = board.findIndex(t => t.name === modal.tile?.name);
       if (tileIndex === -1 || !modal.tile?.price) return {};
 
       const currentPlayer = players[currentPlayerIndex];
@@ -219,13 +298,12 @@ export const useGameStore = create<GameState>()((set, get) => ({
       }
       return { modal: { type: 'INFO', text: '자산이 부족하여 구매할 수 없습니다.' } };
     });
-    get().endTurn();
   },
 
   acquireProperty: () => {
     set(state => {
-      const { players, currentPlayerIndex, modal } = state;
-      const tileIndex = boardData.findIndex(t => t.name === modal.tile?.name);
+      const { players, currentPlayerIndex, modal, board } = state;
+      const tileIndex = board.findIndex(t => t.name === modal.tile?.name);
       if (tileIndex === -1 || !modal.acquireCost) return {};
 
       const currentPlayer = players[currentPlayerIndex];
@@ -248,32 +326,88 @@ export const useGameStore = create<GameState>()((set, get) => ({
       }
       return { modal: { type: 'INFO', text: '자산이 부족하여 인수할 수 없습니다.' } };
     });
-    get().endTurn();
   },
 
   payToll: () => {
     set(state => {
-      const { players, currentPlayerIndex, modal } = state;
-      if (!modal.toll) return {};
-
+      const { players, currentPlayerIndex, modal, board } = state;
+      if (!modal.toll) {
+          return { modal: { type: 'NONE' } };
+      };
+  
       const currentPlayer = players[currentPlayerIndex];
-      const owner = players.find(p => p.properties.includes(boardData.findIndex(t => t.name === modal.tile?.name)))!;
+      const tileIndex = board.findIndex(t => t.name === modal.tile?.name);
+      const toll = modal.toll;
+  
+      if (currentPlayer.money < toll) {
+          const requiredAmount = toll - currentPlayer.money;
+          
+          const propertiesToSell = currentPlayer.properties
+              .map(index => ({ index, price: board[index].price || 0 }))
+              .sort((a, b) => b.price - a.price);
+  
+          let moneyRaised = 0;
+          const soldProperties: number[] = [];
+  
+          for (const prop of propertiesToSell) {
+              if (moneyRaised >= requiredAmount) break;
+              
+              const salePrice = prop.price * 0.8;
+              moneyRaised += salePrice;
+              soldProperties.push(prop.index);
+          }
+  
+          if (currentPlayer.money + moneyRaised >= toll) {
+              const updatedPlayer = {
+                  ...currentPlayer,
+                  money: currentPlayer.money + moneyRaised - toll,
+                  properties: currentPlayer.properties.filter(p => !soldProperties.includes(p)),
+              };
+              
+              const updatedPlayers = [...players];
+              updatedPlayers[currentPlayerIndex] = updatedPlayer;
+  
+              const finalOwner = updatedPlayers.find(p => p.properties.includes(tileIndex))!;
+              const ownerIndex = updatedPlayers.findIndex(p => p.id === finalOwner.id);
+              updatedPlayers[ownerIndex] = { ...finalOwner, money: finalOwner.money + toll };
+  
+              return { 
+                  players: updatedPlayers, 
+                  modal: { 
+                      type: 'INFO', 
+                      text: `현금이 부족하여 부동산 ${soldProperties.length}개를 자동 매각하고 통행료를 지불했습니다.`,
+                  } 
+              };
+          }
+      }
       
-      const updatedPlayers = [...players];
-      updatedPlayers[currentPlayerIndex] = { ...currentPlayer, money: currentPlayer.money - modal.toll };
-      const ownerIndex = updatedPlayers.findIndex(p => p.id === owner.id);
-      updatedPlayers[ownerIndex] = { ...owner, money: owner.money + modal.toll };
+      const currentPlayers = [...players];
+      const player = currentPlayers[currentPlayerIndex];
+      const currentOwner = currentPlayers.find(p => p.properties.includes(tileIndex))!;
+      const ownerIdx = currentPlayers.findIndex(p => p.id === currentOwner.id);
       
-      return { players: updatedPlayers };
+      currentPlayers[currentPlayerIndex] = { ...player, money: player.money - toll };
+      currentPlayers[ownerIdx] = { ...currentOwner, money: currentOwner.money + toll };
+
+      const updatedPlayer = currentPlayers[currentPlayerIndex];
+      const text = updatedPlayer.money < 0
+          ? `${updatedPlayer.name}님이 파산했습니다.`
+          : `통행료 ${toll.toLocaleString()}원을 지불했습니다.`;
+
+      return {
+          players: currentPlayers,
+          modal: {
+              type: 'INFO',
+              text: text,
+          }
+      };
     });
-    get().checkGameOver();
   },
 
   endTurn: () => {
     const { players, currentPlayerIndex, gamePhase, currentTurn, totalTurns } = get();
     if (gamePhase === 'GAME_OVER') return;
 
-    // 턴 종료 시 턴 수를 증가시킵니다. (모든 플레이어가 한 번씩 플레이했을 때)
     let nextPlayerIndex = (currentPlayerIndex + 1) % players.length;
     let nextTurn = currentTurn;
     if (nextPlayerIndex === 0) {
@@ -285,8 +419,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
       return;
     }
 
-    // 파산한 플레이어는 건너뜁니다.
-    while (players[nextPlayerIndex].money <= 0) {
+    while (players[nextPlayerIndex].money < 0) {
       nextPlayerIndex = (nextPlayerIndex + 1) % players.length;
        if (nextPlayerIndex === 0 && currentTurn !== nextTurn) {
          nextTurn = currentTurn + 1;
@@ -300,15 +433,20 @@ export const useGameStore = create<GameState>()((set, get) => ({
   },
   
   checkGameOver: () => {
-    const { players, currentTurn, totalTurns } = get();
-    const alivePlayers = players.filter(p => p.money > 0);
+    const { players, currentTurn, totalTurns, board } = get();
+    const alivePlayers = players.filter(p => p.money >= 0);
     
     let winner = null;
     if (alivePlayers.length <= 1) {
       winner = alivePlayers[0] ?? null;
     } else if (currentTurn > totalTurns) {
-      // 턴 종료로 게임이 끝났을 경우, 자산이 가장 많은 플레이어가 승리
-      winner = players.reduce((prev, current) => (prev.money > current.money) ? prev : current);
+      winner = players
+        .filter(p => p.money >= 0)
+        .reduce((prev, current) => {
+            const prevAssets = prev.money + prev.properties.reduce((sum, i) => sum + (board[i].price || 0), 0);
+            const currentAssets = current.money + current.properties.reduce((sum, i) => sum + (board[i].price || 0), 0);
+            return prevAssets > currentAssets ? prev : current;
+        });
     }
 
     if (winner || alivePlayers.length === 0 || currentTurn > totalTurns) {
@@ -318,58 +456,57 @@ export const useGameStore = create<GameState>()((set, get) => ({
     }
   },
 
-  // 감옥 관련 로직
   handleJail: () => {
     set(state => {
-      const { players, currentPlayerIndex } = state;
-      const currentPlayer = players[currentPlayerIndex];
+      const updatedPlayers = [...state.players];
+      const currentPlayer = updatedPlayers[state.currentPlayerIndex];
+      const newJailTurns = currentPlayer.jailTurns - 1;
 
-      if (currentPlayer.jailTurns > 1) {
-        const updatedPlayers = [...players];
-        updatedPlayers[currentPlayerIndex] = { ...currentPlayer, jailTurns: currentPlayer.jailTurns - 1 };
-        return { players: updatedPlayers, modal: { type: 'INFO', text: `무인도 탈출까지 ${currentPlayer.jailTurns - 1}턴 남았습니다.` } };
+      if (newJailTurns <= 0) {
+        updatedPlayers[state.currentPlayerIndex] = { ...currentPlayer, isInJail: false, jailTurns: 0 };
+        return { 
+          players: updatedPlayers, 
+          modal: { type: 'INFO', text: '무인도에서 탈출했습니다! 다음 턴부터 정상 진행됩니다.', onConfirm: get().endTurn }
+        };
       } else {
-        const updatedPlayers = [...players];
-        updatedPlayers[currentPlayerIndex] = { ...currentPlayer, isInJail: false, jailTurns: 0 };
-        return { players: updatedPlayers, modal: { type: 'INFO', text: '무인도에서 탈출했습니다! 다음 턴부터 정상 진행됩니다.' } };
+        updatedPlayers[state.currentPlayerIndex] = { ...currentPlayer, jailTurns: newJailTurns };
+        return { 
+          players: updatedPlayers, 
+          modal: { type: 'INFO', text: `무인도 탈출까지 ${newJailTurns}턴 남았습니다.`, onConfirm: get().endTurn }
+        };
       }
     });
-    get().endTurn(); // 턴을 넘깁니다.
   },
 
-  // 보석금 지불 로직
   payBail: () => {
     set(state => {
-      const { players, currentPlayerIndex } = state;
-      const currentPlayer = players[currentPlayerIndex];
+      const currentPlayer = state.players[state.currentPlayerIndex];
       if (currentPlayer.money >= BAIL_AMOUNT) {
-        const updatedPlayers = [...players];
-        updatedPlayers[currentPlayerIndex] = {
+        const updatedPlayers = [...state.players];
+        updatedPlayers[state.currentPlayerIndex] = {
           ...currentPlayer,
           money: currentPlayer.money - BAIL_AMOUNT,
           isInJail: false,
           jailTurns: 0
         };
-        return { players: updatedPlayers, modal: { type: 'NONE' } };
+        return { players: updatedPlayers, modal: { type: 'NONE' }, gamePhase: 'WAITING_FOR_ROLL' };
       } else {
         return { modal: { type: 'INFO', text: '보석금이 부족합니다.' } };
       }
     });
-    // 보석금을 냈다면 바로 턴을 진행하지 않고, 다음 턴부터 시작하도록 endTurn()을 호출하지 않습니다.
-    // 대신, 게임 단계를 WAITING_FOR_ROLL로 변경하여 주사위를 굴릴 수 있게 합니다.
-    set({ gamePhase: 'WAITING_FOR_ROLL' });
   },
 
-  // 박람회 땅 선택 로직
   selectExpoProperty: (propertyIndex: number) => {
-    // 이 기능은 백엔드와 연동이 필요하여, 여기서는 모달을 닫고 턴을 종료하는 것으로 구현합니다.
-    // 실제 구현 시에는 해당 땅의 통행료를 2배로 만드는 로직이 필요합니다.
-    console.log(`Property at index ${propertyIndex} selected for double toll.`);
-    set({ modal: { type: 'INFO', text: `${boardData[propertyIndex].name}의 통행료가 2배가 되었습니다!` } });
-    // get().endTurn(); // 정보 모달을 띄우고 확인 버튼을 누르면 턴이 종료되도록 GameUI에서 처리
+    set({ 
+      expoLocation: propertyIndex,
+      modal: { type: 'INFO', text: `${get().board[propertyIndex].name}에서 박람회가 개최되어 통행료가 2배가 됩니다!`, onConfirm: get().endTurn }
+    });
   },
 
-  // 세계여행 목적지 선택 로직
+  startWorldTravelSelection: () => {
+    set({ gamePhase: 'WORLD_TRAVEL_MOVE', modal: { type: 'NONE' } });
+  },
+
   selectTravelDestination: (tileIndex: number) => {
     set(state => {
       const { players, currentPlayerIndex } = state;
@@ -379,9 +516,53 @@ export const useGameStore = create<GameState>()((set, get) => ({
         position: tileIndex,
         isTraveling: false,
       };
-      return { players: updatedPlayers, gamePhase: 'PLAYER_MOVING', modal: { type: 'NONE' } };
+      return { players: updatedPlayers, gamePhase: 'PLAYER_MOVING', dice: [0, 0], modal: { type: 'NONE' } };
     });
-    // 이동 후 타일 액션을 즉시 실행합니다.
-    // get().handleTileAction(); // Player 컴포넌트의 onRest에서 처리
-  }
+  },
+  
+  buildBuilding: (tileIndex: number) => {
+    set(state => {
+      const { players, currentPlayerIndex, board } = state;
+      const currentPlayer = players[currentPlayerIndex];
+      const tile = board[tileIndex];
+      
+      if (!tile.buildingPrice || !tile.buildings || tile.buildings.level >= 3) {
+        return { modal: { type: 'INFO', text: '더 이상 건물을 지을 수 없습니다.', onConfirm: get().endTurn } };
+      }
+
+      if (currentPlayer.money < tile.buildingPrice) {
+        return { modal: { type: 'INFO', text: '건설 비용이 부족합니다.', onConfirm: get().endTurn } };
+      }
+      
+      if (currentPlayer.lapCount <= tile.buildings.level) {
+        return { modal: { type: 'INFO', text: `건설에 필요한 바퀴 수(${tile.buildings.level + 1}바퀴)가 부족합니다.`, onConfirm: get().endTurn } };
+      }
+
+      const updatedPlayers = [...players];
+      updatedPlayers[currentPlayerIndex] = {
+        ...currentPlayer,
+        money: currentPlayer.money - tile.buildingPrice,
+      };
+      
+      const newBoard = board.map((t, index) => {
+        if (index === tileIndex && t.buildings) {
+          return {
+            ...t,
+            buildings: { level: (t.buildings.level + 1) as 1 | 2 | 3 }
+          };
+        }
+        return t;
+      });
+
+      return {
+        players: updatedPlayers,
+        board: newBoard,
+        modal: { 
+          type: 'INFO', 
+          text: `${tile.name}에 ${BuildingType[newBoard[tileIndex].buildings!.level]}을(를) 건설했습니다!`,
+          onConfirm: get().endTurn 
+        }
+      };
+    });
+  },
 }));

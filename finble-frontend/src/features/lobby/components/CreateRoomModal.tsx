@@ -1,25 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useLobbyStore } from '../store/useLobbyStore';
 import './CreateRoomModal.css';
 
 export const CreateRoomModal = ({ isOpen, onClose }) => {
-  const [roomName, setRoomName] = useState('');
-  const navigate = useNavigate();
-  const addRoom = useLobbyStore((state) => state.addRoom);
-
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!roomName.trim()) {
-      alert('Please enter a room name.');
-      return;
-    }
-    // Using default values for maxPlayers (4) and gameMode ('Battle Royale')
-    const newRoomId = addRoom(roomName.trim(), 4, 'Battle Royale');
-    onClose();
-    navigate(`/room/${newRoomId}`);
+    // 방 생성 로직 (API 호출 등)
+    onClose(); // 생성 후 모달 닫기 (실제론 생성 성공 후 닫아야 함)
   };
 
   return (
@@ -32,13 +19,26 @@ export const CreateRoomModal = ({ isOpen, onClose }) => {
         <form className="modal-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Room Name</label>
-            <input
-              type="text"
-              placeholder="Enter room name..."
-              required
-              value={roomName}
-              onChange={(e) => setRoomName(e.target.value)}
-            />
+            <input type="text" placeholder="Enter room name..." required />
+          </div>
+          <div className="form-group">
+            <label>Max Players</label>
+            <select required>
+              <option value="">Select...</option>
+              <option>2</option>
+              <option>4</option>
+              <option>8</option>
+              <option>16</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Game Mode</label>
+            <select required>
+              <option value="">Select...</option>
+              <option>Battle Royale</option>
+              <option>Team Deathmatch</option>
+              <option>Capture the Flag</option>
+            </select>
           </div>
           <div className="form-actions">
             <button type="button" className="cancel-button" onClick={onClose}>
