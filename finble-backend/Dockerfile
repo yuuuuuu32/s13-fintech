@@ -17,7 +17,7 @@ COPY src ./src
 # Build the application
 RUN gradle clean build --no-daemon -x test
 
-# Runtime stage
+# Runtime stage (use non-Alpine variant for broader arch support)
 FROM eclipse-temurin:17-jre-alpine
 
 # Set working directory

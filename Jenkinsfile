@@ -103,7 +103,7 @@ pipeline {
                         
                         // Copy project files to EC2
                         sh """
-                            scp -o StrictHostKeyChecking=no -r ./docker-compose.yml ./finble-backend ./init.sql ./data.sql ./Jenkinsfile ${env.EC2_USER}@${env.EC2_HOST}:/home/ubuntu/bluemarble/
+                            scp -o StrictHostKeyChecking=no -r ./docker-compose.yml ./finble-backend ./init.sql ./Jenkinsfile ${env.EC2_USER}@${env.EC2_HOST}:/home/ubuntu/bluemarble/
                         """
                         
                         // Deploy on EC2

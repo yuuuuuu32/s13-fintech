@@ -1,11 +1,13 @@
 package com.ssafy.BlueMarble.domain.game.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
+import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
@@ -34,6 +36,7 @@ public class EventService {
     private final RoomService roomService;
     private final ObjectMapper objectMapper;
     private final SessionMessageService sessionMessageService;
+    private final UserRedisService userRedisService;
     private final Random random = new Random();
 
     /**
@@ -204,14 +207,18 @@ public class EventService {
     /**
      * 주사위 사용 이벤트 처리
      */
-    public void handleUseDiceEvent(WebSocketSession session, UseDiceRequest useDiceRequest) {
+    public void handleUseDiceEvent(WebSocketSession session, UseDiceRequest useDiceRequest) throws JsonProcessingException {
         String roomId = roomService.getRoom(session.getId());
         
         // 1. 게임 맵 정보
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         
         // 2. 주사위 사용자 정보
-        CreateMapPayload.PlayerState player = gameState.getPlayers().get(useDiceRequest.getUserName());
+        String userId = userRedisService.getUserIdByNickname(useDiceRequest.getUserName());
+        if (userId == null) throw new BusinessException(BusinessError.USER_NOT_FOUND);
+
+        CreateMapPayload.PlayerState player = gameState.getPlayers().get(userId);
+        log.info("{}플레이어 이름은 이거에요!",objectMapper.writeValueAsString(player));
         if (player == null) {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
@@ -221,7 +228,7 @@ public class EventService {
         
         // 4. 위치 계산
         int currentPosition = player.getPosition();
-        int newPosition = (currentPosition + diceNum) % 28; // 28개 칸 순환
+        int newPosition = (currentPosition + diceNum) % 32; // 28개 칸 순환
         
         // 5. 시작점 통과 여부
         int salaryBonus = 0;
