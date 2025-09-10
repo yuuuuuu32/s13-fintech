@@ -36,15 +36,10 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/ws/**", "/user/**", "/game/**").permitAll()
-                        .requestMatchers("/api/room/**", "/api/user/friend/**").permitAll()
+                        .requestMatchers("/api/room/**").permitAll()
                         .requestMatchers("/api/game/**").permitAll()
-                        .requestMatchers("/api/inventory/**").permitAll()
-                        .requestMatchers("/api/map/**").permitAll()
                         .requestMatchers(
                                 "/auth/**", "/oauth2/**", "/oauth2", "/login/oauth2", "/login/oauth2/code/**"
-                        ).permitAll()
-                        .requestMatchers(
-                                "/api/chat/**"
                         ).permitAll()
                         .requestMatchers(
                                 "/ws-endpoint"
