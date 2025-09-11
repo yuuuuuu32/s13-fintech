@@ -15,7 +15,7 @@ export const getRoomList = async (): Promise<GameRoom[]> => {
   }
 
   try {
-    const response = await apiClient.get<Page<GameRoom>>('/room/list', {
+    const response = await apiClient.get<Page<GameRoom>>('/api/room/list', {
       headers: {
         Authorization: `Bearer ${token}`,
       },

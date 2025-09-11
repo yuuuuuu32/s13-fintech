@@ -1,86 +1,145 @@
-import SockJS from 'sockjs-client';
-import * as Stomp from 'stompjs';
-import { IMessage } from 'stompjs';
+// import * as Stomp from 'stompjs'; // StompJS 임포트 제거
+// import { IMessage } from 'stompjs'; // IMessage 임포트 제거
 
-const WEBSOCKET_URL = 'http://localhost:8081/ws'; // Backend WebSocket endpoint
+const WEBSOCKET_URL = 'ws://localhost:8080/ws'; // 백엔드 WebSocket 주소
 
-let stompClient: Stomp.Client | null = null;
+let webSocket: WebSocket | null = null; // 순수 WebSocket 객체
 let reconnectTimeout: NodeJS.Timeout | null = null;
+let isConnected = false; // 연결 상태 추적
+
+// ... (다른 함수들)
+
+export const getWebSocketStatus = (): boolean => {
+  return isConnected;
+};
+
+// 구독 콜백을 저장할 맵 (토픽별로 여러 콜백이 있을 수 있음)
+const subscriptions: { [topic: string]: ((message: any) => void)[] } = {};
 
 interface WebSocketCallbacks {
   onConnect: () => void;
   onDisconnect: () => void;
-  onMessage: (topic: string, message: any) => void;
+  onMessage: (topic: string, message: any) => void; // 이제 topic도 전달
 }
 
 export const connectWebSocket = (callbacks: WebSocketCallbacks) => {
-  if (stompClient && stompClient.connected) {
+  if (webSocket && isConnected) {
     console.log('Already connected to WebSocket.');
+    callbacks.onConnect(); // 이미 연결되어 있다면 바로 onConnect 호출
     return;
   }
 
   console.log('Connecting to WebSocket...');
-  const socket = new SockJS(WEBSOCKET_URL);
-  stompClient = Stomp.over(socket);
+  webSocket = new WebSocket(WEBSOCKET_URL);
 
-  stompClient.connect(
-    {},
-    () => {
-      console.log('WebSocket connected.');
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-        reconnectTimeout = null;
-      }
-      callbacks.onConnect();
-    },
-    (error: any) => {
-      console.error('WebSocket connection error:', error);
-      callbacks.onDisconnect();
-      // Reconnect after a delay
-      if (!reconnectTimeout) {
-        reconnectTimeout = setTimeout(() => {
-          console.log('Attempting to reconnect WebSocket...');
-          connectWebSocket(callbacks);
-        }, 5000); // Reconnect after 5 seconds
-      }
+  webSocket.onopen = () => {
+    console.log('WebSocket connected.');
+    isConnected = true;
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
     }
-  );
-};
+    callbacks.onConnect();
 
-export const disconnectWebSocket = () => {
-  if (stompClient) {
-    stompClient.disconnect(() => {
-      console.log('WebSocket disconnected.');
-      stompClient = null;
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-        reconnectTimeout = null;
-      }
-    });
-  }
-};
+    // 연결 성공 후, 이전에 구독했던 토픽들을 다시 구독 (필요시)
+    // 순수 WebSocket에서는 토픽 재구독 개념이 없으므로, 메시지 핸들러를 다시 설정하는 것으로 대체
+    // 또는 백엔드에서 연결 시 모든 구독 정보를 다시 보내주는 방식이 필요
+  };
 
-export const subscribeToTopic = (topic: string, callback: (message: any) => void) => {
-  if (!stompClient || !stompClient.connected) {
-    console.warn('WebSocket not connected. Cannot subscribe to topic:', topic);
-    return;
-  }
-  console.log(`Subscribing to topic: ${topic}`);
-  stompClient.subscribe(topic, (message: IMessage) => {
+  webSocket.onmessage = (event) => {
+    console.log('Received raw WebSocket message:', event.data); // 원본 메시지 출력
     try {
-      const parsedMessage = JSON.parse(message.body);
-      callback(parsedMessage);
+      const parsedMessage = JSON.parse(event.data as string);
+      // 백엔드에서 메시지에 'topic' 필드를 포함하여 보내준다고 가정
+      const topic = parsedMessage.topic || 'default'; // 백엔드와 협의 필요
+      callbacks.onMessage(topic, parsedMessage);
+
+      // 구독된 토픽에 대한 콜백 호출
+      if (subscriptions[topic]) {
+        subscriptions[topic].forEach(callback => callback(parsedMessage));
+      }
     } catch (e) {
       console.error('Error parsing WebSocket message:', e);
     }
-  });
+  };
+
+  webSocket.onclose = (event) => {
+    console.log('WebSocket disconnected:', event);
+    isConnected = false;
+    callbacks.onDisconnect();
+    // Reconnect after a delay
+    if (!reconnectTimeout) {
+      reconnectTimeout = setTimeout(() => {
+        console.log('Attempting to reconnect WebSocket...');
+        connectWebSocket(callbacks);
+      }, 5000); // Reconnect after 5 seconds
+    }
+  };
+
+  webSocket.onerror = (error) => {
+    console.error('WebSocket error:', error);
+    isConnected = false;
+    callbacks.onDisconnect();
+    // 에러 발생 시에도 재연결 시도
+    if (!reconnectTimeout) {
+      reconnectTimeout = setTimeout(() => {
+        console.log('Attempting to reconnect WebSocket after error...');
+        connectWebSocket(callbacks);
+      }, 5000);
+    }
+  };
+};
+
+export const disconnectWebSocket = () => {
+  if (webSocket && isConnected) {
+    webSocket.close();
+    console.log('WebSocket disconnected.');
+    isConnected = false;
+    webSocket = null;
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
+    }
+  } else {
+    console.log('WebSocket is not connected, no need to disconnect.');
+    webSocket = null;
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
+    }
+  }
+};
+
+export const subscribeToTopic = (topic: string, callback: (message: any) => void): (() => void) => {
+  // 순수 WebSocket은 STOMP처럼 토픽 구독 개념이 없음.
+  // 백엔드에서 메시지에 토픽 정보를 포함하여 보내주고, 프론트엔드에서 필터링해야 함.
+  // 여기서는 단순히 콜백을 저장하고, onmessage에서 해당 토픽 메시지 수신 시 호출하도록 구현.
+  if (!subscriptions[topic]) {
+    subscriptions[topic] = [];
+  }
+  subscriptions[topic].push(callback);
+  console.log(`Subscribing to topic: ${topic} (pure WebSocket simulation)`);
+
+  // 구독을 해제할 수 있는 함수 반환
+  const unsubscribe = () => {
+    if (subscriptions[topic]) {
+      subscriptions[topic] = subscriptions[topic].filter(cb => cb !== callback);
+      if (subscriptions[topic].length === 0) {
+        delete subscriptions[topic]; // 더 이상 구독자가 없으면 토픽 제거
+      }
+      console.log(`Unsubscribed from topic: ${topic}`);
+    }
+  };
+  return unsubscribe;
 };
 
 export const sendMessage = (destination: string, body: any) => {
-  if (!stompClient || !stompClient.connected) {
+  if (!webSocket || !isConnected) {
     console.warn('WebSocket not connected. Cannot send message to:', destination);
     return;
   }
+  // 백엔드가 최상위 type과 payload를 기대하므로, body를 그대로 보냄
+  // destination은 WebSocket 경로로만 사용하고 메시지 본문에는 포함하지 않음
   console.log(`Sending message to ${destination}: `, body);
-  stompClient.send(destination, {}, JSON.stringify(body));
+  webSocket.send(JSON.stringify(body)); // body를 직접 보냄
 };

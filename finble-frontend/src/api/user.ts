@@ -24,3 +24,27 @@ export const getMyInfo = async () => {
 
   return response.data;
 };
+
+/**
+ * 사용자의 닉네임을 업데이트합니다.
+ * @param nickname - 새로운 닉네임
+ * @returns 업데이트된 사용자 정보
+ */
+export const updateMyInfo = async (nickname: string) => {
+  const token = localStorage.getItem('jwt');
+  if (!token) {
+    throw new Error('인증 토큰을 찾을 수 없습니다.');
+  }
+
+  const response = await apiClient.put(
+    '/user',
+    { nickname }, // 요청 본문에 닉네임 포함
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  return response.data;
+};

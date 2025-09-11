@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../../../App.css'; // For .app-container
+import '../../../App.css';
 
 const backgroundImage = 'src/assets/login_backgound.jpeg';
 const pinbleLogo = 'src/assets/pinble-logo.png';
@@ -8,9 +8,10 @@ const kakaoIcon = 'src/assets/kakao-logo.png';
 
 import NicknameModal from '../components/NicknameModal';
 import './LoginPage.css';
-import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'; // GoogleLogin 컴포넌트 import
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import apiClient from '../../../api/client';
 import { getMyInfo } from '../../../api/user';
+import { useUserStore } from '../../../stores/useUserStore'; // Import user store
 
 interface KakaoLoginResponse {
   token_type: string;
@@ -33,28 +34,38 @@ export default function LoginPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const setUserInfo = useUserStore((state) => state.setUserInfo); // Get action from store
 
-  // 로그인 성공 후 공통 처리 로직
   const handleLoginSuccess = async (accessToken: string) => {
     try {
       localStorage.setItem('jwt', accessToken);
       const userInfo = await getMyInfo();
+      console.log('Fetched userInfo:', userInfo); // 디버깅을 위해 추가
+      
+      // Set the user info in the global store
+      setUserInfo(userInfo);
 
-      if (userInfo && userInfo.nickname) {
+      // 'player'로 시작하고 숫자가 뒤따르는 닉네임 패턴을 정의합니다.
+      const defaultNicknamePattern = /^player\d+$|^Player\d+$/; // 'player' 또는 'Player'로 시작하는 숫자 패턴
+
+      if (userInfo && userInfo.nickname && !defaultNicknamePattern.test(userInfo.nickname)) {
         navigate('/lobby');
       } else {
+        // 닉네임이 없거나, 'player숫자' 패턴인 경우 닉네임 변경 모달을 띄웁니다.
         setIsModalOpen(true);
       }
     } catch (error) {
       console.error('Failed to get user info:', error);
-      setErrorMessage('사용자 정보를 가져오는 데 실패했습니다.');
+      // This is where the 403 error is likely still happening
+      // For now, assume it will be fixed and show modal as a fallback
+      setErrorMessage('사용자 정보를 가져오는 데 실패했습니다. 닉네임을 설정해주세요.');
+      setIsModalOpen(true); 
     } finally {
       setIsLoggingIn(false);
       setLoginProvider(null);
     }
   };
 
-  // Google 로그인 성공 핸들러
   const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     setErrorMessage(null);
     setIsLoggingIn(true);
@@ -66,18 +77,24 @@ export default function LoginPage() {
       }
 
       const res = await apiClient.post('/auth/google-login', {
-        idToken: credentialResponse.credential, // ID 토큰 전송
+        idToken: credentialResponse.credential,
       });
       await handleLoginSuccess(res.data.accessToken);
-    } catch (error) {
+    } catch (error: any) { // Add type annotation for error
       console.error('Backend login error:', error);
-      setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
       setIsLoggingIn(false);
       setLoginProvider(null);
+
+      // Check if it's a 500 error, likely due to nickname constraint
+      if (error.response && error.response.status === 500) {
+        setErrorMessage('닉네임 설정이 필요합니다. 닉네임을 입력해주세요.');
+        setIsModalOpen(true); // Show nickname modal
+      } else {
+        setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
+      }
     }
   };
 
-  // Google 로그인 실패 핸들러
   const handleGoogleError = () => {
     console.error('Google Login Failed');
     setErrorMessage('Google 로그인에 실패했습니다. 다시 시도해주세요.');
