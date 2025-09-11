@@ -111,6 +111,7 @@ pipeline {
                             ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
                                 cd /home/ubuntu/bluemarble &&
                                 sudo docker-compose down --remove-orphans &&
+                                sudo docker system prune -f &&
                                 sudo docker-compose build --no-cache backend &&
                                 sudo docker-compose up -d
                             '
@@ -157,8 +158,9 @@ pipeline {
             steps {
                 echo 'Cleaning up...'
                 script {
-                    // Remove unused Docker images
+                    // Remove unused Docker images and build cache
                     sh 'docker image prune -f'
+                    sh 'docker builder prune -f'
                 }
             }
         }
