@@ -8,12 +8,17 @@ version = '0.0.1-SNAPSHOT'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(17)
     }
 }
 jar {
     enabled = false
 }
+
+springBoot {
+    mainClass = 'com.ssafy.BlueMarble.MainApplication'
+}
+
 repositories {
     mavenCentral()
 }
@@ -32,10 +37,10 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	runtimeOnly 'com.h2database:h2'
-	runtimeOnly 'org.xerial:sqlite-jdbc'
 	implementation 'org.hibernate.orm:hibernate-community-dialects'
 
     // ✅ Spring Security & JWT
@@ -81,9 +86,6 @@ dependencies {
     //firebase
     implementation 'com.google.firebase:firebase-admin:9.2.0'           // Google Firebase Admin
 
-    // querydsl
-    implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
-    annotationProcessor "com.querydsl:querydsl-apt:5.0.0:jakarta"
     annotationProcessor "jakarta.annotation:jakarta.annotation-api"
     annotationProcessor "jakarta.persistence:jakarta.persistence-api"
 

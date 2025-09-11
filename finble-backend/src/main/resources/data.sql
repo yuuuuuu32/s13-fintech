@@ -1,5 +1,35 @@
--- 기본 맵 칸 데이터 (칸 정의.txt 기반)
-INSERT INTO tiles (id, name, type, land_price, house_price, building_price, hotel_price, description) VALUES
+-- Initial data for Finble game
+-- Note: cities table does not exist, commenting out data insertion
+
+-- cities 데이터 삽입 (주석 처리: cities 테이블이 존재하지 않음)
+-- INSERT IGNORE INTO cities (name, korean_name, price)
+-- VALUES ('IKSAN', '익산', 50),
+--        ('SUNCHEON', '순천', 60),
+--        ('ASAN', '아산', 70),
+--        ('BUSAN', '부산', 200),
+--        ('CHEONGJU', '청주', 90),
+--        ('CHEONAN', '천안', 100),
+--        ('MOKPO', '목포', 110),
+--        ('YEOSU', '여수', 120),
+--        ('NAJU', '나주', 130),
+--        ('GWANGJU', '광주', 180),
+--        ('POHANG', '포항', 150),
+--        ('GIMCHEON', '김천', 160),
+--        ('DAEGU', '대구', 170),
+--        ('GUMI', '구미', 160),
+--        ('DAEJEON', '대전', 180),
+--        ('SUWON', '수원', 200),
+--        ('INCHEON', '인천', 210),
+--        ('GOYANG', '고양', 220),
+--        ('CHANGWON', '창원', 230),
+--        ('SEOUL', '서울', 220),
+--        ('SEONGNAM', '성남', 250),
+--        ('GWACHEON', '과천', 270),
+--        ('HANAM', '하남', 285),
+--        ('INCHEON2', '인천', 300);
+
+-- tiles 데이터 삽입 (게임판 칸 정보)
+INSERT IGNORE INTO tiles (id, name, type, land_price, house_price, building_price, hotel_price, description) VALUES
 -- 시작칸
 (0, '시작', 'START', 0, 0, 0, 0, '지나가거나 도착하면 월급 받음'),
 
@@ -74,25 +104,37 @@ INSERT INTO tiles (id, name, type, land_price, house_price, building_price, hote
 (30, '하남', 'NORMAL', 285, 114, 199, 285, '일반 도시'),
 (31, '인천', 'NORMAL', 300, 120, 210, 300, '일반 도시');
 
--- 찬스카드 데이터
-INSERT INTO chance_cards (card_type, name, description, effect_type, effect_value, is_immediate) VALUES
+-- cards 데이터 삽입 (찬스카드)
+INSERT IGNORE INTO cards (name, card_type, description, effect_value)
+VALUES
 -- 천사카드 (보유 가능)
-('ANGEL', '천사카드', '부정적인 효과가 발생할 때 사용하여 회피 가능', 'AVOID_NEGATIVE', 0, false),
+('천사카드', 'ANGEL', '부정적인 효과가 발생할 때 사용하여 회피 가능', 0),
 
 -- 금융정책 카드들 (즉발)
-('FINANCIAL_POLICY', '금리 인상', '모든 플레이어의 현금이 10% 감소', 'MONEY_DECREASE', 10, true),
-('FINANCIAL_POLICY', '금리 인하', '모든 플레이어의 현금이 10% 증가', 'MONEY_INCREASE', 10, true),
-('FINANCIAL_POLICY', '부동산 호황', '모든 땅값이 20% 상승', 'LAND_PRICE_UP', 20, true),
-('FINANCIAL_POLICY', '부동산 불황', '모든 땅값이 20% 하락', 'LAND_PRICE_DOWN', 20, true),
+('금리 인상', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 10% 감소', 10),
+('금리 인하', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 10% 증가', 10),
+('부동산 호황', 'FINANCIAL_POLICY', '모든 땅값이 20% 상승', 20),
+('부동산 불황', 'FINANCIAL_POLICY', '모든 땅값이 20% 하락', 20),
 
 -- 이슈 카드들 (즉발)
-('ISSUE', '세금 납부', '보유 현금의 15% 납부', 'TAX', 15, true),
-('ISSUE', '복권 당첨', '50만원 획득', 'MONEY_GAIN', 500000, true),
-('ISSUE', '사기 피해', '30만원 손실', 'MONEY_LOSS', 300000, true),
-('ISSUE', '감옥행', '즉시 감옥으로 이동', 'GO_TO_JAIL', 0, true),
+('세금 납부', 'ISSUE', '보유 현금의 15% 납부', 15),
+('복권 당첨', 'ISSUE', '50만원 획득', 500000),
+('사기 피해', 'ISSUE', '30만원 손실', 300000),
+('감옥행', 'ISSUE', '즉시 감옥으로 이동', 0),
 
 -- 게임 카드들 (즉발)
-('GAME_CARD', '시작점 이동', '시작점으로 이동하여 월급 받기', 'GO_TO_START', 0, true),
-('GAME_CARD', '무료 건설', '다음 건설 시 50% 할인', 'BUILD_DISCOUNT', 50, true),
-('GAME_CARD', '땅값 동결', '3턴간 모든 통행료 면제', 'TOLL_FREEZE', 3, true),
-('GAME_CARD', '강제 이주', '상대방을 원하는 위치로 이동', 'MOVE_OPPONENT', 0, true);
+('시작점 이동', 'GAME_CARD', '시작점으로 이동하여 월급 받기', 0),
+('무료 건설', 'GAME_CARD', '다음 건설 시 50% 할인', 50),
+('땅값 동결', 'GAME_CARD', '3턴간 모든 통행료 면제', 3),
+('강제 이주', 'GAME_CARD', '상대방을 원하는 위치로 이동', 0);
+
+-- user 데이터 삽입
+INSERT IGNORE INTO user (
+    id, email, name, nickname, password, provider, role, fcm_token
+) VALUES
+      (1, 'user1@example.com', 'User One', 'userone', 'password1', 'GOOGLE', 'USER', 'fcm_token_1'),
+      (2, 'user2@example.com', 'User Two', 'usertwo', 'password2', 'KAKAO', 'USER', 'fcm_token_2'),
+      (3, 'user3@example.com', 'User Three', 'userthree', 'password3', 'GOOGLE', 'USER', 'fcm_token_3'),
+      (4, 'user4@example.com', 'User Four', 'userfour', 'password4', 'KAKAO', 'USER', 'fcm_token_4'),
+      (5, 'user5@example.com', 'User Five', 'userfive', 'password5', 'GOOGLE', 'ADMIN', 'fcm_token_5'),
+      (6, 'user6@example.com', 'User Six', 'usersix', 'password6', 'KAKAO', 'USER', 'fcm_token_6');

@@ -45,9 +45,9 @@ public class User {
     @Column(nullable = false)
     private Provider provider;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    // @CreationTimestamp
+    // @Column(name = "created_at", nullable = false, updatable = false)
+    // private LocalDateTime createdAt;
 
     @Column(name="fcm_token")
     @Setter

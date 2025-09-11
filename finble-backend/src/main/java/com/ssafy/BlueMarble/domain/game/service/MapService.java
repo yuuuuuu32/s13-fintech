@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.GameMap;
 import com.ssafy.BlueMarble.domain.game.dto.MapCell;
-import com.ssafy.BlueMarble.domain.game.entity.City;
 import com.ssafy.BlueMarble.domain.game.entity.GameState;
-import com.ssafy.BlueMarble.domain.game.repository.CityRepository;
+import com.ssafy.BlueMarble.domain.game.entity.Tile;
+import com.ssafy.BlueMarble.domain.game.repository.TileRepository;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
@@ -15,12 +15,12 @@ import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
-import com.ssafy.BlueMarble.websocket.service.WebSocketSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketSession;
+
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,11 +31,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MapService {
 
     private final SessionMessageService sessionMessageService;
-    private final CityRepository cityRepository;
+    private final TileRepository tileRepository;
     private final GameRedisService gameRedisService;
     private final ObjectMapper objectMapper;
     private final UserRedisService userRedisService;
     private final RedisTemplate<String, String> redisTemplate;
+    private final RoomService roomService;
 
     private static final int MAP_SIZE = 32;
     private static final Random random = new Random();
@@ -51,11 +52,13 @@ public class MapService {
     /**
      * 새로운 게임 맵 상태 생성 (방에서 게임 시작할 때 호출)
      */
-    public void createNewGameMapState(WebSocketSession session, CreateMapPayload createMapPayload) {
-        String roomId = createMapPayload.getRoomId();
+    public void createNewGameMapState(WebSocketSession session) {
+        String roomId = roomService.getRoom(session.getId());
+        if (roomId == null) {
+            throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
+        }
         String usersKey = "room:" + roomId + ":users";
         Set<String> playerIds = redisTemplate.opsForSet().members(usersKey);
-
         if (playerIds == null || playerIds.isEmpty()) {
             throw new BusinessException(BusinessError.USER_ID_NOT_FOUND);
         }
@@ -180,15 +183,15 @@ public class MapService {
         }
 
         // 도시 칸 배치 (랜덤하게 배치함)
-        List<City> allCities = cityRepository.findAll();
-        List<City> cityPool = new ArrayList<>(allCities);
+        List<Tile> allCities = tileRepository.findAll();
+        List<Tile> cityPool = new ArrayList<>(allCities);
         Collections.shuffle(cityPool, random);
 
-        int cityIdx = 0;
+        int tileIdx = 0;
         for (int i = 0; i < MAP_SIZE; i++) {
-            if (mapCells.get(i) == null) {
-                City city = cityPool.get(cityIdx++);
-                mapCells.set(i, createCityCell(i, city));
+            if (mapCells.get(i) == null && tileIdx < cityPool.size()) {
+                Tile tile = cityPool.get(tileIdx++);
+                mapCells.set(i, createCityCell(i, tile));
             }
         }
 
@@ -207,12 +210,12 @@ public class MapService {
                 .build();
     }
 
-    private MapCell createCityCell(int position, City city) {
+    private MapCell createCityCell(int position, Tile tile) {
         return MapCell.builder()
                 .cellNumber(position)
-                .cellName(city.getKoreanName())
+                .cellName(tile.getName())
                 .ownerName(null)
-                .toll(city.getPrice())
+                .toll(tile.getLandPrice())
                 .buildingType(MapCell.BuildingType.FIELD)
                 .eventType(null)
                 .build();

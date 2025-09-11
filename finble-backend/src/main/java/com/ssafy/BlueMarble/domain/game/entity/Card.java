@@ -1,37 +1,65 @@
 package com.ssafy.BlueMarble.domain.game.entity;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "cards")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Card {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "card_name", unique = true, nullable = false)
-    private String cardName;
-    
     @Enumerated(EnumType.STRING)
-    @Column(name = "card_type", nullable = false)
+    @Column(nullable = false)
     private CardType cardType;
     
-    @Column(name = "description")
+    @Column(nullable = false)
+    private String name;
+    
+    @Column(columnDefinition = "TEXT")
     private String description;
     
-    @Column(name = "effect_value")
+    @Column
+    private String effectType;
+    
+    @Column
     private Integer effectValue;
     
+    @Column(nullable = false)
+    private boolean isImmediate;
+    
+    @Builder
+    public Card(CardType cardType, String name, String description, 
+                String effectType, Integer effectValue, boolean isImmediate) {
+        this.cardType = cardType;
+        this.name = name;
+        this.description = description;
+        this.effectType = effectType;
+        this.effectValue = effectValue;
+        this.isImmediate = isImmediate;
+    }
+    
     public enum CardType {
-        ANGEL,      // 천사카드
-        INSTANT     // 즉발카드
+        FINANCIAL_POLICY("금융정책"),
+        ISSUE("이슈"),
+        GAME_CARD("게임카드"),
+        ANGEL("천사카드");
+        
+        private final String description;
+        
+        CardType(String description) {
+            this.description = description;
+        }
+        
+        public String getDescription() {
+            return description;
+        }
     }
 }

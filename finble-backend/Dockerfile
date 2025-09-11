@@ -1,5 +1,5 @@
 # Multi-stage build for Spring Boot application
-FROM gradle:8.5-jdk21 AS build
+FROM gradle:8.5-jdk17 AS build
 
 # Set working directory
 WORKDIR /app
@@ -17,8 +17,8 @@ COPY src ./src
 # Build the application
 RUN gradle clean build --no-daemon -x test
 
-# Runtime stage
-FROM eclipse-temurin:21-jre-alpine
+# Runtime stage (use non-Alpine variant for broader arch support)
+FROM eclipse-temurin:17-jre-alpine
 
 # Set working directory
 WORKDIR /app
@@ -28,6 +28,9 @@ RUN apk add --no-cache curl
 
 # Create non-root user for security
 RUN addgroup -S appuser && adduser -S appuser -G appuser
+
+# Create logs directory with proper permissions
+RUN mkdir -p /app/logs && chown -R appuser:appuser /app/logs
 
 # Copy JAR file from build stage
 COPY --from=build /app/build/libs/*.jar app.jar
@@ -42,7 +45,7 @@ USER appuser
 EXPOSE 8081
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
     CMD curl -f http://localhost:8081/actuator/health || exit 1
 
 # Run the application

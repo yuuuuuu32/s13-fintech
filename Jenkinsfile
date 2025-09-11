@@ -36,6 +36,7 @@ pipeline {
                                 echo "Warning: .env.example not found, creating minimal .env"
                                 echo "SPRING_PROFILE=docker" > .env
                                 echo "SERVER_PORT=8081" >> .env
+                                echo "JWT_SECRET=bluemarble-jwt-secret-key-for-finble-game-project-2024-very-long-secure-key-minimum-256-bits-required" >> .env
                             fi
                         else
                             echo ".env file already exists"
@@ -68,7 +69,7 @@ pipeline {
             steps {
                 echo 'Building Docker images...'
                 script {
-                    sh 'docker-compose build backend'
+                    sh 'docker-compose build --no-cache backend'
                 }
             }
         }
@@ -98,7 +99,7 @@ pipeline {
                         
                         // Copy project files to EC2
                         sh """
-                            scp -o StrictHostKeyChecking=no -r ./docker-compose.yml ./finble-backend ./init.sql ./data.sql ./Jenkinsfile ${env.EC2_USER}@${env.EC2_HOST}:/home/ubuntu/bluemarble/
+                            scp -o StrictHostKeyChecking=no -r ./docker-compose.yml ./finble-backend ./init.sql ./Jenkinsfile ${env.EC2_USER}@${env.EC2_HOST}:/home/ubuntu/bluemarble/
                         """
                         
                         // Deploy on EC2
@@ -106,7 +107,7 @@ pipeline {
                             ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
                                 cd /home/ubuntu/bluemarble &&
                                 sudo docker-compose down --remove-orphans &&
-                                sudo docker-compose build backend &&
+                                sudo docker-compose build --no-cache backend &&
                                 sudo docker-compose up -d
                             '
                         """
@@ -132,7 +133,7 @@ pipeline {
                                     echo "Checking container status..."
                                     sudo docker ps -a
                                     echo "=== Backend container logs ==="
-                                    sudo docker logs bluemarble-backend --tail=100
+                                    sudo docker logs bluemarble-backend
                                     echo "=== MySQL container logs ==="
                                     sudo docker logs bluemarble-mysql --tail=50
                                     echo "=== Redis container logs ==="
@@ -176,8 +177,12 @@ pipeline {
         failure {
             echo 'Pipeline failed!'
             script {
-                // Show logs for debugging
-                sh 'docker-compose logs --tail=50'
+                // Show logs for debugging - check if docker-compose.yml exists first
+                if (fileExists('docker-compose.yml')) {
+                    sh 'docker-compose -f docker-compose.yml logs --tail=50 || echo "Failed to get docker-compose logs"'
+                } else {
+                    echo "docker-compose.yml not found, skipping logs"
+                }
             }
         }
         unstable {

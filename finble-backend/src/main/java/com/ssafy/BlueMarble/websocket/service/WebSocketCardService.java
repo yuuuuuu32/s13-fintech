@@ -17,8 +17,8 @@ import org.springframework.web.socket.WebSocketSession;
 import java.util.Map;
 
 @Service
-@Slf4j
 @RequiredArgsConstructor
+@Slf4j
 public class WebSocketCardService {
     
     private final CardService cardService;

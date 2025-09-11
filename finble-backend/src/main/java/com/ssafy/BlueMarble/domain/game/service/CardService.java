@@ -16,9 +16,11 @@ import java.util.List;
 import java.util.Random;
 
 @Service
-@Slf4j
 @RequiredArgsConstructor
+@Slf4j
 public class CardService {
+    
+    private static final String PLAYER_CARDS_PREFIX = "player:cards:";
     
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
@@ -26,8 +28,9 @@ public class CardService {
     private final CardRepository cardRepository;
     private final Random random = new Random();
     
-    private static final String PLAYER_CARDS_PREFIX = "player:cards:";
-    
+    /**
+     * 카드 사용
+     */
     public boolean useCard(String roomId, String userName, String cardName) {
         try {
             CreateMapPayload gameMapState = gameRedisService.getGameMapState(roomId);
@@ -42,23 +45,22 @@ public class CardService {
                 return false;
             }
             
-            Card.CardType cardType = getCardType(cardName);
-            if (cardType == null) {
+            Card card = cardRepository.findByName(cardName).orElse(null);
+            if (card == null) {
                 log.error("카드 정의를 찾을 수 없음: cardName={}", cardName);
                 return false;
             }
             
-            switch (cardType) {
-                case ANGEL:
-                    log.info("천사카드는 USE_CARD로 직접 사용할 수 없음: roomId={}, userName={}", roomId, userName);
-                    return false;
-                
-                case INSTANT:
-                    return applyInstantCardEffect(roomId, userId, cardName, gameMapState);
-                    
-                default:
-                    log.error("알 수 없는 카드 타입: cardType={}", cardType);
-                    return false;
+            if (card.getCardType() == Card.CardType.ANGEL) {
+                log.info("천사카드는 USE_CARD로 직접 사용할 수 없음: roomId={}, userName={}", roomId, userName);
+                return false;
+            }
+            
+            if (card.isImmediate()) {
+                return applyInstantCardEffect(roomId, userId, cardName, gameMapState);
+            } else {
+                log.error("즉발형이 아닌 카드는 USE_CARD로 사용할 수 없음: cardName={}", cardName);
+                return false;
             }
             
         } catch (Exception e) {
@@ -112,6 +114,9 @@ public class CardService {
         }
     }
     
+    /**
+     * 카드 추가
+     */
     public void addCard(String roomId, String userId, String cardName) {
         try {
             if ("천사카드".equals(cardName)) {
@@ -152,6 +157,9 @@ public class CardService {
         }
     }
     
+    /**
+     * 천사카드 방어 사용
+     */
     public boolean useAngelCardDefense(String roomId, String userId) {
         try {
             CreateMapPayload gameMapState = gameRedisService.getGameMapState(roomId);
@@ -178,6 +186,9 @@ public class CardService {
         }
     }
     
+    /**
+     * 카드 뽑기
+     */
     public DrawCardPayload.DrawCardResult drawCard(String roomId, String userName) {
         try {
             CreateMapPayload gameMapState = gameRedisService.getGameMapState(roomId);
@@ -207,11 +218,11 @@ public class CardService {
                 gameRedisService.saveGameMapState(roomId, gameMapState);
             }
             
-            log.info("카드 뽑기 성공: roomId={}, userName={}, cardName={}", roomId, userName, drawnCard.getCardName());
+            log.info("카드 뽑기 성공: roomId={}, userName={}, cardName={}", roomId, userName, drawnCard.getName());
             
             return DrawCardPayload.DrawCardResult.builder()
                     .userName(userName)
-                    .cardName(drawnCard.getCardName())
+                    .cardName(drawnCard.getName())
                     .build();
                     
         } catch (Exception e) {
@@ -251,15 +262,6 @@ public class CardService {
         }
     }
     
-    private Card.CardType getCardType(String cardName) {
-        try {
-            Card card = cardRepository.findByCardName(cardName).orElse(null);
-            return card != null ? card.getCardType() : null;
-        } catch (Exception e) {
-            log.error("카드 타입 조회 실패: cardName={}", cardName, e);
-            return null;
-        }
-    }
     
     private void applyInstantCardEffectFromDB(Card card, CreateMapPayload.PlayerState player) {
         try {
@@ -267,23 +269,23 @@ public class CardService {
             String description = card.getDescription();
             
             if (effectValue == null) {
-                log.warn("효과값이 없는 카드: cardName={}", card.getCardName());
+                log.warn("효과값이 없는 카드: cardName={}", card.getName());
                 return;
             }
             
             if (effectValue == 10) {
                 applyJailEffect(player);
-                log.info("즉발카드 효과 적용 - 감옥: cardName={}, description={}", card.getCardName(), description);
+                log.info("즉발카드 효과 적용 - 감옥: cardName={}, description={}", card.getName(), description);
             } else if (Math.abs(effectValue) >= 10000) {
                 applyMoneyEffect(player, effectValue);
-                log.info("즉발카드 효과 적용 - 돈: cardName={}, amount={}, description={}", card.getCardName(), effectValue, description);
+                log.info("즉발카드 효과 적용 - 돈: cardName={}, amount={}, description={}", card.getName(), effectValue, description);
             } else {
                 applyPositionEffect(player, effectValue);
-                log.info("즉발카드 효과 적용 - 이동: cardName={}, move={}, description={}", card.getCardName(), effectValue, description);
+                log.info("즉발카드 효과 적용 - 이동: cardName={}, move={}, description={}", card.getName(), effectValue, description);
             }
             
         } catch (Exception e) {
-            log.error("즉발카드 효과 적용 실패: cardName={}", card.getCardName(), e);
+            log.error("즉발카드 효과 적용 실패: cardName={}", card.getName(), e);
         }
     }
     
@@ -295,7 +297,7 @@ public class CardService {
                 return false;
             }
             
-            Card card = cardRepository.findByCardName(cardName).orElse(null);
+            Card card = cardRepository.findByName(cardName).orElse(null);
             if (card == null) {
                 log.error("DB에서 카드를 찾을 수 없음: cardName={}", cardName);
                 return false;
@@ -333,6 +335,9 @@ public class CardService {
         player.setJailTurns(3);
     }
     
+    /**
+     * 천사카드 자동 방어
+     */
     public boolean autoApplyAngelCardDefense(String roomId, String userId, int negativeAmount) {
         try {
             CreateMapPayload gameMapState = gameRedisService.getGameMapState(roomId);

@@ -66,6 +66,7 @@ export function Dice() {
   const dicePower = useGameStore((state) => state.dicePower)
   const rollDiceAction = useGameStore((state) => state.rollDice)
   const movePlayer = useGameStore((state) => state.movePlayer)
+  const board = useGameStore((state) => state.board);
 
   useEffect(() => {
     const triggerRoll = () => {

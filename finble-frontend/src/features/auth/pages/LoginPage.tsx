@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import backgroundImage from '../../../assets/login_backgound.jpeg'; // 배경 이미지
-import pinbleLogo from '../../../assets/pinble-logo.png'; // 게임 로고
-import googleIcon from '../../../assets/google-logo.svg'; // Google 아이콘
-import kakaoIcon from '../../../assets/kakao-logo.png'; // Kakao 아이콘
+import '../../../App.css'; // For .app-container
+
+const backgroundImage = 'src/assets/login_backgound.jpeg';
+const pinbleLogo = 'src/assets/pinble-logo.png';
+const googleIcon = 'src/assets/google-logo.svg';
+const kakaoIcon = 'src/assets/kakao-logo.png';
+
 import NicknameModal from '../components/NicknameModal'; // 모달 컴포넌트 import
 import './LoginPage.css';
 import { useGoogleLogin } from '@react-oauth/google';
@@ -127,14 +130,55 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      className="login-container"
-      style={{
-        backgroundImage: `url(${backgroundImage})`,
-      }}
-    >
-      <div className="logo-container">
-        <img src={pinbleLogo} alt="PinBle Logo" className="logo-image" />
+    <main className="app-container">
+      <div
+        className="login-container"
+        style={{
+          backgroundImage: `url(${backgroundImage})`,
+        }}
+      >
+        <div className="logo-container">
+          <img src={pinbleLogo} alt="PinBle Logo" className="logo-image" />
+        </div>
+
+        <div className="login-actions">
+          <button
+            onClick={handleGoogleLogin}
+            className="google-login-button"
+            disabled={!!loginProvider}
+          >
+            {loginProvider === 'google' ? (
+              '구글로 로그인 중...'
+            ) : (
+              <>
+                <img src={googleIcon} alt="Google" className="google-icon" />
+                <span className="google-text">Google로 로그인하기</span>
+              </>
+            )}
+          </button>
+          <button
+            onClick={handleKakaoLogin}
+            className="kakao-login-button"
+            disabled={!!loginProvider}
+          >
+            {loginProvider === 'kakao' ? (
+              '카카오로 로그인 중...'
+            ) : (
+              <>
+                <img src={kakaoIcon} alt="Kakao" className="kakao-icon" />
+                <span className="kakao-text">카카오로 로그인하기</span>
+              </>
+            )}
+          </button>
+        </div>
+
+
+        {/* 닉네임 모달 렌더링 */}
+        <NicknameModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onComplete={handleNicknameComplete}
+        />
       </div>
 
       <div className="login-actions">
