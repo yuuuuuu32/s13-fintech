@@ -53,11 +53,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_NAME: ${DB_NAME:-finble}
-<<<<<<< HEAD
-      DB_USERNAME: ${DB_USERNAME:-finble_user}
-=======
       DB_USERNAME: ${DB_USER:-bluemarble_user}
->>>>>>> 192b812cfb4f58f926e8a0704f3ff6a1abdf56cc
       DB_PASSWORD: ${DB_PASSWORD:-password}
       REDIS_HOST: redis
       REDIS_PORT: 6379
