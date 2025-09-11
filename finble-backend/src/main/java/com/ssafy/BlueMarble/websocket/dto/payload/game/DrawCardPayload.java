@@ -18,5 +18,10 @@ public class DrawCardPayload {
     public static class DrawCardResult {
         private String userName;
         private String cardName;
+        private boolean anglecard;
+        private Integer moneyChange;
+        private Integer newPosition;
+        private Boolean jailStatus;
+        private String effectDescription;
     }
 }

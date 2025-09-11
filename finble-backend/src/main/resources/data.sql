@@ -105,29 +105,27 @@ INSERT IGNORE INTO tiles (id, name, type, land_price, house_price, building_pric
 (31, '인천', 'NORMAL', 300, 120, 210, 300, '일반 도시');
 
 -- cards 데이터 삽입 (찬스카드)
-INSERT IGNORE INTO cards (name, card_type, description, effect_value)
+INSERT IGNORE INTO cards (name, card_type, description, effect_type, effect_value, is_immediate)
 VALUES
--- 천사카드 (보유 가능)
-('천사카드', 'ANGEL', '부정적인 효과가 발생할 때 사용하여 회피 가능', 0),
-
--- 금융정책 카드들 (즉발)
-('금리 인상', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 10% 감소', 10),
-('금리 인하', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 10% 증가', 10),
-('부동산 호황', 'FINANCIAL_POLICY', '모든 땅값이 20% 상승', 20),
-('부동산 불황', 'FINANCIAL_POLICY', '모든 땅값이 20% 하락', 20),
+-- 천사카드 (보유 가능) - 나중에 추가
+-- ('천사카드', 'ANGEL', '부정적인 효과가 발생할 때 사용하여 회피 가능', 'ANGEL', 0, '{}', false),
 
 -- 이슈 카드들 (즉발)
-('세금 납부', 'ISSUE', '보유 현금의 15% 납부', 15),
-('복권 당첨', 'ISSUE', '50만원 획득', 500000),
-('사기 피해', 'ISSUE', '30만원 손실', 300000),
-('감옥행', 'ISSUE', '즉시 감옥으로 이동', 0),
+('복권 당첨', 'ISSUE', '50만원 획득', 'MONEY', 500000, true),
+('사기 피해', 'ISSUE', '30만원 손실', 'MONEY', -300000, true),
+('세금 납부', 'ISSUE', '보유 현금의 15% 납부', 'MONEY_PERCENT', 15, true),
+('감옥행', 'ISSUE', '즉시 감옥으로 이동', 'JAIL', 0, true),
 
 -- 게임 카드들 (즉발)
-('시작점 이동', 'GAME_CARD', '시작점으로 이동하여 월급 받기', 0),
-('무료 건설', 'GAME_CARD', '다음 건설 시 50% 할인', 50),
-('땅값 동결', 'GAME_CARD', '3턴간 모든 통행료 면제', 3),
-('강제 이주', 'GAME_CARD', '상대방을 원하는 위치로 이동', 0);
+('시작점 이동', 'GAME_CARD', '시작점으로 이동하여 월급 받기', 'POSITION', 0, true),
+('앞으로 3칸', 'GAME_CARD', '3칸 앞으로 이동', 'MOVE', 3, true),
+('뒤로 2칸', 'GAME_CARD', '2칸 뒤로 이동', 'MOVE', -2, true);
 
+-- 금융정책 카드들 (향후 추가 예정)
+-- ('금리 인상', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 10% 감소', 'ALL_MONEY_PERCENT', 10, '{"percent": 10, "type": "deduct", "target": "all"}', true),
+-- ('금리 인하', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 10% 증가', 'ALL_MONEY_PERCENT', 10, '{"percent": 10, "type": "add", "target": "all"}', true),
+-- ('부동산 호황', 'FINANCIAL_POLICY', '모든 땅값이 20% 상승', 'LAND_VALUE', 20, '{"percent": 20, "type": "increase"}', true),
+-- ('부동산 불황', 'FINANCIAL_POLICY', '모든 땅값이 20% 하락', 'LAND_VALUE', 20, '{"percent": 20, "type": "decrease"}', true);
 -- user 데이터 삽입
 INSERT IGNORE INTO user (
     id, email, name, nickname, password, provider, role, fcm_token

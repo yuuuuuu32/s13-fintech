@@ -46,7 +46,7 @@ public class RoomService {
     private final int MAX_USER_LIMIT = 12;
 
     //대기방 만들기₩
-    public void createRoom(WebSocketSession session, CreateRoomPayload createRoomPayload) {
+    public String createRoom(WebSocketSession session, CreateRoomPayload createRoomPayload) {
         log.info("createRoom 메서드 시작");
 
         //방 인원제한 체크
@@ -99,6 +99,8 @@ public class RoomService {
         //session -> roomId
         log.info("addRoom 호출 - roomId: {}, sessionId: {}", roomId, sessionId);
         addRoom(sessionId, roomId);
+        
+        return roomId;
     }
 
     public Page<RoomListDTO> getRoomList(Pageable pageable, String searchKey) {

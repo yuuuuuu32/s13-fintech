@@ -1,6 +1,7 @@
 package com.ssafy.BlueMarble.websocket.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.ssafy.BlueMarble.domain.game.service.MapService;
 import com.ssafy.BlueMarble.domain.game.dto.request.ConstructRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
@@ -117,8 +118,14 @@ public class WebSocketHandler extends TextWebSocketHandler {
             case CREATE_ROOM:
                 log.info("[WebSocket] CREATE_ROOM 처리 시작 - sessionId: {}", session.getId());
                 CreateRoomPayload createRoomPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), CreateRoomPayload.class);
-                roomService.createRoom(session, createRoomPayload);
-                log.info("[WebSocket] CREATE_ROOM 처리 완료 - sessionId: {}", session.getId());
+                String createdRoomId = roomService.createRoom(session, createRoomPayload);
+                
+                // 방 생성 성공 응답 전송
+                JsonNode responsePayload = objectMapper.valueToTree(Map.of("roomId", createdRoomId));
+                MessageDto response = new MessageDto(MessageType.CREATE_ROOM_OK, responsePayload);
+                sessionMessageService.sendMessage(session, response);
+                
+                log.info("[WebSocket] CREATE_ROOM 처리 완료 - sessionId: {}, roomId: {}", session.getId(), createdRoomId);
                 break;
             case ENTER_ROOM:
                 EnterRoomPayload enterRoomPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), EnterRoomPayload.class);
@@ -136,6 +143,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 if ("null".equals(roomId))
                     throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
                 CreateMapPayload createMapPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), CreateMapPayload.class);
+                createMapPayload.setRoomId(roomId);  // 현재 세션의 roomId 설정
                 mapService.createNewGameMapState(session, createMapPayload);
                 break;
             case TRADE_LAND:
@@ -163,11 +171,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 UseCardPayload useCardPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), UseCardPayload.class);
                 webSocketCardService.handleUseCard(session, useCardPayload);
                 break;
-            case DRAW_CARD:
-                log.info("[WebSocket] 카드 뽑기 요청: sessionId={}", session.getId());
-                DrawCardPayload drawCardPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), DrawCardPayload.class);
-                webSocketCardService.handleDrawCard(session, drawCardPayload);
-                break;
+            // DRAW_CARD는 찬스 칸 도착 시 자동으로 처리되므로 수동 요청은 제거
             case ANGEL_DEFENSE:
                 log.info("[WebSocket] 천사카드 방어 요청: sessionId={}", session.getId());
                 webSocketCardService.handleAngelDefense(session);
