@@ -21,6 +21,116 @@ const calculateTotalAssets = (player, board: TileData[]) => {
   return player.money + propertyValue;
 };
 
+// BuyPropertyModalContent
+const BuyPropertyModalContent = ({ modal, buyProperty, endTurn }) => (
+  <>
+    <Typography variant="h5" component="h2" fontWeight="bold">{modal.tile?.name}</Typography>
+    <Typography sx={{ mt: 2 }}>가격: {modal.tile?.price?.toLocaleString()}원</Typography>
+    <Typography sx={{ mt: 1 }}>구매하시겠습니까?</Typography>
+    <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+      <Button variant="contained" onClick={() => { buyProperty(); endTurn(); }}>구매</Button>
+      <Button variant="outlined" onClick={endTurn}>패스</Button>
+    </Box>
+  </>
+);
+
+// AcquirePropertyModalContent
+const AcquirePropertyModalContent = ({ modal, acquireProperty, payToll, currentPlayer, endTurn }) => (
+  <>
+    <Typography variant="h5" component="h2" fontWeight="bold">{modal.tile?.name} 인수</Typography>
+    <Typography sx={{ mt: 2 }}>통행료: {modal.toll?.toLocaleString()}원</Typography>
+    <Typography sx={{ mt: 1 }}>인수 비용: {modal.acquireCost?.toLocaleString()}원</Typography>
+    <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+      <Button variant="contained" onClick={() => { acquireProperty(); endTurn(); }} disabled={currentPlayer.money < (modal.acquireCost || 0)}>인수</Button>
+      <Button variant="outlined" onClick={() => { payToll(); endTurn(); }}>통행료만 지불</Button>
+    </Box>
+  </>
+);
+
+// ChanceCardModalContent
+const ChanceCardModalContent = ({ modal }) => (
+  <>
+    <Typography variant="h5" component="h2" fontWeight="bold">찬스!</Typography>
+    <Typography sx={{ mt: 2 }}>{modal.text}</Typography>
+    <Button sx={{ mt: 3 }} variant="contained" onClick={modal.onConfirm}>확인</Button>
+  </>
+);
+
+// InfoModalContent
+const InfoModalContent = ({ modal, endTurn }) => (
+  <>
+    <Typography variant="h6" component="h2">알림</Typography>
+    <Typography sx={{ mt: 2 }}>{modal.text}</Typography>
+    <Button sx={{ mt: 3 }} variant="contained" onClick={modal.onConfirm || endTurn}>확인</Button>
+  </>
+);
+
+// JailModalContent
+const JailModalContent = ({ payBail, handleJail, BAIL_AMOUNT }) => (
+  <>
+    <Typography variant="h5" component="h2">무인도</Typography>
+    <Typography sx={{ mt: 2 }}>3턴 동안 갖혀있게 됩니다.</Typography>
+    <Typography sx={{ mt: 1 }}>보석금을 내고 즉시 탈출할 수 있습니다.</Typography>
+    <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+      <Button variant="contained" onClick={payBail}>보석금 ({ BAIL_AMOUNT.toLocaleString() }원)</Button>
+      <Button variant="outlined" onClick={handleJail}>머물기</Button>
+    </Box>
+  </>
+);
+
+// ExpoModalContent
+const ExpoModalContent = ({ modal, selectExpoProperty }) => (
+  <>
+    <Typography variant="h5" component="h2">박람회 개최!</Typography>
+    <Typography sx={{ mt: 2 }}>소유한 땅 중 하나의 통행료를 2배로 올릴 수 있습니다.</Typography>
+    <Box sx={{ maxHeight: 200, overflow: 'auto', mt: 2, border: '1px solid #ccc', borderRadius: 1 }}>
+      <List>
+        {(modal.properties?.length > 0) ? modal.properties?.map(prop => (
+          <ListItem disablePadding key={prop.index}>
+            <ListItemButton onClick={() => selectExpoProperty(prop.index)}>
+              <ListItemText primary={prop.name} />
+            </ListItemButton>
+          </ListItem>
+        )) : <ListItem><ListItemText primary="선택할 땅이 없습니다." /></ListItem>}
+      </List>
+    </Box>
+  </>
+);
+
+// ManagePropertyModalContent
+const ManagePropertyModalContent = ({ modal, buildBuilding, endTurn, currentPlayer, board }) => (
+  <>
+    <Typography variant="h5" component="h2">{modal.tile?.name} 관리</Typography>
+    <Typography sx={{ mt: 2 }}>건물을 건설하여 통행료를 올릴 수 있습니다.</Typography>
+    <Typography sx={{ mt: 1, color: 'blue' }}>다음 건설: {BuildingType[(modal.tile?.buildings?.level ?? 0) + 1] || '최대 레벨'}</Typography>
+    <Typography sx={{ mt: 1 }}>비용: {modal.tile?.buildingPrice?.toLocaleString()}원</Typography>
+    <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+      <Button 
+        variant="contained" 
+        onClick={() => buildBuilding(board.findIndex(t => t.name === modal.tile?.name))}
+        disabled={currentPlayer.lapCount <= (modal.tile?.buildings?.level ?? 0) || (modal.tile?.buildings?.level ?? 0) >= 3}
+      >
+        건설
+      </Button>
+      <Button variant="outlined" onClick={endTurn}>다음에</Button>
+    </Box>
+    <Typography sx={{ mt: 2, fontSize: '0.8rem', color: 'gray' }}>
+      (필요 랩 수: {(modal.tile?.buildings?.level ?? 0) + 1} / 현재 랩 수: {currentPlayer.lapCount})
+    </Typography>
+  </>
+);
+
+// GameOverModalContent
+const GameOverModalContent = ({ winner, handleGoToLobby, modalStyle }) => ( // modalStyle added to props
+  <Box sx={modalStyle}> 
+    <Typography variant="h4" component="h2">게임 종료!</Typography>
+    <Typography sx={{ mt: 2, fontSize: '1.5rem' }}>
+      {winner ? `${winner.name}님이 최종 승리했습니다!` : '승자 없이 게임이 종료되었습니다.'}
+    </Typography>
+    <Button sx={{ mt: 3 }} variant="contained" size="large" onClick={handleGoToLobby}>로비로 돌아가기</Button>
+  </Box>
+);
+
 export function GameUI() {
   const players = useGameStore(state => state.players);
   const currentPlayerIndex = useGameStore(state => state.currentPlayerIndex);
@@ -43,13 +153,17 @@ export function GameUI() {
   const navigate = useNavigate();
 
   const [gauge, setGauge] = useState(0);
-  const gaugeRef = useRef<any>(null);
+  const gaugeRef = useRef<number | null>(null);
   const [isCharging, setIsCharging] = useState(false);
 
   
 
   useEffect(() => {
-    return () => clearInterval(gaugeRef.current)
+    return () => {
+      if (gaugeRef.current) {
+        clearInterval(gaugeRef.current);
+      }
+    }
   }, []);
 
   const handleChargeStart = () => {
@@ -70,7 +184,9 @@ export function GameUI() {
   const handleChargeEnd = () => {
     if (!isCharging) return;
     setIsCharging(false);
-    clearInterval(gaugeRef.current);
+    if (gaugeRef.current) {
+      clearInterval(gaugeRef.current);
+    }
     setDicePower(gauge);
     window.dispatchEvent(new Event('roll-dice'));
   }
@@ -84,7 +200,7 @@ export function GameUI() {
   const currentPlayer = players[currentPlayerIndex];
 
   const modalStyle = {
-    position: 'absolute' as 'absolute',
+    position: 'absolute' as const,
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
@@ -95,7 +211,7 @@ export function GameUI() {
     p: 4,
     color: 'black',
     borderRadius: 2,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   };
 
   return (
@@ -160,98 +276,28 @@ export function GameUI() {
       <Modal open={modal.type !== 'NONE' || isGameOver} sx={{ pointerEvents: 'all' }}>
         <Box sx={modalStyle}>
           {modal.type === 'BUY_PROPERTY' && (
-            <>
-              <Typography variant="h5" component="h2" fontWeight="bold">{modal.tile?.name}</Typography>
-              <Typography sx={{ mt: 2 }}>가격: {modal.tile?.price?.toLocaleString()}원</Typography>
-              <Typography sx={{ mt: 1 }}>구매하시겠습니까?</Typography>
-              <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-                <Button variant="contained" onClick={() => { buyProperty(); endTurn(); }}>구매</Button>
-                <Button variant="outlined" onClick={endTurn}>패스</Button>
-              </Box>
-            </>
+            <BuyPropertyModalContent modal={modal} buyProperty={buyProperty} endTurn={endTurn} />
           )}
           {modal.type === 'ACQUIRE_PROPERTY' && (
-            <>
-              <Typography variant="h5" component="h2" fontWeight="bold">{modal.tile?.name} 인수</Typography>
-              <Typography sx={{ mt: 2 }}>통행료: {modal.toll?.toLocaleString()}원</Typography>
-              <Typography sx={{ mt: 1 }}>인수 비용: {modal.acquireCost?.toLocaleString()}원</Typography>
-              <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-                <Button variant="contained" onClick={() => { acquireProperty(); endTurn(); }} disabled={currentPlayer.money < (modal.acquireCost || 0)}>인수</Button>
-                <Button variant="outlined" onClick={() => { payToll(); endTurn(); }}>통행료만 지불</Button>
-              </Box>
-            </>
+            <AcquirePropertyModalContent modal={modal} acquireProperty={acquireProperty} payToll={payToll} currentPlayer={currentPlayer} endTurn={endTurn} />
           )}
           {modal.type === 'CHANCE_CARD' && (
-              <>
-                <Typography variant="h5" component="h2" fontWeight="bold">찬스!</Typography>
-                <Typography sx={{ mt: 2 }}>{modal.text}</Typography>
-                <Button sx={{ mt: 3 }} variant="contained" onClick={modal.onConfirm}>확인</Button>
-              </>
+            <ChanceCardModalContent modal={modal} />
           )}
           {modal.type === 'INFO' && (
-              <>
-                <Typography variant="h6" component="h2">알림</Typography>
-                <Typography sx={{ mt: 2 }}>{modal.text}</Typography>
-                <Button sx={{ mt: 3 }} variant="contained" onClick={modal.onConfirm || endTurn}>확인</Button>
-              </>
+            <InfoModalContent modal={modal} endTurn={endTurn} />
           )}
           {modal.type === 'JAIL' && (
-              <>
-                <Typography variant="h5" component="h2">무인도</Typography>
-                <Typography sx={{ mt: 2 }}>3턴 동안 갖혀있게 됩니다.</Typography>
-                <Typography sx={{ mt: 1 }}>보석금을 내고 즉시 탈출할 수 있습니다.</Typography>
-                <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-                  <Button variant="contained" onClick={payBail}>보석금 ({ BAIL_AMOUNT.toLocaleString() }원)</Button>
-                  <Button variant="outlined" onClick={handleJail}>머물기</Button>
-                </Box>
-              </>
+            <JailModalContent payBail={payBail} handleJail={handleJail} BAIL_AMOUNT={BAIL_AMOUNT} />
           )}
           {modal.type === 'EXPO' && (
-            <>
-              <Typography variant="h5" component="h2">박람회 개최!</Typography>
-              <Typography sx={{ mt: 2 }}>소유한 땅 중 하나의 통행료를 2배로 올릴 수 있습니다.</Typography>
-              <Box sx={{ maxHeight: 200, overflow: 'auto', mt: 2, border: '1px solid #ccc', borderRadius: 1 }}>
-                <List>
-                  {(modal.properties?.length > 0) ? modal.properties?.map(prop => (
-                    <ListItem disablePadding key={prop.index}>
-                      <ListItemButton onClick={() => selectExpoProperty(prop.index)}>
-                        <ListItemText primary={prop.name} />
-                      </ListItemButton>
-                    </ListItem>
-                  )) : <ListItem><ListItemText primary="선택할 땅이 없습니다." /></ListItem>}
-                </List>
-              </Box>
-            </>
+            <ExpoModalContent modal={modal} selectExpoProperty={selectExpoProperty} />
           )}
            {modal.type === 'MANAGE_PROPERTY' && (
-            <>
-              <Typography variant="h5" component="h2">{modal.tile?.name} 관리</Typography>
-              <Typography sx={{ mt: 2 }}>건물을 건설하여 통행료를 올릴 수 있습니다.</Typography>
-              <Typography sx={{ mt: 1, color: 'blue' }}>다음 건설: {BuildingType[(modal.tile?.buildings?.level ?? 0) + 1] || '최대 레벨'}</Typography>
-              <Typography sx={{ mt: 1 }}>비용: {modal.tile?.buildingPrice?.toLocaleString()}원</Typography>
-              <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-                <Button 
-                  variant="contained" 
-                  onClick={() => buildBuilding(board.findIndex(t => t.name === modal.tile?.name))}
-                  disabled={currentPlayer.lapCount <= (modal.tile?.buildings?.level ?? 0) || (modal.tile?.buildings?.level ?? 0) >= 3}
-                >
-                  건설
-                </Button>
-                <Button variant="outlined" onClick={endTurn}>다음에</Button>
-              </Box>
-              <Typography sx={{ mt: 2, fontSize: '0.8rem', color: 'gray' }}>
-                (필요 랩 수: {(modal.tile?.buildings?.level ?? 0) + 1} / 현재 랩 수: {currentPlayer.lapCount})
-              </Typography>
-            </>
+            <ManagePropertyModalContent modal={modal} buildBuilding={buildBuilding} endTurn={endTurn} currentPlayer={currentPlayer} board={board} />
           )}
           {isGameOver && (
-             <Box sx={modalStyle}>
-                <Typography variant="h4" component="h2">게임 종료!</Typography>
-                <Typography sx={{ mt: 2, fontSize: '1.5rem' }}>
-                  {winner ? `${winner.name}님이 최종 승리했습니다!` : '승자 없이 게임이 종료되었습니다.'}
-                </Typography>
-                <Button sx={{ mt: 3 }} variant="contained" size="large" onClick={handleGoToLobby}>로비로 돌아가기</Button>
-            </Box>
+             <GameOverModalContent winner={winner} handleGoToLobby={handleGoToLobby} modalStyle={modalStyle} />
           )}
         </Box>
       </Modal>

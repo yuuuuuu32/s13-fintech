@@ -1,32 +1,9 @@
 import { Box, useTexture, Html } from '@react-three/drei';
-import { RigidBody, CuboidCollider } from '@react-three/rapier';
+import { RigidBody, RapierRigidBody } from '@react-three/rapier';
 import { useFrame } from '@react-three/fiber';
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore.ts';
-
-// 주사위 한 개를 렌더링하는 컴포넌트
-const Die = () => {
-  // useTexture를 사용해 public 폴더의 이미지로 텍스처를 적용합니다.
-  const textures = useTexture([
-    '/dice/4.png', // +X (오른쪽)
-    '/dice/3.png', // -X (왼쪽)
-    '/dice/6.png', // +Y (위)
-    '/dice/1.png', // -Y (아래)
-    '/dice/5.png', // +Z (앞)
-    '/dice/2.png', // -Z (뒤)
-  ]);
-
-  // useMemo를 사용해 재질이 렌더링마다 재생성되지 않도록 최적화합니다.
-  const materials = useMemo(() => textures.map(texture => 
-    new THREE.MeshStandardMaterial({ map: texture })
-  ), [textures]);
-
-  // Box에 6개의 면 재질을 배열로 전달합니다.
-  return (
-    <Box args={[1, 1, 1]} material={materials} castShadow />
-  );
-};
 
 // 윗면의 값을 계산하는 함수
 const getDiceValue = (rotation: THREE.Quaternion): number => {
@@ -56,8 +33,31 @@ const getDiceValue = (rotation: THREE.Quaternion): number => {
 
 const initialDicePositions: [number, number, number][] = [[-2, 5, 0], [2, 5, 0]];
 
+// 주사위 한 개를 렌더링하는 컴포넌트
+const Die = () => {
+  // useTexture를 사용해 public 폴더의 이미지로 텍스처를 적용합니다.
+  const textures = useTexture([
+    '/dice/4.png', // +X (오른쪽)
+    '/dice/3.png', // -X (왼쪽)
+    '/dice/6.png', // +Y (위)
+    '/dice/1.png', // -Y (아래)
+    '/dice/5.png', // +Z (앞)
+    '/dice/2.png', // -Z (뒤)
+  ]);
+
+  // useMemo를 사용해 재질이 렌더링마다 재생성되지 않도록 최적화합니다.
+  const materials = useMemo(() => textures.map(texture => 
+    new THREE.MeshStandardMaterial({ map: texture })
+  ), [textures]);
+
+  // Box에 6개의 면 재질을 배열로 전달합니다.
+  return (
+    <Box args={[1, 1, 1]} material={materials} castShadow />
+  );
+};
+
 export function Dice() {
-  const diceRefs = [useRef<any>(null!), useRef<any>(null!)]
+  const diceRefs = useMemo(() => [React.createRef<RapierRigidBody>(), React.createRef<RapierRigidBody>()], []);
   const [isRolling, setIsRolling] = useState(false)
   const hasMoved = useRef(false);
   const [displayDiceSum, setDisplayDiceSum] = useState<number | null>(null);
@@ -96,7 +96,7 @@ export function Dice() {
         }
       })
     }
-  }, [gamePhase, dicePower]);
+  }, [gamePhase, dicePower, diceRefs]);
 
   useFrame(() => {
     if (!isRolling || hasMoved.current) return
