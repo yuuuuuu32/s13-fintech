@@ -1,9 +1,14 @@
 import type { RouteObject } from 'react-router-dom'
 import WaitingRoomPage from './pages/WaitingRoomPage.tsx'
+import ProtectedRoute from '../../router/ProtectedRoute'
 
 export const roomRouter: RouteObject[] = [
   {
-    path: 'room/:roomId', // 동적 경로 설정
-    element: <WaitingRoomPage />,
+    path: 'room/:roomId',
+    element: (
+      <ProtectedRoute>
+        <WaitingRoomPage />
+      </ProtectedRoute>
+    ),
   },
 ]

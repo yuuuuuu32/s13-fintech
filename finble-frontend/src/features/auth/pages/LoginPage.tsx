@@ -7,10 +7,11 @@ const pinbleLogo = 'src/assets/pinble-logo.png';
 const googleIcon = 'src/assets/google-logo.svg';
 const kakaoIcon = 'src/assets/kakao-logo.png';
 
-import NicknameModal from '../components/NicknameModal'; // 모달 컴포넌트 import
+import NicknameModal from '../components/NicknameModal';
 import './LoginPage.css';
 import { useGoogleLogin } from '@react-oauth/google';
-import apiClient from '../../../api/client'; // apiClient 임포트
+import apiClient from '../../../api/client';
+import { getMyInfo } from '../../../api/user'; // getMyInfo 함수 import
 
 interface KakaoLoginResponse {
   token_type: string;
@@ -29,39 +30,51 @@ interface KakaoError {
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [loginProvider, setLoginProvider] = useState<string | null>(null); // 'google', 'kakao', or null
-  const [isModalOpen, setIsModalOpen] = useState(false); // 모달 상태 추가
-  const [isLoggingIn, setIsLoggingIn] = useState(false); // 로그인 중 상태 추가
-  const [errorMessage, setErrorMessage] = useState<string | null>(null); // 에러 메시지 상태 추가
+  const [loginProvider, setLoginProvider] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // 로그인 성공 후 공통 처리 로직
+  const handleLoginSuccess = async (accessToken: string) => {
+    try {
+      localStorage.setItem('jwt', accessToken);
+      const userInfo = await getMyInfo();
+
+      if (userInfo && userInfo.nickname) {
+        navigate('/lobby');
+      } else {
+        setIsModalOpen(true);
+      }
+    } catch (error) {
+      console.error('Failed to get user info:', error);
+      setErrorMessage('사용자 정보를 가져오는 데 실패했습니다.');
+    } finally {
+      setIsLoggingIn(false);
+      setLoginProvider(null);
+    }
+  };
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      // No need to set isLoggingIn here, it's already true
-      setErrorMessage(null); // Clear previous errors
-      console.log('Google Login Success:', tokenResponse);
+      setErrorMessage(null);
       try {
-        // 백엔드로 ID 토큰 전송
-        const res = await apiClient.post('/auth/google', {
+        const res = await apiClient.post('/auth/google-login', {
           idToken: tokenResponse.access_token,
         });
-        console.log('Backend Response:', res.data);
-        // 백엔드로부터 받은 JWT 등을 처리 (예: localStorage에 저장)
-        // localStorage.setItem('jwt', res.data.jwt);
-        setIsLoggingIn(false);
-        setLoginProvider(null);
-        setIsModalOpen(true); // 로그인 후 로비 이동 대신 모달 열기
+        await handleLoginSuccess(res.data.accessToken);
       } catch (error) {
         console.error('Backend login error:', error);
+        setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
         setIsLoggingIn(false);
         setLoginProvider(null);
-        setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.'); // Set user-friendly error message
       }
     },
     onError: (errorResponse) => {
       console.error('Google Login Failed:', errorResponse);
       setIsLoggingIn(false);
       setLoginProvider(null);
-      setErrorMessage('Google 로그인에 실패했습니다. 다시 시도해주세요.'); // Set user-friendly error message
+      setErrorMessage('Google 로그인에 실패했습니다. 다시 시도해주세요.');
     },
     onNonOAuthError: (error) => {
       console.error('Google Non-OAuth Error:', error);
@@ -72,14 +85,14 @@ export default function LoginPage() {
       } else {
         setErrorMessage('Google 로그인 중 오류가 발생했습니다.');
       }
-    }
+    },
   });
 
   const handleGoogleLogin = () => {
     setIsLoggingIn(true);
     setLoginProvider('google');
-    setErrorMessage(null); // Clear previous errors
-    googleLogin(); // Google 로그인 흐름 시작
+    setErrorMessage(null);
+    googleLogin();
   };
 
   const handleKakaoLogin = () => {
@@ -87,34 +100,23 @@ export default function LoginPage() {
     setLoginProvider('kakao');
     setErrorMessage(null);
 
-    const timeoutId = setTimeout(() => {
-      setIsLoggingIn(false);
-      setLoginProvider(null);
-      setErrorMessage('로그인 창이 닫혔거나 로그인에 실패했습니다. 다시 시도해주세요.');
-    }, 10000); // 10 seconds timeout for user action
-
     window.Kakao.Auth.login({
-      success: function(authObj: KakaoLoginResponse) {
-        clearTimeout(timeoutId);
-        console.log('Kakao Login Success:', authObj);
-        apiClient.post('/auth/kakao', {
-          accessToken: authObj.access_token,
-        })
-        .then(res => {
-          console.log('Backend Response:', res.data);
-          setIsLoggingIn(false);
-          setLoginProvider(null);
-          setIsModalOpen(true);
-        })
-        .catch(error => {
-          console.error('Backend login error:', error);
-          setIsLoggingIn(false);
-          setLoginProvider(null);
-          setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
-        });
+      success: function (authObj: KakaoLoginResponse) {
+        apiClient
+          .post('/auth/kakao', { // 이 엔드포인트는 백엔드에 아직 없습니다.
+            accessToken: authObj.access_token,
+          })
+          .then(async (res) => {
+            await handleLoginSuccess(res.data.accessToken);
+          })
+          .catch((error) => {
+            console.error('Backend login error:', error);
+            setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
+            setIsLoggingIn(false);
+            setLoginProvider(null);
+          });
       },
-      fail: function(err: KakaoError) {
-        clearTimeout(timeoutId);
+      fail: function (err: KakaoError) {
         console.error('Kakao Login Failed:', err);
         setIsLoggingIn(false);
         setLoginProvider(null);
@@ -123,10 +125,9 @@ export default function LoginPage() {
     });
   };
 
-
   const handleNicknameComplete = () => {
     setIsModalOpen(false);
-    navigate('/lobby'); // 닉네임 설정 완료 후 로비로 이동
+    navigate('/lobby');
   };
 
   return (
@@ -172,7 +173,6 @@ export default function LoginPage() {
         </button>
       </div>
 
-      {/* 닉네임 모달 렌더링 */}
       <NicknameModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
