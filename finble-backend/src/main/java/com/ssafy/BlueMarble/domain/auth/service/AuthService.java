@@ -40,7 +40,6 @@ public class AuthService {
         String sessionId = UUID.randomUUID().toString();
         String accessToken = jwtTokenProvider.generateToken(user, sessionId);
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getRole(), sessionId);
-        user.setFcmToken(request.getFcmToken());
 
         redisTemplate.opsForValue().set(
                 "RT:" + user.getEmail(),
@@ -62,7 +61,7 @@ public class AuthService {
         );
 
         User savedUser = userRepository.save(user);
-        userRedisService.putNickname(user.getId().toString(), user.getNickname(), "null", "null");
+        userRedisService.putNickname(user.getId().toString(), user.getNickname(), "null");
 
 
 

@@ -4,6 +4,7 @@ public enum MessageType {
     // 로비/방 관련
     CREATE_ROOM,
     CREATE_ROOM_OK,
+    CREATE_ROOM_FAIL,
     ENTER_ROOM,
     ENTER_ROOM_OK,
     ENTER_ROOM_FAIL,

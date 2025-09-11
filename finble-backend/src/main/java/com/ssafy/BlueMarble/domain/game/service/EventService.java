@@ -1,11 +1,13 @@
 package com.ssafy.BlueMarble.domain.game.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
+import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
@@ -36,11 +38,12 @@ public class EventService {
     private final ObjectMapper objectMapper;
     private final SessionMessageService sessionMessageService;
     private final CardService cardService;
+    private final UserRedisService userRedisService;
     private final Random random = new Random();
-    
+
     // 찬스 칸 위치 정의 (data.sql 참고)
     private static final int[] CHANCE_POSITIONS = {3, 11, 19, 27};
-    
+
     /**
      * 해당 위치가 찬스 칸인지 확인
      */
@@ -52,7 +55,7 @@ public class EventService {
         }
         return false;
     }
-    
+
     /**
      * userName(nickname)을 통해 userId를 찾는 메서드
      */
@@ -69,37 +72,34 @@ public class EventService {
      */
     public void handleJailEvent(WebSocketSession session, JailRequest jailRequest) {
         String roomId = roomService.getRoom(session.getId());
+        log.info("roomId={}", roomId);
+        // 1. 플레이어 상태 조회
+        String userId = userRedisService.getUserIdByNickname(jailRequest.getNickname());
+        log.info("userId={}", userId);
 
-        // 1. 게임 상태 및 플레이어 ID 조회
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-        String userId = getUserIdByNickname(gameState, jailRequest.getUserName());
-        if (userId == null) {
-            throw new BusinessException(BusinessError.USER_NOT_FOUND);
-        }
-
-        // 2. 플레이어 상태 조회
-        CreateMapPayload.PlayerState player = gameState.getPlayers().get(userId);
-        if (player == null) {
+        CreateMapPayload.PlayerState user = gameState.getPlayers().get(userId);
+        if (user == null) {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
 
         // 2. 감옥에 있는지 확인
-        if (!player.isInJail()) {
+        if (!user.isInJail()) {
             throw new BusinessException(BusinessError.INVALID_JAIL_STATE);
         }
 
         boolean escapeSuccess = false;
-        int remainingTurns = player.getJailTurns();
+        int remainingTurns = user.getJailTurns();
 
         if (jailRequest.isEscape()) {
             // 3. 보석금으로 탈출 시도
             int bailMoney = 500; // 보석금
 
-            if (player.getMoney() >= bailMoney) {
+            if (user.getMoney() >= bailMoney) {
                 // 보석금 지불 가능
-                player.setMoney(player.getMoney() - bailMoney);
-                player.setInJail(false);
-                player.setJailTurns(0);
+                user.setMoney(user.getMoney() - bailMoney);
+                user.setInJail(false);
+                user.setJailTurns(0);
                 escapeSuccess = true;
                 remainingTurns = 0;
             } else {
@@ -109,17 +109,22 @@ public class EventService {
         }
 
         // 4. 플레이어 상태 업데이트
-        gameState.getPlayers().put(userId, player);
-        gameRedisService.saveGameMapState(roomId, gameState);
+        gameRedisService.savePlayerState(roomId, jailRequest.getNickname(), user);
+
+        // 5. 게임 상태 업데이트
+        if (gameState != null && gameState.getPlayers() != null) {
+            gameState.getPlayers().put(jailRequest.getNickname(), user);
+            gameRedisService.saveGameMapState(roomId, gameState);
+        }
 
         // 6. 결과 메시지 전송
         JailPayload payload = JailPayload.builder()
                 .result(escapeSuccess)
-                .userName(jailRequest.getUserName())
+                .userName(jailRequest.getNickname())
                 .updatedAsset(
                         ConstructPayload.Asset.builder()
-                                .money(player.getMoney())
-                                .lands(player.getOwnedProperties() != null ? player.getOwnedProperties() : new ArrayList<>())
+                                .money(user.getMoney())
+                                .lands(user.getOwnedProperties() != null ? user.getOwnedProperties() : new ArrayList<>())
                                 .build()
                 )
                 .turns(remainingTurns)
@@ -134,17 +139,18 @@ public class EventService {
      * 플레이어를 감옥에 보내는 메서드
      */
     public void sendPlayerToJail(String roomId, String userName, int jailTurns) {
-        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-        String userId = getUserIdByNickname(gameState, userName);
-        if (userId == null) {
-            return;
-        }
-        CreateMapPayload.PlayerState player = gameState.getPlayers().get(userId);
+        CreateMapPayload.PlayerState player = gameRedisService.getPlayerState(roomId, userName);
         if (player != null) {
             player.setInJail(true);
             player.setJailTurns(jailTurns);
-            gameState.getPlayers().put(userId, player);
-            gameRedisService.saveGameMapState(roomId, gameState);
+            gameRedisService.savePlayerState(roomId, userName, player);
+
+            // 게임 상태 업데이트
+            CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
+            if (gameState != null && gameState.getPlayers() != null) {
+                gameState.getPlayers().put(userName, player);
+                gameRedisService.saveGameMapState(roomId, gameState);
+            }
             //TODO 사용자들에게 플레이어가 감옥에 갔다는 정보를 보내야 할 거 같음.
         }
     }
@@ -158,12 +164,12 @@ public class EventService {
         // 1. 게임 맵 정보
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         
-        // 2. 여행 하려는 사람 ID 및 정보 조회
-        String travelerId = getUserIdByNickname(gameState, worldTravelRequest.getUserName());
-        if (travelerId == null) {
+        // 2. 여행 하려는 사람 정보
+        String userId = userRedisService.getUserIdByNickname(worldTravelRequest.getNickname());
+        CreateMapPayload.PlayerState traveler = gameState.getPlayers().get(userId);
+        if (traveler == null) {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
-        CreateMapPayload.PlayerState traveler = gameState.getPlayers().get(travelerId);
 
         //3. 출발지 도착지 정보
         int startPosition = traveler.getPosition();
@@ -205,7 +211,7 @@ public class EventService {
         // 8. 결과 메시지 전송
         WorldTravelPayload payload = WorldTravelPayload.builder()
                 .result(true)
-                .userName(worldTravelRequest.getUserName())
+                .nickname(worldTravelRequest.getNickname())
                 .startLand(startPosition)
                 .endLand(endPosition)
                 .landOwner(landOwner)
@@ -238,20 +244,29 @@ public class EventService {
         
         // 1. 게임 맵 정보
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-        
-        // 2. 주사위 사용자 ID 및 정보 조회
-        String userId = getUserIdByNickname(gameState, useDiceRequest.getUserName());
-        if (userId == null) {
-            throw new BusinessException(BusinessError.USER_NOT_FOUND);
+
+        // 2. 주사위 사용자 정보
+        String userId = userRedisService.getUserIdByNickname(useDiceRequest.getUserName());
+        if (userId == null) throw new BusinessException(BusinessError.USER_NOT_FOUND);
+
+        // 예외처리
+        //TODO : 본인의 턴에만 주사위를 던질 수 있었야함
+        String currentTurnUserId = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
+        if(!currentTurnUserId.equals(userId)){
+            throw new BusinessException(BusinessError.INVALID_TURN);
         }
         CreateMapPayload.PlayerState player = gameState.getPlayers().get(userId);
+
+        if (player == null) {
+            throw new BusinessException(BusinessError.USER_NOT_FOUND);
+        }
 
         // 3. 주사위 던지기
         int diceNum = random.nextInt(6) + 1;
         
         // 4. 위치 계산
         int currentPosition = player.getPosition();
-        int newPosition = (currentPosition + diceNum) % 32; // 32개 칸 순환
+        int newPosition = (currentPosition + diceNum) % 32; // 28개 칸 순환
         
         // 5. 시작점 통과 여부
         int salaryBonus = 0;
@@ -304,7 +319,7 @@ public class EventService {
             gameRedisService.saveGameMapState(roomId, gameState);
         }
         
-        // 11. 결과 메시지 전송
+        // 10. 결과 메시지 전송
         UseDicePayload payload = UseDicePayload.builder()
                 .userName(useDiceRequest.getUserName())
                 .diceNum(diceNum)
@@ -323,19 +338,19 @@ public class EventService {
         JsonNode payloadNode = objectMapper.valueToTree(payload);
         MessageDto message = new MessageDto(MessageType.USE_DICE, payloadNode);
         sessionMessageService.sendMessageToRoom(roomId, message);
-        
+
         // 12. 찬스 카드 결과가 있으면 별도 메시지 전송
         if (cardResult != null) {
             DrawCardPayload cardPayload = DrawCardPayload.builder()
                     .userName(useDiceRequest.getUserName())
                     .result(cardResult)
                     .build();
-            
+
             JsonNode cardPayloadNode = objectMapper.valueToTree(cardPayload);
             MessageDto cardMessage = new MessageDto(MessageType.DRAW_CARD, cardPayloadNode);
             sessionMessageService.sendMessageToRoom(roomId, cardMessage);
-            
-            log.info("찬스 칸 자동 카드 뽑기 완료: userName={}, cardName={}", 
+
+            log.info("찬스 칸 자동 카드 뽑기 완료: userName={}, cardName={}",
                     useDiceRequest.getUserName(), cardResult.getCardName());
         }
     }

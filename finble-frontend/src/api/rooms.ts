@@ -9,8 +9,17 @@ interface Page<T> {
 }
 
 export const getRoomList = async (): Promise<GameRoom[]> => {
+  const token = localStorage.getItem('jwt');
+  if (!token) {
+    throw new Error('인증 토큰을 찾을 수 없습니다.');
+  }
+
   try {
-    const response = await apiClient.get<Page<GameRoom>>('/room/list');
+    const response = await apiClient.get<Page<GameRoom>>('/api/room/list', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     
     // API 응답(content)을 프론트엔드에서 사용할 GameRoom[] 형태로 변환합니다.
     // 현재는 백엔드 DTO와 GameRoom 타입이 거의 일치하지만,

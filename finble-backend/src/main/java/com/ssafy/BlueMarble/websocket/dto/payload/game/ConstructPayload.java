@@ -12,7 +12,7 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ConstructPayload {
     private Boolean result;
-    private String userName;
+    private String nickname;
     private Integer landNum;
     private MapCell.BuildingType buildingType;
     private Asset updatedAsset;

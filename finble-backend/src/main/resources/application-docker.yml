@@ -1,10 +1,10 @@
 spring:
   datasource:
-    url: jdbc:mysql://${DB_HOST:mysql}:${DB_PORT:3306}/${DB_NAME:bluemarble}?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${DB_HOST:mysql}:${DB_PORT:3306}/${DB_NAME:finble}?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${DB_USERNAME:bluemarble_user}
-    password: ${DB_PASSWORD:password}
-    
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:1234}
+
   jpa:
     hibernate:
       ddl-auto: create
@@ -28,6 +28,7 @@ spring:
           max-active: 8
           max-idle: 8
           min-idle: 0
+        shutdown-timeout: 200ms
 
   security:
     oauth2:
@@ -40,10 +41,10 @@ spring:
               - email
               - profile
   
-  jwt:
-    secret: ${JWT_SECRET:bluemarble-jwt-secret-key-for-finble-game-project-2024-very-long-secure-key-minimum-256-bits-required}
-    expiration: 86400000  # 24시간
-    refresh-expiration: 604800000 # 7일
+jwt:
+  secret: ${JWT_SECRET:bluemarble-jwt-secret-key-for-finble-game-project-2024-very-long-secure-key-minimum-256-bits-required}
+  expiration: 86400000  # 24시간
+  refresh-expiration: 604800000 # 7일
 
 server:
   port: ${SERVER_PORT:8081}

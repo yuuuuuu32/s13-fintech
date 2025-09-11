@@ -8,7 +8,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
       MYSQL_DATABASE: ${DB_NAME:-finble}
-      MYSQL_USER: ${DB_USER:-bluemarble_user}
+      MYSQL_USER: ${DB_USERNAME:-finble_user}
       MYSQL_PASSWORD: ${DB_PASSWORD:-password}
     volumes:
       - mysql_data:/var/lib/mysql
@@ -53,7 +53,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_NAME: ${DB_NAME:-finble}
-      DB_USERNAME: ${DB_USER:-bluemarble_user}
+      DB_USERNAME: ${DB_USERNAME:-finble_user}
       DB_PASSWORD: ${DB_PASSWORD:-password}
       REDIS_HOST: redis
       REDIS_PORT: 6379

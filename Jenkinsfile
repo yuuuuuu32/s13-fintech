@@ -1,6 +1,10 @@
 pipeline {
     agent any
     
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
+    
     environment {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml'
         BACKEND_IMAGE = 'bluemarble-backend'
@@ -97,9 +101,18 @@ pipeline {
                             '
                         """
                         
-                        // Copy project files to EC2
+                        // Clean and copy project files to EC2 (preserve .env)
                         sh """
-                            scp -o StrictHostKeyChecking=no -r ./docker-compose.yml ./finble-backend ./init.sql ./data.sql ./Jenkinsfile ${env.EC2_USER}@${env.EC2_HOST}:/home/ubuntu/bluemarble/
+                            ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
+                                cd /home/ubuntu/bluemarble &&
+                                find . -name ".env" -prune -o -type f -exec rm -f {} + &&
+                                find . -name ".env" -prune -o -type d -not -path "." -exec rm -rf {} + 2>/dev/null || true &&
+                                mkdir -p finble-backend finble-frontend
+                            '
+                        """
+                        
+                        sh """
+                            scp -o StrictHostKeyChecking=no -r ./docker-compose.yml ./finble-backend ./finble-frontend ./init.sql ./Jenkinsfile ${env.EC2_USER}@${env.EC2_HOST}:/home/ubuntu/bluemarble/
                         """
                         
                         // Deploy on EC2
@@ -107,6 +120,7 @@ pipeline {
                             ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
                                 cd /home/ubuntu/bluemarble &&
                                 sudo docker-compose down --remove-orphans &&
+                                sudo docker system prune -f &&
                                 sudo docker-compose build --no-cache backend &&
                                 sudo docker-compose up -d
                             '
@@ -153,8 +167,9 @@ pipeline {
             steps {
                 echo 'Cleaning up...'
                 script {
-                    // Remove unused Docker images
+                    // Remove unused Docker images and build cache
                     sh 'docker image prune -f'
+                    sh 'docker builder prune -f'
                 }
             }
         }
