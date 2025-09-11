@@ -16,7 +16,7 @@ export const getMyInfo = async () => {
 
   // apiClient를 사용하여 사용자 정보를 요청합니다.
   // '/users/me'는 사용자 정보를 반환하는 API 엔드포인트로 가정합니다.
-  const response = await apiClient.get('/users/me', {
+  const response = await apiClient.get('/user', {
     headers: {
       Authorization: `Bearer ${token}`,
     },
