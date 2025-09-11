@@ -130,59 +130,18 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="app-container">
-      <div
-        className="login-container"
-        style={{
-          backgroundImage: `url(${backgroundImage})`,
-        }}
-      >
-        <div className="logo-container">
-          <img src={pinbleLogo} alt="PinBle Logo" className="logo-image" />
-        </div>
-
-        <div className="login-actions">
-          <button
-            onClick={handleGoogleLogin}
-            className="google-login-button"
-            disabled={!!loginProvider}
-          >
-            {loginProvider === 'google' ? (
-              '구글로 로그인 중...'
-            ) : (
-              <>
-                <img src={googleIcon} alt="Google" className="google-icon" />
-                <span className="google-text">Google로 로그인하기</span>
-              </>
-            )}
-          </button>
-          <button
-            onClick={handleKakaoLogin}
-            className="kakao-login-button"
-            disabled={!!loginProvider}
-          >
-            {loginProvider === 'kakao' ? (
-              '카카오로 로그인 중...'
-            ) : (
-              <>
-                <img src={kakaoIcon} alt="Kakao" className="kakao-icon" />
-                <span className="kakao-text">카카오로 로그인하기</span>
-              </>
-            )}
-          </button>
-        </div>
-
-
-        {/* 닉네임 모달 렌더링 */}
-        <NicknameModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onComplete={handleNicknameComplete}
-        />
+    <main
+      className="login-container app-container"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+      }}
+    >
+      <div className="logo-container">
+        <img src={pinbleLogo} alt="PinBle Logo" className="logo-image" />
       </div>
 
       <div className="login-actions">
-        {errorMessage && <p className="error-message">{errorMessage}</p>} {/* 에러 메시지 표시 */}
+        {errorMessage && <p className="error-message">{errorMessage}</p>}
         <button
           onClick={handleGoogleLogin}
           className="google-login-button"
@@ -213,13 +172,12 @@ export default function LoginPage() {
         </button>
       </div>
 
-
       {/* 닉네임 모달 렌더링 */}
       <NicknameModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onComplete={handleNicknameComplete}
       />
-    </div>
+    </main>
   );
 }
