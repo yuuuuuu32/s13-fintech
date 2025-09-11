@@ -118,7 +118,6 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(BusinessError.USER_EMAIL_NOT_FOUND));
 
-        user.setFcmToken(null);
         userRepository.save(user);
     }
 

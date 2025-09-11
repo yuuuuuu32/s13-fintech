@@ -130,11 +130,11 @@ VALUES
 
 -- user 데이터 삽입
 INSERT IGNORE INTO user (
-    id, email, name, nickname, password, provider, role, fcm_token
+    email, password, name, nickname, role, provider, icon
 ) VALUES
-      (1, 'user1@example.com', 'User One', 'userone', 'password1', 'GOOGLE', 'USER', 'fcm_token_1'),
-      (2, 'user2@example.com', 'User Two', 'usertwo', 'password2', 'KAKAO', 'USER', 'fcm_token_2'),
-      (3, 'user3@example.com', 'User Three', 'userthree', 'password3', 'GOOGLE', 'USER', 'fcm_token_3'),
-      (4, 'user4@example.com', 'User Four', 'userfour', 'password4', 'KAKAO', 'USER', 'fcm_token_4'),
-      (5, 'user5@example.com', 'User Five', 'userfive', 'password5', 'GOOGLE', 'ADMIN', 'fcm_token_5'),
-      (6, 'user6@example.com', 'User Six', 'usersix', 'password6', 'KAKAO', 'USER', 'fcm_token_6');
+      ('user1@example.com', 'password1', 'User One', 'userone', 'USER', 'GOOGLE', NULL),
+      ('user2@example.com', 'password2', 'User Two', 'usertwo', 'USER', 'KAKAO', NULL),
+      ('user3@example.com', 'password3', 'User Three', 'userthree', 'USER', 'GOOGLE', NULL),
+      ('user4@example.com', 'password4', 'User Four', 'userfour', 'USER', 'KAKAO', NULL),
+      ('user5@example.com', 'password5', 'User Five', 'userfive', 'ADMIN', 'GOOGLE', NULL),
+      ('user6@example.com', 'password6', 'User Six', 'usersix', 'USER', 'KAKAO', NULL);
