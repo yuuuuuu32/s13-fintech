@@ -52,14 +52,11 @@ public class CustomHandshakeInterceptor implements HandshakeInterceptor {
                 nickname = user.getNickname();
                 icon = user.getIconUrl();
                 if(icon==null) icon="null";
-                nameTag = user.getNameTagUrl();
-                if(nameTag==null)nameTag="null";
             }
 
             attributes.put("userId", userId);
             attributes.put("nickname", nickname);
             attributes.put("icon", icon);
-            attributes.put("nameTag", nameTag);
         }
         return true;
     }
