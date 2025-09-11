@@ -99,6 +99,9 @@ public class RoomService {
         //session -> roomId
         log.info("addRoom 호출 - roomId: {}, sessionId: {}", roomId, sessionId);
         addRoom(sessionId, roomId);
+
+        //TODO : 응답 해줘야함
+
     }
 
     public Page<RoomListDTO> getRoomList(Pageable pageable, String searchKey) {
