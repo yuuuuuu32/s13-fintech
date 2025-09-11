@@ -216,10 +216,13 @@ public class EventService {
         
         // 1. 게임 맵 정보
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-        
+
         // 2. 주사위 사용자 정보
         String userId = userRedisService.getUserIdByNickname(useDiceRequest.getUserName());
         if (userId == null) throw new BusinessException(BusinessError.USER_NOT_FOUND);
+
+        // 예외처리
+        //TODO : 본인의 턴에만 주사위를 던질 수 있었야함
 
         CreateMapPayload.PlayerState player = gameState.getPlayers().get(userId);
         log.info("{}플레이어 이름은 이거에요!",objectMapper.writeValueAsString(player));

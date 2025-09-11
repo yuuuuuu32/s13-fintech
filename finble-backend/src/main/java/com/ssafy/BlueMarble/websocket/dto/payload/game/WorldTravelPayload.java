@@ -9,7 +9,7 @@ import lombok.Data;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class WorldTravelPayload {
     private Boolean result;                    
-    private String userName;                   
+    private String nickname;
     private int startLand;                    
     private int endLand;                      
     private String landOwner;                 
