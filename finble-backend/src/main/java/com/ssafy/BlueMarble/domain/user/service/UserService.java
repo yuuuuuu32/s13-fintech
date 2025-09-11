@@ -29,40 +29,9 @@ public class UserService {
     private final Random random = new Random();
 
     public UserInfoResponse getUserInfo(User user) {
-//        UserStats userStats = userStatsRepository.findByUser(user);
-//
-//        LevelService.XpInfo xpInfo = levelService.calculateXpInfo(userStats);
-//
-//        List<JobStats> jobStatsList = jobStatsRepository.findByUser(user);
-//
-//        Map<Role, JobStats> jobStatsMap = jobStatsList.stream()
-//                .collect(Collectors.toMap(JobStats::getJobType, stats -> stats));
-//
-//        List<ItemDto> icons = inventoryService.getUserIcons(user.getId());
-//        List<ItemDto> nameTags = inventoryService.getUserNameTags(user.getId());
-//
-//        return UserInfoResponse.builder()
-//                .nickname(user.getNickname())
-//                .email(user.getEmail())
-//                .createdAt(user.getCreatedAt())
-//                .level(userStats.getLevel())
-//                .xp(xpInfo.curXp())
-//                .maxXp(xpInfo.maxXp())
-//                .progress(xpInfo.progress())
-//                .tier(userStats.getTier())
-//                .MMR(userStats.getMMR())
-//                .totalGames(userStats.getTotalGames())
-//                .totalWins(userStats.getTotalWins())
-//                .totalLosses(userStats.getTotalLosses())
-//                .winRate(userStats.getWinRate())
-//                .MafiaTeamWinRate(jobStatsService.calculateJobWinRate(jobStatsMap, Role.MAFIA))
-//                .CitizenTeamWinRate(jobStatsService.calculateCitizenTeamWinRate(jobStatsList))
-//                .iconUrl(user.getIconUrl())
-//                .nameTagUrl(user.getNameTagUrl())
-//                .icons(icons)
-//                .nameTags(nameTags)
-//                .build();
-        return UserInfoResponse.builder().build();
+        return UserInfoResponse.builder()
+                .nickname(user.getNickname())
+                .build();
     }
 
     public String generateNickname() {
