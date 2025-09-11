@@ -10,14 +10,15 @@ export default function LobbyPage() {
   const fetchRooms = useLobbyStore((state) => state.fetchRooms);
   const isLoading = useLobbyStore((state) => state.isLoading);
   const error = useLobbyStore((state) => state.error);
+  const subscribeToLobbyUpdates = useLobbyStore((state) => state.subscribeToLobbyUpdates);
 
   useEffect(() => {
-    // 로그인하지 않은 상태에서는 토큰이 없으므로, 토큰이 있을 때만 방 목록을 가져옵니다.
     const token = localStorage.getItem('jwt');
     if (token) {
       fetchRooms();
+      subscribeToLobbyUpdates();
     }
-  }, [fetchRooms]);
+  }, [fetchRooms, subscribeToLobbyUpdates]);
 
   return (
     <>

@@ -23,8 +23,11 @@ export const connectWebSocket = (callbacks: WebSocketCallbacks) => {
   const socket = new SockJS(WEBSOCKET_URL);
   stompClient = Stomp.over(socket);
 
+  const token = localStorage.getItem('jwt');
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
   stompClient.connect(
-    {},
+    headers,
     () => {
       console.log('WebSocket connected.');
       if (reconnectTimeout) {

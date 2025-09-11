@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import './NicknameModal.css';
+import { updateMyInfo } from '../../../api/user'; // Import the real API function
+import { useUserStore } from '../../../stores/useUserStore'; // Import the user store
 
 interface NicknameModalProps {
   isOpen: boolean;
@@ -7,25 +9,11 @@ interface NicknameModalProps {
   onComplete: () => void;
 }
 
-// Mock database of taken nicknames for frontend testing
-const MOCK_TAKEN_NICKNAMES = ['admin', 'guest', 'user', 'root', 'test'];
-
-// Simulate checking if a nickname is already taken against our mock database
-const checkNicknameAvailability = async (nickname: string): Promise<boolean> => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      // Check if the lowercase version of the nickname exists in our mock list
-      const isTaken = MOCK_TAKEN_NICKNAMES.includes(nickname.toLowerCase());
-      resolve(!isTaken); // Resolve with 'true' if available, 'false' if taken
-    }, 500); // Simulate network delay
-  });
-};
-
-
 export default function NicknameModal({ isOpen, onClose, onComplete }: NicknameModalProps) {
   const [nickname, setNickname] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const setUserInfo = useUserStore((state) => state.setUserInfo); // Get the action from the store
 
   // Reset state when modal is closed
   useEffect(() => {
@@ -40,27 +28,30 @@ export default function NicknameModal({ isOpen, onClose, onComplete }: NicknameM
     event.preventDefault();
     setError('');
 
-    // Validation
     if (nickname.length < 2 || nickname.length > 10) {
       setError('닉네임은 2자 이상 10자 이하로 입력해주세요.');
       return;
     }
 
     setIsLoading(true);
-    
-    const isAvailable = await checkNicknameAvailability(nickname);
-    
-    if (!isAvailable) {
-      setError('이미 사용 중인 닉네임입니다.');
-      setIsLoading(false);
-      return;
-    }
 
-    // Simulate final submission
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Call the real API to update the nickname
+      const updatedUserInfo = await updateMyInfo(nickname);
+      
+      // Update the global user store with the new info
+      setUserInfo(updatedUserInfo);
+
+      // Signal completion to close the modal and navigate
       onComplete();
-    }, 1000);
+
+    } catch (err) {
+      // Handle potential errors, e.g., nickname already taken from the backend
+      setError('이미 사용 중인 닉네임이거나 오류가 발생했습니다.');
+      console.error('Failed to update nickname:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isOpen) {
