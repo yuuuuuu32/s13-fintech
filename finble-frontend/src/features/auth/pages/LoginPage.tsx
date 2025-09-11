@@ -40,14 +40,18 @@ export default function LoginPage() {
     try {
       localStorage.setItem('jwt', accessToken);
       const userInfo = await getMyInfo();
+      console.log('Fetched userInfo:', userInfo); // 디버깅을 위해 추가
       
       // Set the user info in the global store
       setUserInfo(userInfo);
 
-      if (userInfo && userInfo.nickname) {
+      // 'player'로 시작하고 숫자가 뒤따르는 닉네임 패턴을 정의합니다.
+      const defaultNicknamePattern = /^player\d+$|^Player\d+$/; // 'player' 또는 'Player'로 시작하는 숫자 패턴
+
+      if (userInfo && userInfo.nickname && !defaultNicknamePattern.test(userInfo.nickname)) {
         navigate('/lobby');
       } else {
-        // This case handles users who somehow have no nickname in DB
+        // 닉네임이 없거나, 'player숫자' 패턴인 경우 닉네임 변경 모달을 띄웁니다.
         setIsModalOpen(true);
       }
     } catch (error) {
@@ -76,11 +80,18 @@ export default function LoginPage() {
         idToken: credentialResponse.credential,
       });
       await handleLoginSuccess(res.data.accessToken);
-    } catch (error) {
+    } catch (error: any) { // Add type annotation for error
       console.error('Backend login error:', error);
-      setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
       setIsLoggingIn(false);
       setLoginProvider(null);
+
+      // Check if it's a 500 error, likely due to nickname constraint
+      if (error.response && error.response.status === 500) {
+        setErrorMessage('닉네임 설정이 필요합니다. 닉네임을 입력해주세요.');
+        setIsModalOpen(true); // Show nickname modal
+      } else {
+        setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
+      }
     }
   };
 

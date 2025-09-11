@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import './NicknameModal.css';
-import { updateMyInfo } from '../../../api/user'; // Import the real API function
-import { useUserStore } from '../../../stores/useUserStore'; // Import the user store
+import { updateMyInfo } from '../../../api/user'; // getMyInfo는 더 이상 필요 없습니다.
+import { useUserStore } from '../../../stores/useUserStore';
 
 interface NicknameModalProps {
   isOpen: boolean;
@@ -9,13 +9,17 @@ interface NicknameModalProps {
   onComplete: () => void;
 }
 
-export default function NicknameModal({ isOpen, onClose, onComplete }: NicknameModalProps) {
+export default function NicknameModal({
+  isOpen,
+  onClose,
+  onComplete,
+}: NicknameModalProps) {
   const [nickname, setNickname] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const setUserInfo = useUserStore((state) => state.setUserInfo); // Get the action from the store
+  const setUserInfo = useUserStore((state) => state.setUserInfo);
 
-  // Reset state when modal is closed
+  // 모달이 닫힐 때 상태를 초기화하는 로직은 그대로 유지합니다.
   useEffect(() => {
     if (!isOpen) {
       setNickname('');
@@ -36,17 +40,19 @@ export default function NicknameModal({ isOpen, onClose, onComplete }: NicknameM
     setIsLoading(true);
 
     try {
-      // Call the real API to update the nickname
+      // updateMyInfo API를 호출하고, 서버가 반환한 최신 사용자 정보를 변수에 저장합니다.
       const updatedUserInfo = await updateMyInfo(nickname);
-      
-      // Update the global user store with the new info
+      console.log(
+        'Nickname update successful. Using server response:',
+        updatedUserInfo
+      );
+
+      // 별도로 getMyInfo를 호출할 필요 없이, 반환된 정보로 바로 전역 상태를 업데이트합니다.
       setUserInfo(updatedUserInfo);
 
-      // Signal completion to close the modal and navigate
+      // 성공적으로 완료되었음을 알립니다.
       onComplete();
-
     } catch (err) {
-      // Handle potential errors, e.g., nickname already taken from the backend
       setError('이미 사용 중인 닉네임이거나 오류가 발생했습니다.');
       console.error('Failed to update nickname:', err);
     } finally {
@@ -58,11 +64,14 @@ export default function NicknameModal({ isOpen, onClose, onComplete }: NicknameM
     return null;
   }
 
+  // JSX 부분은 기존의 상세한 UI 로직을 그대로 사용합니다.
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <h2 className="modal-title">닉네임 설정</h2>
-        <p className="modal-description">게임에서 사용할 닉네임을 입력해주세요.</p>
+        <p className="modal-description">
+          게임에서 사용할 닉네임을 입력해주세요.
+        </p>
         <form onSubmit={handleSubmit}>
           <input
             type="text"

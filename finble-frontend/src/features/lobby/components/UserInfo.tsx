@@ -20,16 +20,6 @@ export function UserInfo() {
     );
   }
 
-  // Mock data for stats, as they are not in the UserInfo yet
-  const stats = {
-    level: 1, // Placeholder
-    rank: 0,  // Placeholder
-    currentXp: 0,
-    xpToNextLevel: 1000,
-  };
-
-  const xpPercentage = (stats.currentXp / stats.xpToNextLevel) * 100;
-
   // Determine which image to use
   const avatarSrc = userInfo.icon || DEFAULT_PLAYER_IMAGE; // Use userInfo.icon if available, else default
 
@@ -42,24 +32,9 @@ export function UserInfo() {
         </div>
         <div className="user-name-container">
           <span className="user-name">
-            {userInfo.nickname}
+            {userInfo.nickname || '닉네임 없음'}
           </span>
           <span className="online-indicator" aria-label="Online"></span>
-        </div>
-      </div>
-      <div className="stats-container">
-        <div className="stat-item">
-          <span className="stat-value">{stats.level}</span>
-          <span className="stat-label">LVL</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-value">{stats.rank}</span>
-          <span className="stat-label">RANK</span>
-        </div>
-      </div>
-      <div className="xp-bar-container">
-        <div className="xp-bar">
-          <div className="xp-bar-progress" style={{ width: `${xpPercentage}%` }}></div>
         </div>
       </div>
     </aside>
