@@ -8,6 +8,6 @@ import lombok.Data;
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ConstructRequest {
-    private String username;
+    private String nickname;
     private Integer landNum;
 }
