@@ -14,11 +14,10 @@ public class UserRedisService {
 
     private final RedisTemplate<String, String> redisTemplate;
 
-    public void putNickname(String userId, String nickname, String icon, String nameTag) {
+    public void putNickname(String userId, String nickname, String icon) {
         redisTemplate.opsForHash().put(USERID_TO_NICKNAME, userId, nickname);
         redisTemplate.opsForHash().put(NICKNAME_TO_USERID, nickname, userId );
         redisTemplate.opsForHash().put(USER_TO_ICON, userId, icon);
-        redisTemplate.opsForHash().put(USER_TO_NAME_TAG,userId, nameTag);
     }
 
     public String getNickname(String userId) {

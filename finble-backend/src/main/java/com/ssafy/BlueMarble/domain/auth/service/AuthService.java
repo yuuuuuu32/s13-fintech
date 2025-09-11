@@ -62,7 +62,7 @@ public class AuthService {
         );
 
         User savedUser = userRepository.save(user);
-        userRedisService.putNickname(user.getId().toString(), user.getNickname(), "null", "null");
+        userRedisService.putNickname(user.getId().toString(), user.getNickname(), "null");
 
 
 

@@ -75,7 +75,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 session.getId(), userId, nickname, icon, nameTag);
 
         webSocketSessionService.addSession(userId, session);
-        userRedisService.putNickname(userId, nickname, icon, nameTag);
+        userRedisService.putNickname(userId, nickname, icon);
         log.info("[WebSocket] afterConnectionEstablished 완료 - sessionId: {}", session.getId());
     }
 
