@@ -52,8 +52,7 @@ public class AuthService {
     }
 
     private User createGoogleUser(OAuthUserInfo userInfo) {
-//        String nickname = userService.generateNickname();
-        String nickname = null;
+        String nickname = userService.generateNickname();
         User user = User.createOAuthUser(
                 userInfo.getEmail(),
                 userInfo.getName(),
