@@ -82,21 +82,7 @@ public class UserService {
 
         request.applyTo(user);
 
-//        if(request.getNameTagId()!=null){
-//            Item item = itemRepository.findById(request.getNameTagId())
-//                    .orElseThrow(()-> new BusinessException(BusinessError.ITEM_ID_NOT_FOUND));
-//
-//            if(item.getItemCategory() != Item.CategoryType.NAME)
-//                throw new BusinessException(BusinessError.CATEGORY_MISMATCH);
-//
-//            user.setNameTagUrl(item.getItemIcon());
-//        }
-
-        User savedUser = userRepository.save(user);
-
-//        if (nicknameChanged) {
-//            userRedisService.putNickname(savedUser.getId().toString(), savedUser.getNickname(), icon, nameTag);
-//        }
+        userRepository.save(user);
 
         return true;
     }
