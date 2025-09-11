@@ -8,6 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class JailRequest {
-    private String userName;
+    private String nickname;
     private boolean escape;
 }
