@@ -4,14 +4,13 @@ import '../../../App.css'; // For .app-container
 
 const backgroundImage = 'src/assets/login_backgound.jpeg';
 const pinbleLogo = 'src/assets/pinble-logo.png';
-const googleIcon = 'src/assets/google-logo.svg';
 const kakaoIcon = 'src/assets/kakao-logo.png';
 
 import NicknameModal from '../components/NicknameModal';
 import './LoginPage.css';
-import { useGoogleLogin } from '@react-oauth/google';
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'; // GoogleLogin 컴포넌트 import
 import apiClient from '../../../api/client';
-import { getMyInfo } from '../../../api/user'; // getMyInfo 함수 import
+import { getMyInfo } from '../../../api/user';
 
 interface KakaoLoginResponse {
   token_type: string;
@@ -55,44 +54,33 @@ export default function LoginPage() {
     }
   };
 
-  const googleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setErrorMessage(null);
-      try {
-        const res = await apiClient.post('/auth/google-login', {
-          idToken: tokenResponse.access_token,
-        });
-        await handleLoginSuccess(res.data.accessToken);
-      } catch (error) {
-        console.error('Backend login error:', error);
-        setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
-        setIsLoggingIn(false);
-        setLoginProvider(null);
-      }
-    },
-    onError: (errorResponse) => {
-      console.error('Google Login Failed:', errorResponse);
-      setIsLoggingIn(false);
-      setLoginProvider(null);
-      setErrorMessage('Google 로그인에 실패했습니다. 다시 시도해주세요.');
-    },
-    onNonOAuthError: (error) => {
-      console.error('Google Non-OAuth Error:', error);
-      setIsLoggingIn(false);
-      setLoginProvider(null);
-      if (error.type === 'popup_closed') {
-        setErrorMessage('Google 로그인 창을 닫았습니다.');
-      } else {
-        setErrorMessage('Google 로그인 중 오류가 발생했습니다.');
-      }
-    },
-  });
-
-  const handleGoogleLogin = () => {
+  // Google 로그인 성공 핸들러
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    setErrorMessage(null);
     setIsLoggingIn(true);
     setLoginProvider('google');
-    setErrorMessage(null);
-    googleLogin();
+
+    try {
+      if (!credentialResponse.credential) {
+        throw new Error('Google ID token not found');
+      }
+
+      const res = await apiClient.post('/auth/google-login', {
+        idToken: credentialResponse.credential, // ID 토큰 전송
+      });
+      await handleLoginSuccess(res.data.accessToken);
+    } catch (error) {
+      console.error('Backend login error:', error);
+      setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
+      setIsLoggingIn(false);
+      setLoginProvider(null);
+    }
+  };
+
+  // Google 로그인 실패 핸들러
+  const handleGoogleError = () => {
+    console.error('Google Login Failed');
+    setErrorMessage('Google 로그인에 실패했습니다. 다시 시도해주세요.');
   };
 
   const handleKakaoLogin = () => {
@@ -103,7 +91,7 @@ export default function LoginPage() {
     window.Kakao.Auth.login({
       success: function (authObj: KakaoLoginResponse) {
         apiClient
-          .post('/auth/kakao', { // 이 엔드포인트는 백엔드에 아직 없습니다.
+          .post('/auth/kakao', {
             accessToken: authObj.access_token,
           })
           .then(async (res) => {
@@ -143,20 +131,19 @@ export default function LoginPage() {
 
       <div className="login-actions">
         {errorMessage && <p className="error-message">{errorMessage}</p>}
-        <button
-          onClick={handleGoogleLogin}
-          className="google-login-button"
-          disabled={isLoggingIn}
-        >
-          {isLoggingIn && loginProvider === 'google' ? (
-            '구글로 로그인 중...'
-          ) : (
-            <>
-              <img src={googleIcon} alt="Google" className="google-icon" />
-              <span className="google-text">Google로 로그인하기</span>
-            </>
-          )}
-        </button>
+        
+        <div className="google-login-wrapper">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+            useOneTap
+            theme="outline"
+            size="large"
+            text="continue_with"
+            shape="rectangular"
+          />
+        </div>
+
         <button
           onClick={handleKakaoLogin}
           className="kakao-login-button"
