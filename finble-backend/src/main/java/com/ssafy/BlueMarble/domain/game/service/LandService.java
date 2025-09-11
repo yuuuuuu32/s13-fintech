@@ -42,30 +42,57 @@ public class LandService {
     public void tradeLand(WebSocketSession session, TradeLandRequest tradeLandRequest) {
         String roomId = roomService.getRoom(session.getId());
 
-        // 1. 맵 데이터를 가져온다.
+        // 1. 구매자 userId 가져옴
+        String buyerUserId = userRedisService.getUserIdByNickname(tradeLandRequest.getBuyerName());
+        if (buyerUserId == null) {
+            throw new BusinessException(BusinessError.USER_ID_NOT_FOUND);
+        }
+
+        // 2. 맵 데이터를 가져온다.
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         GameMap mapData = gameState.getCurrentMap();
 
-        // 2. 구매자, 판매자의 자산 정보를 가져온다.
-        String buyerId = userRedisService.getUserIdByNickname(tradeLandRequest.getBuyerName());
-        String sellerId = userRedisService.getUserIdByNickname(tradeLandRequest.getLandOwner());
-        CreateMapPayload.PlayerState buyer = gameState.getPlayers().get(buyerId);
-        CreateMapPayload.PlayerState seller = gameState.getPlayers().get(sellerId);
+        // 3. 구매자의 자산 정보를 가져온다.
+        CreateMapPayload.PlayerState buyer = gameState.getPlayers().get(buyerUserId);
 
-        log.info("buyer={} seller={}", buyer, seller);
-
-
-        // 3. 구매하려는 땅의 정보를 찾는다.
+        // 4. 구매하려는 땅의 정보를 찾는다.
         MapCell targetCell = mapData.getCells().get(tradeLandRequest.getLandNum());
 
-        // 4. 만약 판매자가 땅을 가지고 있지 않다면
-        if (!seller.getOwnedProperties().contains(tradeLandRequest.getLandNum())) {
-            throw new BusinessException(BusinessError.LAND_NOT_FOUND);
-        }
+        // 5. 땅이 이미 소유되어 있는지 확인
+        String currentOwner = targetCell.getOwnerName();
+        if (currentOwner != null) {
+            // 이미 소유된 땅인 경우, 판매자의 닉네임을 userId로 변환
+            String sellerUserId = userRedisService.getUserIdByNickname(currentOwner);
+            if (sellerUserId == null) {
+                throw new BusinessException(BusinessError.USER_ID_NOT_FOUND);
+            }
+            
+            // 판매자의 자산 정보를 가져온다.
+            CreateMapPayload.PlayerState seller = gameState.getPlayers().get(sellerUserId);
+            if (seller == null) {
+                throw new BusinessException(BusinessError.USER_ID_NOT_FOUND);
+            }
 
-        // 5. 구매자 잔액 확인
-        if (buyer.getMoney() <= targetCell.getToll()) {
-            throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
+            // 판매자가 실제로 해당 땅을 소유하고 있는지 확인
+            if (!seller.getOwnedProperties().contains(tradeLandRequest.getLandNum())) {
+                throw new BusinessException(BusinessError.LAND_NOT_FOUND);
+            }
+
+            // 구매자 잔액 확인
+            if (buyer.getMoney() < targetCell.getToll()) {
+                throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
+            }
+
+            // 판매자의 자산 업데이트
+            seller.setMoney(seller.getMoney() + targetCell.getToll());
+            if (seller.getOwnedProperties() != null) {
+                seller.getOwnedProperties().remove(Integer.valueOf(targetCell.getCellNumber()));
+            }
+        } else {
+            // 소유되지 않은 땅인 경우, 땅 가격으로 구매
+            if (buyer.getMoney() < targetCell.getToll()) {
+                throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
+            }
         }
 
         // 6. 땅 주인을 구매자로 변경
@@ -78,18 +105,10 @@ public class LandService {
         }
         buyer.getOwnedProperties().add(targetCell.getCellNumber());
 
-        // 8 판매자의 자산 업데이트 (판매자가 있는 경우)
-        if (!tradeLandRequest.getLandOwner().equals("null")) {
-            seller.setMoney(seller.getMoney() + targetCell.getToll());
-            if (seller.getOwnedProperties() != null) {
-                seller.getOwnedProperties().remove(Integer.valueOf(targetCell.getCellNumber()));
-            }
-        }
-
-        // 9. 업데이트된 상태를 Redis에 저장
+        // 8. 업데이트된 상태를 Redis에 저장
         gameRedisService.saveGameMapState(roomId, gameState);
 
-        // 10. 다른 플레이어들에게 땅 구매 알림 전송
+        // 9. 다른 플레이어들에게 땅 구매 알림 전송
         TradeLandPayload payload = TradeLandPayload.builder()
                 .result(true)
                 .players(gameState.getPlayers())
