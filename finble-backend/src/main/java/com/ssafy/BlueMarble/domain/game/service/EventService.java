@@ -183,7 +183,7 @@ public class EventService {
         // 8. 결과 메시지 전송
         WorldTravelPayload payload = WorldTravelPayload.builder()
                 .result(true)
-                .userName(worldTravelRequest.getNickname())
+                .nickname(worldTravelRequest.getNickname())
                 .startLand(startPosition)
                 .endLand(endPosition)
                 .landOwner(landOwner)
@@ -211,7 +211,7 @@ public class EventService {
     /**
      * 주사위 사용 이벤트 처리
      */
-    public void handleUseDiceEvent(WebSocketSession session, UseDiceRequest useDiceRequest) throws JsonProcessingException {
+    public void handleUseDiceEvent(WebSocketSession session, UseDiceRequest useDiceRequest) {
         String roomId = roomService.getRoom(session.getId());
         
         // 1. 게임 맵 정보
@@ -223,9 +223,12 @@ public class EventService {
 
         // 예외처리
         //TODO : 본인의 턴에만 주사위를 던질 수 있었야함
-
+        String currentTurnUserId = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
+        if(!currentTurnUserId.equals(userId)){
+            throw new BusinessException(BusinessError.INVALID_TURN);
+        }
         CreateMapPayload.PlayerState player = gameState.getPlayers().get(userId);
-        log.info("{}플레이어 이름은 이거에요!",objectMapper.writeValueAsString(player));
+
         if (player == null) {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
