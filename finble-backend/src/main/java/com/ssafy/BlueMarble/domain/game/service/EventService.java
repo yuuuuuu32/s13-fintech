@@ -44,30 +44,34 @@ public class EventService {
      */
     public void handleJailEvent(WebSocketSession session, JailRequest jailRequest) {
         String roomId = roomService.getRoom(session.getId());
-
+        log.info("roomId={}", roomId);
         // 1. 플레이어 상태 조회
-        CreateMapPayload.PlayerState player = gameRedisService.getPlayerState(roomId, jailRequest.getUserName());
-        if (player == null) {
+        String userId = userRedisService.getUserIdByNickname(jailRequest.getNickname());
+        log.info("userId={}", userId);
+
+        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
+        CreateMapPayload.PlayerState user = gameState.getPlayers().get(userId);
+        if (user == null) {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
 
         // 2. 감옥에 있는지 확인
-        if (!player.isInJail()) {
+        if (!user.isInJail()) {
             throw new BusinessException(BusinessError.INVALID_JAIL_STATE);
         }
 
         boolean escapeSuccess = false;
-        int remainingTurns = player.getJailTurns();
+        int remainingTurns = user.getJailTurns();
 
         if (jailRequest.isEscape()) {
             // 3. 보석금으로 탈출 시도
             int bailMoney = 500; // 보석금
 
-            if (player.getMoney() >= bailMoney) {
+            if (user.getMoney() >= bailMoney) {
                 // 보석금 지불 가능
-                player.setMoney(player.getMoney() - bailMoney);
-                player.setInJail(false);
-                player.setJailTurns(0);
+                user.setMoney(user.getMoney() - bailMoney);
+                user.setInJail(false);
+                user.setJailTurns(0);
                 escapeSuccess = true;
                 remainingTurns = 0;
             } else {
@@ -77,23 +81,22 @@ public class EventService {
         }
 
         // 4. 플레이어 상태 업데이트
-        gameRedisService.savePlayerState(roomId, jailRequest.getUserName(), player);
+        gameRedisService.savePlayerState(roomId, jailRequest.getNickname(), user);
 
         // 5. 게임 상태 업데이트
-        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         if (gameState != null && gameState.getPlayers() != null) {
-            gameState.getPlayers().put(jailRequest.getUserName(), player);
+            gameState.getPlayers().put(jailRequest.getNickname(), user);
             gameRedisService.saveGameMapState(roomId, gameState);
         }
 
         // 6. 결과 메시지 전송
         JailPayload payload = JailPayload.builder()
                 .result(escapeSuccess)
-                .userName(jailRequest.getUserName())
+                .userName(jailRequest.getNickname())
                 .updatedAsset(
                         ConstructPayload.Asset.builder()
-                                .money(player.getMoney())
-                                .lands(player.getOwnedProperties() != null ? player.getOwnedProperties() : new ArrayList<>())
+                                .money(user.getMoney())
+                                .lands(user.getOwnedProperties() != null ? user.getOwnedProperties() : new ArrayList<>())
                                 .build()
                 )
                 .turns(remainingTurns)
@@ -134,7 +137,8 @@ public class EventService {
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         
         // 2. 여행 하려는 사람 정보
-        CreateMapPayload.PlayerState traveler = gameState.getPlayers().get(worldTravelRequest.getUserName());
+        String userId = userRedisService.getUserIdByNickname(worldTravelRequest.getNickname());
+        CreateMapPayload.PlayerState traveler = gameState.getPlayers().get(userId);
         if (traveler == null) {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
@@ -179,7 +183,7 @@ public class EventService {
         // 8. 결과 메시지 전송
         WorldTravelPayload payload = WorldTravelPayload.builder()
                 .result(true)
-                .userName(worldTravelRequest.getUserName())
+                .userName(worldTravelRequest.getNickname())
                 .startLand(startPosition)
                 .endLand(endPosition)
                 .landOwner(landOwner)
