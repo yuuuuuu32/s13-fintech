@@ -43,7 +43,7 @@ public class RoomService {
     private final UserRedisService userRedisService;
     private final ObjectMapper objectMapper;
     private final WebSocketSessionService webSocketSessionService;
-    private final int MAX_USER_LIMIT = 12;
+    private final int MAX_USER_LIMIT = 4;
 
     //대기방 만들기₩
     public void createRoom(WebSocketSession session, CreateRoomPayload createRoomPayload) {
@@ -51,7 +51,14 @@ public class RoomService {
 
         //방 인원제한 체크
         if(createRoomPayload.getUserLimit() > MAX_USER_LIMIT){
-            throw new BusinessException(BusinessError.CREATE_ROOM_FAIL);
+            sessionMessageService.sendMessage(
+                    session,
+                    new MessageDto(
+                            MessageType.CREATE_ROOM_FAIL,
+                            objectMapper.createObjectNode().put("message", "방의 최대 인원 제한은 4명입니다.")
+                    )
+            );
+            return;
         }
 
         if(createRoomPayload.getRoomName() == null){
@@ -99,6 +106,12 @@ public class RoomService {
         //session -> roomId
         log.info("addRoom 호출 - roomId: {}, sessionId: {}", roomId, sessionId);
         addRoom(sessionId, roomId);
+
+        // 생성 성공 응답 전송
+        JsonNode okPayload = objectMapper.createObjectNode().put("roomId", roomId);
+        MessageDto okMessage = new MessageDto(MessageType.CREATE_ROOM_OK, okPayload);
+        sessionMessageService.sendMessage(session, okMessage);
+
     }
 
     public Page<RoomListDTO> getRoomList(Pageable pageable, String searchKey) {
