@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { getRoomList } from '../../../api/rooms';
 
 // 각 플레이어의 정보를 정의합니다.
 export interface Player {
@@ -16,22 +17,31 @@ export interface GameRoom {
 }
 
 interface LobbyState {
-  rooms: GameRoom[]
-  addRoom: (roomName: string) => string
+  rooms: GameRoom[];
+  isLoading: boolean;
+  error: string | null;
+  fetchRooms: () => Promise<void>;
+  addRoom: (roomName: string) => string;
 }
 
 // 가짜 유저 데이터 (로그인 기능 구현 전 임시 사용)
-// 다른 파일에서 이 정보를 가져다 쓸 수 있도록 export 키워드를 추가했습니다.
 export const currentUser = { id: 'user-me', name: '나' }
 
 export const useLobbyStore = create<LobbyState>((set) => ({
-  // 초기 데이터에서도 map과 mode를 제거합니다.
-  rooms: [
-    { id: 'room-1', name: '초보만 오세요', players: [{id: 'user-1', name: '유저1'}, {id: 'user-2', name: '유저2'}], maxPlayers: 4, status: 'waiting' },
-    { id: 'room-2', name: '고수들의 전쟁', players: [], maxPlayers: 4, status: 'playing' },
-    { id: 'room-3', name: '즐겜하실 분~', players: [{id: 'user-3', name: '유저3'}], maxPlayers: 4, status: 'waiting' },
-    { id: 'room-4', name: '금융왕이 될테야', players: [{id: 'user-4', name: '유저4'}, {id: 'user-5', name: '유저5'}, {id: 'user-6', name: '유저6'}], maxPlayers: 4, status: 'waiting' },
-  ],
+  rooms: [], // 초기 데이터는 빈 배열로 설정
+  isLoading: false,
+  error: null,
+  fetchRooms: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const rooms = await getRoomList();
+      set({ rooms, isLoading: false });
+    } catch (error) {
+      set({ isLoading: false, error: '방 목록을 불러오는 데 실패했습니다.' });
+      console.error(error); // 에러 로그 추가
+    }
+  },
+  // TODO: addRoom 기능도 API 호출로 변경해야 합니다.
   addRoom: (roomName) => {
     const newRoom: GameRoom = {
       id: `room-${Date.now()}`,
@@ -45,4 +55,4 @@ export const useLobbyStore = create<LobbyState>((set) => ({
     }))
     return newRoom.id
   },
-}))
+}));
