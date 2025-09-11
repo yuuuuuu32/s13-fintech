@@ -9,6 +9,5 @@ import lombok.Data;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class TradeLandRequest {
     private Integer landNum;
-    private String landOwner;
     private String buyerName;
 }
