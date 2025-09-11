@@ -101,7 +101,15 @@ pipeline {
                             '
                         """
                         
-                        // Copy project files to EC2
+                        // Clean and copy project files to EC2
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
+                                cd /home/ubuntu &&
+                                rm -rf bluemarble/finble-backend &&
+                                mkdir -p bluemarble
+                            '
+                        """
+                        
                         sh """
                             scp -o StrictHostKeyChecking=no -r ./docker-compose.yml ./finble-backend ./init.sql ./Jenkinsfile ${env.EC2_USER}@${env.EC2_HOST}:/home/ubuntu/bluemarble/
                         """
