@@ -3,12 +3,14 @@ import { getRoomList } from '../../../api/rooms';
 import { sendMessage, subscribeToTopic } from '../../../utils/websocket';
 import { useUserStore } from '../../../stores/useUserStore';
 
+// 각 플레이어의 정보를 정의합니다.
 export interface Player {
   id: string;
   name: string;
   isOwner: boolean;
 }
 
+// GameRoom 타입에서 map과 mode를 제거합니다.
 export interface GameRoom {
   id: string;
   name: string;
@@ -17,7 +19,6 @@ export interface GameRoom {
   status: 'waiting' | 'playing';
 }
 
-// Zustand 스토어 상태 + 액션 인터페이스
 interface LobbyState {
   rooms: GameRoom[];
   isLoading: boolean;
@@ -193,7 +194,7 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
     set((state) => ({
       rooms: [...state.rooms, newRoom],
     }));
-    return newRoom.id; // 생성된 방 ID 반환 (라우팅용)
+    return newRoom.id;
   },
   subscribeToLobbyUpdates: () => {
     subscribeToTopic('GAME_STATE_CHANGE', (message) => {
