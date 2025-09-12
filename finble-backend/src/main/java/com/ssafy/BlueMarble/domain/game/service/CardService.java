@@ -6,6 +6,9 @@ import com.ssafy.BlueMarble.domain.game.entity.Card;
 import com.ssafy.BlueMarble.domain.game.repository.CardRepository;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.DrawCardPayload;
+import com.ssafy.BlueMarble.websocket.dto.MessageDto;
+import com.ssafy.BlueMarble.websocket.dto.MessageType;
+import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -27,6 +30,7 @@ public class CardService {
     private final GameRedisService gameRedisService;
     private final CardRepository cardRepository;
     private final EventService eventService;
+    private final SessionMessageService sessionMessageService;
     private final Random random = new Random();
     
     /**
@@ -89,7 +93,7 @@ public class CardService {
             String cardsJson = redisTemplate.opsForValue().get(key);
             
             if (cardsJson != null) {
-                return objectMapper.readValue(cardsJson, List.class);
+                return objectMapper.readValue(cardsJson, objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
             }
             
             return new ArrayList<>();
@@ -188,7 +192,7 @@ public class CardService {
     }
     
     /**
-     * 카드 뽑기
+     * 카드 뽑기 및 결과 메시지 전송
      */
     public DrawCardPayload.DrawCardResult drawCard(String roomId, String userName) {
         try {
@@ -239,8 +243,8 @@ public class CardService {
             log.info("카드 뽑기 성공: roomId={}, userName={}, cardName={}", roomId, userName, drawnCard.getName());
             
             boolean hasAngelCard = player.isAnglecard();
-            
-            return DrawCardPayload.DrawCardResult.builder()
+
+            DrawCardPayload.DrawCardResult result = DrawCardPayload.DrawCardResult.builder()
                     .userName(userName)
                     .cardName(drawnCard.getName())
                     .anglecard(hasAngelCard)
@@ -249,6 +253,20 @@ public class CardService {
                     .jailStatus(jailStatus)
                     .effectDescription(effectDescription)
                     .build();
+
+            // 찬스 카드 결과 메시지 전송
+            DrawCardPayload cardPayload = DrawCardPayload.builder()
+                    .userName(userName)
+                    .result(result)
+                    .build();
+
+            var cardPayloadNode = objectMapper.valueToTree(cardPayload);
+            MessageDto cardMessage = new MessageDto(MessageType.DRAW_CARD, cardPayloadNode);
+            sessionMessageService.sendMessageToRoom(roomId, cardMessage);
+
+            log.info("찬스 카드 결과 메시지 전송 완료: userName={}, cardName={}", userName, drawnCard.getName());
+
+            return result;
                     
         } catch (Exception e) {
             log.error("카드 뽑기 중 오류 발생: roomId={}, userName={}", roomId, userName, e);

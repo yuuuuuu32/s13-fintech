@@ -1,6 +1,5 @@
 package com.ssafy.BlueMarble.domain.game.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
@@ -17,7 +16,6 @@ import com.ssafy.BlueMarble.websocket.dto.payload.game.JailPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.ConstructPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.WorldTravelPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.UseDicePayload;
-import com.ssafy.BlueMarble.websocket.dto.payload.game.DrawCardPayload;
 import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
 
 import lombok.RequiredArgsConstructor;
@@ -252,7 +250,7 @@ public class EventService {
         // 예외처리
         //TODO : 본인의 턴에만 주사위를 던질 수 있었야함
         String currentTurnUserId = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
-        if(!currentTurnUserId.equals(userId)){
+        if(!currentTurnUserId.equals(useDiceRequest.getUserName())){
             throw new BusinessException(BusinessError.INVALID_TURN);
         }
         CreateMapPayload.PlayerState player = gameState.getPlayers().get(userId);
@@ -266,7 +264,7 @@ public class EventService {
         
         // 4. 위치 계산
         int currentPosition = player.getPosition();
-        int newPosition = (currentPosition + diceNum) % 32; // 28개 칸 순환
+        int newPosition = (currentPosition + diceNum) % 32; // 32개 칸 순환
         
         // 5. 시작점 통과 여부
         int salaryBonus = 0;
@@ -302,17 +300,20 @@ public class EventService {
             // 땅이 비어있으면 구매 가능
             canBuyLand = true;
         }
-        
-        // 9. 찬스 칸 확인 및 자동 카드 뽑기
-        DrawCardPayload.DrawCardResult cardResult = null;
+
+        // 9. 게임 상태 저장
+        // TODO : 현재 턴인 사람의 정보를 업데이트해야함
+        if(gameState.getCurrentPlayerIndex() == gameState.getPlayers().size()-1){
+            gameState.setCurrentPlayerIndex(0);
+        }else{
+            gameState.setCurrentPlayerIndex(gameState.getCurrentPlayerIndex() + 1);
+        }
+
+        //10. 찬스 칸 확인 및 자동 카드 뽑기
         if (isChancePosition(newPosition)) {
             log.info("플레이어가 찬스 칸에 도착: position={}, userName={}", newPosition, useDiceRequest.getUserName());
-            // 주사위 결과를 먼저 저장
-            gameRedisService.saveGameMapState(roomId, gameState);
-            // 카드 뽑기 (내부에서 상태 변경 및 저장)
-            cardResult = cardService.drawCard(roomId, useDiceRequest.getUserName());
-            // 카드 효과가 적용된 최신 게임 상태를 다시 불러옴
-            gameState = gameRedisService.getGameMapState(roomId);
+            // 카드 뽑기 (내부에서 상태 변경, 저장 및 메시지 전송)
+            cardService.drawCard(roomId, useDiceRequest.getUserName());
             player = gameState.getPlayers().get(userId);
         } else {
             // 찬스 칸이 아니면, 주사위 이동 및 통행료 결과만 저장
@@ -338,20 +339,5 @@ public class EventService {
         JsonNode payloadNode = objectMapper.valueToTree(payload);
         MessageDto message = new MessageDto(MessageType.USE_DICE, payloadNode);
         sessionMessageService.sendMessageToRoom(roomId, message);
-
-        // 12. 찬스 카드 결과가 있으면 별도 메시지 전송
-        if (cardResult != null) {
-            DrawCardPayload cardPayload = DrawCardPayload.builder()
-                    .userName(useDiceRequest.getUserName())
-                    .result(cardResult)
-                    .build();
-
-            JsonNode cardPayloadNode = objectMapper.valueToTree(cardPayload);
-            MessageDto cardMessage = new MessageDto(MessageType.DRAW_CARD, cardPayloadNode);
-            sessionMessageService.sendMessageToRoom(roomId, cardMessage);
-
-            log.info("찬스 칸 자동 카드 뽑기 완료: userName={}, cardName={}",
-                    useDiceRequest.getUserName(), cardResult.getCardName());
-        }
     }
 }
