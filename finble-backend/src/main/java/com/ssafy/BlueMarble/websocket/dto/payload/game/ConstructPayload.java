@@ -1,7 +1,7 @@
 package com.ssafy.BlueMarble.websocket.dto.payload.game;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.ssafy.BlueMarble.domain.game.dto.MapCell;
+import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import lombok.Builder;
 import lombok.Data;
 
@@ -14,7 +14,7 @@ public class ConstructPayload {
     private Boolean result;
     private String nickname;
     private Integer landNum;
-    private MapCell.BuildingType buildingType;
+    private Tile.BuildingType buildingType;
     private Asset updatedAsset;
 
     @Data

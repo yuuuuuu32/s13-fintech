@@ -1,10 +1,8 @@
 package com.ssafy.BlueMarble.domain.game.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "tiles")
@@ -14,6 +12,7 @@ public class Tile {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @JsonIgnore
     private Long id;
     
     @Column(nullable = false)
@@ -37,6 +36,24 @@ public class Tile {
     
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    // 게임 중 상태 변경을 위한 메서드들
+    // 게임 중 동적으로 변경되는 필드들 (DB에는 저장하지 않음)
+    @Setter
+    @Transient
+    private int cellNumber; // 맵상의 위치
+    
+    @Transient
+    @Setter
+    private String ownerName;
+    
+    @Transient
+    @Setter
+    private int toll;
+    
+    @Setter
+    @Transient
+    private BuildingType buildingType;
     
     @Builder
     public Tile(Long id, String name, TileType type, int landPrice,
@@ -49,6 +66,17 @@ public class Tile {
         this.buildingPrice = buildingPrice;
         this.hotelPrice = hotelPrice;
         this.description = description;
+        this.ownerName = null;
+        this.toll = landPrice; // 초기 통행료는 땅 값
+        this.buildingType = BuildingType.FIELD;
+    }
+
+    // BuildingType enum 추가
+    public enum BuildingType {
+        FIELD,
+        VILLA,
+        BUILDING,
+        HOTEL
     }
     
     @Getter

@@ -55,17 +55,6 @@ public class EventService {
     }
 
     /**
-     * userName(nickname)을 통해 userId를 찾는 메서드
-     */
-    private String getUserIdByNickname(CreateMapPayload gameMapState, String userName) {
-        return gameMapState.getPlayers().entrySet().stream()
-                .filter(entry -> userName.equals(entry.getValue().getNickname()))
-                .map(entry -> entry.getKey())
-                .findFirst()
-                .orElse(null);
-    }
-
-    /**
      * 감옥 이벤트 처리
      */
     public void handleJailEvent(WebSocketSession session, JailRequest jailRequest) {
@@ -134,26 +123,6 @@ public class EventService {
     }
 
     /**
-     * 플레이어를 감옥에 보내는 메서드
-     */
-    public void sendPlayerToJail(String roomId, String userName, int jailTurns) {
-        CreateMapPayload.PlayerState player = gameRedisService.getPlayerState(roomId, userName);
-        if (player != null) {
-            player.setInJail(true);
-            player.setJailTurns(jailTurns);
-            gameRedisService.savePlayerState(roomId, userName, player);
-
-            // 게임 상태 업데이트
-            CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-            if (gameState != null && gameState.getPlayers() != null) {
-                gameState.getPlayers().put(userName, player);
-                gameRedisService.saveGameMapState(roomId, gameState);
-            }
-            //TODO 사용자들에게 플레이어가 감옥에 갔다는 정보를 보내야 할 거 같음.
-        }
-    }
-
-    /**
      * 세계여행 이벤트 처리
      */
     public void handleWorldTravelEvent(WebSocketSession session, WorldTravelRequest worldTravelRequest) {
@@ -161,7 +130,7 @@ public class EventService {
 
         // 1. 게임 맵 정보
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-        
+
         // 2. 여행 하려는 사람 정보
         String userId = userRedisService.getUserIdByNickname(worldTravelRequest.getNickname());
         CreateMapPayload.PlayerState traveler = gameState.getPlayers().get(userId);
