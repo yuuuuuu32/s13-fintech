@@ -134,26 +134,6 @@ public class EventService {
     }
 
     /**
-     * 플레이어를 감옥에 보내는 메서드
-     */
-    public void sendPlayerToJail(String roomId, String userName, int jailTurns) {
-        CreateMapPayload.PlayerState player = gameRedisService.getPlayerState(roomId, userName);
-        if (player != null) {
-            player.setInJail(true);
-            player.setJailTurns(jailTurns);
-            gameRedisService.savePlayerState(roomId, userName, player);
-
-            // 게임 상태 업데이트
-            CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-            if (gameState != null && gameState.getPlayers() != null) {
-                gameState.getPlayers().put(userName, player);
-                gameRedisService.saveGameMapState(roomId, gameState);
-            }
-            //TODO 사용자들에게 플레이어가 감옥에 갔다는 정보를 보내야 할 거 같음.
-        }
-    }
-
-    /**
      * 세계여행 이벤트 처리
      */
     public void handleWorldTravelEvent(WebSocketSession session, WorldTravelRequest worldTravelRequest) {
