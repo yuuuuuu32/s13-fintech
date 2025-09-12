@@ -23,6 +23,7 @@ interface LobbyState {
   error: string | null;
   fetchRooms: () => Promise<void>;
   createRoom: (roomName: string, userLimit: number) => Promise<string>;
+  enterRoom: (roomId: string) => Promise<any>; // 방 입장 함수 추가
   addRoomOptimistically: (room: GameRoom) => void; // Optimistically add a new room
   addRoom: (roomName: string) => string; // TODO: 이 함수는 나중에 제거하거나 변경될 예정
   subscribeToLobbyUpdates: () => void; // 실시간 업데이트 구독
@@ -122,6 +123,71 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
       // 방 생성 요청 후 WebSocket 연결 해제 (요청에 따라)
       // disconnectWebSocket(); // 이 줄은 제거된 상태
       // console.log('useLobbyStore: WebSocket disconnected after room creation attempt.'); // 이 줄도 제거된 상태
+    }
+  },
+  enterRoom: async (roomId: string) => {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        connectWebSocket({
+          onConnect: () => {
+            console.log('useLobbyStore: WebSocket connected for room entry.');
+            resolve();
+          },
+          onDisconnect: () => {
+            console.error('useLobbyStore: WebSocket disconnected during room entry.');
+            reject(new Error('WebSocket disconnected during room entry.'));
+          },
+          onMessage: (topic, message) => {
+            // 방 입장 결과 메시지 처리 (선택 사항, 백엔드 명세에 따라)
+            console.log(`useLobbyStore: Received message on ${topic}:`, message);
+          },
+        });
+      });
+      const roomEntryResult = await new Promise<any>((resolve, reject) => {
+        const unsubscribeOk = subscribeToTopic('ENTER_ROOM_OK', (message: any) => {
+          unsubscribeOk();
+          unsubscribeFail();
+          unsubscribeNotFound(); // 추가
+          resolve(message.payload);
+        });
+
+        const unsubscribeFail = subscribeToTopic('ENTER_ROOM_FAIL', (message: any) => {
+          unsubscribeOk();
+          unsubscribeFail();
+          unsubscribeNotFound(); // 추가
+          reject(new Error(message.message || '입장할 수 없는 방입니다.'));
+        });
+
+        // ROOM_ID_NOT_FOUND 메시지 처리 추가
+        const unsubscribeNotFound = subscribeToTopic('ROOM_ID_NOT_FOUND', (message: any) => {
+          unsubscribeOk();
+          unsubscribeFail();
+          unsubscribeNotFound();
+          reject(new Error(message.message || '방 ID를 찾을 수 없습니다.'));
+        });
+
+                sendMessage('/app/room/enter', {
+          type: "ENTER_ROOM", // 방에 접속할 때는 ENTER_ROOM을 사용합니다.
+          payload: {
+            roomId,
+          }
+        });
+
+        setTimeout(() => {
+          unsubscribeOk();
+          unsubscribeFail();
+          unsubscribeNotFound(); // 추가
+          reject(new Error('Room entry response timeout.'));
+        }, 10000); // 10초 타임아웃
+      });
+
+      console.log('Room entry successful:', roomEntryResult);
+      // 성공 시, 여기서 스토어 상태를 업데이트 할 수 있습니다.
+      return roomEntryResult;
+
+    } catch (error) {
+      console.error('방 입장 요청 실패:', error);
+      throw error;
     }
   },
   addRoomOptimistically: (room: GameRoom) => {

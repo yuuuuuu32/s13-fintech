@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLobbyStore } from '../store/useLobbyStore'; // 스토어 import
 import type { GameRoom } from '../store/useLobbyStore';
 import './RoomCard.css';
 
@@ -9,9 +10,19 @@ interface RoomCardProps {
 
 export const RoomCard = ({ room }: RoomCardProps) => {
   const navigate = useNavigate();
+  const enterRoom = useLobbyStore((state) => state.enterRoom); // 스토어에서 enterRoom 함수 가져오기
 
-  const handleJoinRoom = () => {
-    navigate(`/room/${room.id}`);
+  const handleJoinRoom = async () => {
+    try {
+      await enterRoom(room.id);
+      navigate(`/room/${room.id}`);
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(`방 입장에 실패했습니다: ${error.message}`);
+      } else {
+        alert('알 수 없는 오류로 방 입장에 실패했습니다.');
+      }
+    }
   };
 
   const handleJoinButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {

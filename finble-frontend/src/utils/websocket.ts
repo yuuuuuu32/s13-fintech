@@ -1,7 +1,7 @@
 // import * as Stomp from 'stompjs'; // StompJS 임포트 제거
 // import { IMessage } from 'stompjs'; // IMessage 임포트 제거
 
-const WEBSOCKET_URL = 'ws://localhost:8080/ws'; // 백엔드 WebSocket 주소
+const WEBSOCKET_URL = 'ws://localhost:8081/ws'; // 백엔드 WebSocket 주소
 
 let webSocket: WebSocket | null = null; // 순수 WebSocket 객체
 let reconnectTimeout: NodeJS.Timeout | null = null;
