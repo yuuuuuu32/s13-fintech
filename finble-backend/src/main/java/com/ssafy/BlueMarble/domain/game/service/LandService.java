@@ -3,7 +3,7 @@ package com.ssafy.BlueMarble.domain.game.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.GameMap;
-import com.ssafy.BlueMarble.domain.game.dto.MapCell;
+import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.game.dto.request.ConstructRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.TradeLandRequest;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
@@ -56,7 +56,7 @@ public class LandService {
         CreateMapPayload.PlayerState buyer = gameState.getPlayers().get(buyerUserId);
 
         // 4. 구매하려는 땅의 정보를 찾는다.
-        MapCell targetCell = mapData.getCells().get(tradeLandRequest.getLandNum());
+        Tile targetCell = mapData.getCells().get(tradeLandRequest.getLandNum());
 
         // 5. 땅이 이미 소유되어 있는지 확인
         String currentOwner = targetCell.getOwnerName();
@@ -96,7 +96,7 @@ public class LandService {
         }
 
         // 6. 땅 주인을 구매자로 변경
-        targetCell.setOwnerName(tradeLandRequest.getBuyerName());
+        targetCell.setOwner(tradeLandRequest.getBuyerName());
 
         // 7. 구매자의 자산 업데이트
         buyer.setMoney(buyer.getMoney() - targetCell.getToll());
@@ -140,7 +140,7 @@ public class LandService {
         log.info("[CONSTRUCT] player null? {}", user == null);
         GameMap mapData = gameState.getCurrentMap();
         //3. 건설시도 ( 건설 자금이 충분한지 / 현재 건설하려는 땅을 소유하고 있는지 체크해야함)
-        MapCell targetCell = mapData.getCells().get(constructRequest.getLandNum());
+        Tile targetCell = mapData.getCells().get(constructRequest.getLandNum());
 
         //3.1 건설 자금이 충분한지
         if (targetCell.getToll() * 10 > user.getMoney()) {
@@ -156,14 +156,14 @@ public class LandService {
             throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
         }
 
-        MapCell.BuildingType curType = targetCell.getBuildingType();
+        Tile.BuildingType curType = targetCell.getBuildingType();
 
         switch (curType) {
             case BUILDING:
-                targetCell.setBuildingType(MapCell.BuildingType.HOTEL);
+                targetCell.setBuildingType(Tile.BuildingType.HOTEL);
                 break;
             case VILLA:
-                targetCell.setBuildingType(MapCell.BuildingType.BUILDING);
+                targetCell.setBuildingType(Tile.BuildingType.BUILDING);
                 break;
             case HOTEL:
                 break;
