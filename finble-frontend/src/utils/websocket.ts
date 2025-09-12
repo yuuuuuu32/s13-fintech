@@ -29,8 +29,18 @@ export const connectWebSocket = (callbacks: WebSocketCallbacks) => {
     return;
   }
 
-  console.log('Connecting to WebSocket...');
-  webSocket = new WebSocket(WEBSOCKET_URL);
+  const token = localStorage.getItem('jwt');
+  if (!token) {
+    console.error('WebSocket connection failed: No JWT token found.');
+    callbacks.onDisconnect(); // 토큰이 없으면 연결 실패 처리
+    return;
+  }
+
+  // WebSocket URL에 토큰을 쿼리 파라미터로 추가
+  const authenticatedUrl = `${WEBSOCKET_URL}?token=${token}`;
+  
+  console.log('Connecting to WebSocket with authentication...');
+  webSocket = new WebSocket(authenticatedUrl);
 
   webSocket.onopen = () => {
     console.log('WebSocket connected.');
