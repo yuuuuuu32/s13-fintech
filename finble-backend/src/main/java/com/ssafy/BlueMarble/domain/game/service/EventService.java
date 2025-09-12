@@ -55,17 +55,6 @@ public class EventService {
     }
 
     /**
-     * userName(nickname)을 통해 userId를 찾는 메서드
-     */
-    private String getUserIdByNickname(CreateMapPayload gameMapState, String userName) {
-        return gameMapState.getPlayers().entrySet().stream()
-                .filter(entry -> userName.equals(entry.getValue().getNickname()))
-                .map(entry -> entry.getKey())
-                .findFirst()
-                .orElse(null);
-    }
-
-    /**
      * 감옥 이벤트 처리
      */
     public void handleJailEvent(WebSocketSession session, JailRequest jailRequest) {
@@ -141,7 +130,7 @@ public class EventService {
 
         // 1. 게임 맵 정보
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-        
+
         // 2. 여행 하려는 사람 정보
         String userId = userRedisService.getUserIdByNickname(worldTravelRequest.getNickname());
         CreateMapPayload.PlayerState traveler = gameState.getPlayers().get(userId);
