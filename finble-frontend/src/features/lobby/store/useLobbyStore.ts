@@ -36,6 +36,7 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
   rooms: [], // 초기 데이터는 빈 배열로 설정
   isLoading: false,
   error: null,
+  
   fetchRooms: async () => {
     set({ isLoading: true, error: null });
     try {
@@ -148,6 +149,14 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
           unsubscribeOk();
           unsubscribeFail();
           unsubscribeNotFound(); // 추가
+          
+          // 스토어의 rooms 상태를 새로운 플레이어 목록으로 업데이트합니다.
+          set((state) => ({
+            rooms: state.rooms.map((room) =>
+              room.id === roomId ? { ...room, players: message.payload } : room
+            ),
+          }));
+
           resolve(message.payload);
         });
 
@@ -169,10 +178,10 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
                 sendMessage('/app/room/enter', {
           type: "ENTER_ROOM", // 방에 접속할 때는 ENTER_ROOM을 사용합니다.
           payload: {
-            roomId,
+            roomId: parseInt(roomId, 10),
           }
         });
-
+        console.log(sendMessage)
         setTimeout(() => {
           unsubscribeOk();
           unsubscribeFail();
@@ -216,4 +225,5 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
       get().fetchRooms();
     });
   },
-}));
+}
+));

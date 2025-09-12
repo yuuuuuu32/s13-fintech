@@ -13,8 +13,8 @@ export default function WaitingRoomPage() {
 
   const currentRoom = rooms.find((room) => room.id === roomId)
 
-  // 방장이 현재 유저인지 확인합니다.
-  const isHost = currentRoom && currentRoom.players[0] && currentRoom.players[0].id === currentUser.id
+  // 방장이 현재 유저인지 확인합니다. (players 배열이 있는지 확인 추가)
+  const isHost = currentRoom && currentRoom.players && currentRoom.players.length > 0 && currentRoom.players[0].id === currentUser.id
 
   if (!currentRoom) {
     return (
@@ -43,7 +43,7 @@ export default function WaitingRoomPage() {
       <div style={{ textAlign: 'center' }}>
         <h1 style={{ marginBottom: '1rem' }}>{currentRoom.name}</h1>
         <p style={{ fontSize: '1.2rem', color: '#ccc', margin: 0 }}>
-          ({currentRoom.players.length}/{currentRoom.maxPlayers})
+          ({currentRoom.players ? currentRoom.players.length : 0}/{currentRoom.maxPlayers})
         </p>
       </div>
 
@@ -58,7 +58,7 @@ export default function WaitingRoomPage() {
           margin: '2rem 0', // 위아래 여백 추가
         }}
       >
-        {currentRoom.players.map((player) => (
+        {currentRoom.players && currentRoom.players.map((player) => (
           <div
             key={player.id}
             style={{

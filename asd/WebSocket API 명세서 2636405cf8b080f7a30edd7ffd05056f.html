@@ -1,0 +1,714 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>WebSocket API 명세서</title><style>
+/* cspell:disable-file */
+/* webkit printing magic: print all background colors */
+html {
+	-webkit-print-color-adjust: exact;
+}
+* {
+	box-sizing: border-box;
+	-webkit-print-color-adjust: exact;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+@media only screen {
+	body {
+		margin: 2em auto;
+		max-width: 900px;
+		color: rgb(55, 53, 47);
+	}
+}
+
+body {
+	line-height: 1.5;
+	white-space: pre-wrap;
+}
+
+a,
+a.visited {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.pdf-relative-link-path {
+	font-size: 80%;
+	color: #444;
+}
+
+h1,
+h2,
+h3 {
+	letter-spacing: -0.01em;
+	line-height: 1.2;
+	font-weight: 600;
+	margin-bottom: 0;
+}
+
+.page-title {
+	font-size: 2.5rem;
+	font-weight: 700;
+	margin-top: 0;
+	margin-bottom: 0.75em;
+}
+
+h1 {
+	font-size: 1.875rem;
+	margin-top: 1.875rem;
+}
+
+h2 {
+	font-size: 1.5rem;
+	margin-top: 1.5rem;
+}
+
+h3 {
+	font-size: 1.25rem;
+	margin-top: 1.25rem;
+}
+
+.source {
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	padding: 1.5em;
+	word-break: break-all;
+}
+
+.callout {
+	border-radius: 3px;
+	padding: 1rem;
+}
+
+figure {
+	margin: 1.25em 0;
+	page-break-inside: avoid;
+}
+
+figcaption {
+	opacity: 0.5;
+	font-size: 85%;
+	margin-top: 0.5em;
+}
+
+mark {
+	background-color: transparent;
+}
+
+.indented {
+	padding-left: 1.5em;
+}
+
+hr {
+	background: transparent;
+	display: block;
+	width: 100%;
+	height: 1px;
+	visibility: visible;
+	border: none;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+img {
+	max-width: 100%;
+}
+
+@media only print {
+	img {
+		max-height: 100vh;
+		object-fit: contain;
+	}
+}
+
+@page {
+	margin: 1in;
+}
+
+.collection-content {
+	font-size: 0.875rem;
+}
+
+.collection-content td {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.column-list {
+	display: flex;
+	justify-content: space-between;
+}
+
+.column {
+	padding: 0 1em;
+}
+
+.column:first-child {
+	padding-left: 0;
+}
+
+.column:last-child {
+	padding-right: 0;
+}
+
+.table_of_contents-item {
+	display: block;
+	font-size: 0.875rem;
+	line-height: 1.3;
+	padding: 0.125rem;
+}
+
+.table_of_contents-indent-1 {
+	margin-left: 1.5rem;
+}
+
+.table_of_contents-indent-2 {
+	margin-left: 3rem;
+}
+
+.table_of_contents-indent-3 {
+	margin-left: 4.5rem;
+}
+
+.table_of_contents-link {
+	text-decoration: none;
+	opacity: 0.7;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.18);
+}
+
+table,
+th,
+td {
+	border: 1px solid rgba(55, 53, 47, 0.09);
+	border-collapse: collapse;
+}
+
+table {
+	border-left: none;
+	border-right: none;
+}
+
+th,
+td {
+	font-weight: normal;
+	padding: 0.25em 0.5em;
+	line-height: 1.5;
+	min-height: 1.5em;
+	text-align: left;
+}
+
+th {
+	color: rgba(55, 53, 47, 0.6);
+}
+
+ol,
+ul {
+	margin: 0;
+	margin-block-start: 0.6em;
+	margin-block-end: 0.6em;
+}
+
+li > ol:first-child,
+li > ul:first-child {
+	margin-block-start: 0.6em;
+}
+
+ul > li {
+	list-style: disc;
+}
+
+ul.to-do-list {
+	padding-inline-start: 0;
+}
+
+ul.to-do-list > li {
+	list-style: none;
+}
+
+.to-do-children-checked {
+	text-decoration: line-through;
+	opacity: 0.375;
+}
+
+ul.toggle > li {
+	list-style: none;
+}
+
+ul {
+	padding-inline-start: 1.7em;
+}
+
+ul > li {
+	padding-left: 0.1em;
+}
+
+ol {
+	padding-inline-start: 1.6em;
+}
+
+ol > li {
+	padding-left: 0.2em;
+}
+
+.mono ol {
+	padding-inline-start: 2em;
+}
+
+.mono ol > li {
+	text-indent: -0.4em;
+}
+
+.toggle {
+	padding-inline-start: 0em;
+	list-style-type: none;
+}
+
+/* Indent toggle children */
+.toggle > li > details {
+	padding-left: 1.7em;
+}
+
+.toggle > li > details > summary {
+	margin-left: -1.1em;
+}
+
+.selected-value {
+	display: inline-block;
+	padding: 0 0.5em;
+	background: rgba(206, 205, 202, 0.5);
+	border-radius: 3px;
+	margin-right: 0.5em;
+	margin-top: 0.3em;
+	margin-bottom: 0.3em;
+	white-space: nowrap;
+}
+
+.collection-title {
+	display: inline-block;
+	margin-right: 1em;
+}
+
+.page-description {
+	margin-bottom: 2em;
+}
+
+.simple-table {
+	margin-top: 1em;
+	font-size: 0.875rem;
+	empty-cells: show;
+}
+.simple-table td {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table th {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table-header-color {
+	background: rgb(247, 246, 243);
+	color: black;
+}
+.simple-table-header {
+	font-weight: 500;
+}
+
+time {
+	opacity: 0.5;
+}
+
+.icon {
+	display: inline-block;
+	max-width: 1.2em;
+	max-height: 1.2em;
+	text-decoration: none;
+	vertical-align: text-bottom;
+	margin-right: 0.5em;
+}
+
+img.icon {
+	border-radius: 3px;
+}
+
+.user-icon {
+	width: 1.5em;
+	height: 1.5em;
+	border-radius: 100%;
+	margin-right: 0.5rem;
+}
+
+.user-icon-inner {
+	font-size: 0.8em;
+}
+
+.text-icon {
+	border: 1px solid #000;
+	text-align: center;
+}
+
+.page-cover-image {
+	display: block;
+	object-fit: cover;
+	width: 100%;
+	max-height: 30vh;
+}
+
+.page-header-icon {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+}
+
+.page-header-icon-with-cover {
+	margin-top: -0.72em;
+	margin-left: 0.07em;
+}
+
+.page-header-icon img {
+	border-radius: 3px;
+}
+
+.link-to-page {
+	margin: 1em 0;
+	padding: 0;
+	border: none;
+	font-weight: 500;
+}
+
+p > .user {
+	opacity: 0.5;
+}
+
+td > .user,
+td > time {
+	white-space: nowrap;
+}
+
+input[type="checkbox"] {
+	transform: scale(1.5);
+	margin-right: 0.6em;
+	vertical-align: middle;
+}
+
+p {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+
+.image {
+	border: none;
+	margin: 1.5em 0;
+	padding: 0;
+	border-radius: 0;
+	text-align: center;
+}
+
+.code,
+code {
+	background: rgba(135, 131, 120, 0.15);
+	border-radius: 3px;
+	padding: 0.2em 0.4em;
+	border-radius: 3px;
+	font-size: 85%;
+	tab-size: 2;
+}
+
+code {
+	color: #eb5757;
+}
+
+.code {
+	padding: 1.5em 1em;
+}
+
+.code-wrap {
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.code > code {
+	background: none;
+	padding: 0;
+	font-size: 100%;
+	color: inherit;
+}
+
+blockquote {
+	font-size: 1em;
+	margin: 1em 0;
+	padding-left: 1em;
+	border-left: 3px solid rgb(55, 53, 47);
+}
+
+blockquote.quote-large {
+	font-size: 1.25em;
+}
+
+.bookmark {
+	text-decoration: none;
+	max-height: 8em;
+	padding: 0;
+	display: flex;
+	width: 100%;
+	align-items: stretch;
+}
+
+.bookmark-title {
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	height: 1.75em;
+	white-space: nowrap;
+}
+
+.bookmark-text {
+	display: flex;
+	flex-direction: column;
+}
+
+.bookmark-info {
+	flex: 4 1 180px;
+	padding: 12px 14px 14px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.bookmark-image {
+	width: 33%;
+	flex: 1 1 180px;
+	display: block;
+	position: relative;
+	object-fit: cover;
+	border-radius: 1px;
+}
+
+.bookmark-description {
+	color: rgba(55, 53, 47, 0.6);
+	font-size: 0.75em;
+	overflow: hidden;
+	max-height: 4.5em;
+	word-break: break-word;
+}
+
+.bookmark-href {
+	font-size: 0.75em;
+	margin-top: 0.25em;
+}
+
+.sans { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"; }
+.code { font-family: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace; }
+.serif { font-family: Lyon-Text, Georgia, ui-serif, serif; }
+.mono { font-family: iawriter-mono, Nitti, Menlo, Courier, monospace; }
+.pdf .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK JP'; }
+.pdf:lang(zh-CN) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK SC'; }
+.pdf:lang(zh-TW) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK TC'; }
+.pdf:lang(ko-KR) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK KR'; }
+.pdf .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.pdf .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK JP'; }
+.pdf:lang(zh-CN) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK SC'; }
+.pdf:lang(zh-TW) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK TC'; }
+.pdf:lang(ko-KR) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK KR'; }
+.pdf .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.highlight-default {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray {
+	color: rgba(142, 139, 134, 1);
+	fill: rgba(142, 139, 134, 1);
+}
+.highlight-brown {
+	color: rgba(182, 137, 101, 1);
+	fill: rgba(182, 137, 101, 1);
+}
+.highlight-orange {
+	color: rgba(213, 128, 59, 1);
+	fill: rgba(213, 128, 59, 1);
+}
+.highlight-yellow {
+	color: rgba(229, 178, 68, 1);
+	fill: rgba(229, 178, 68, 1);
+}
+.highlight-teal {
+	color: rgba(85, 167, 124, 1);
+	fill: rgba(85, 167, 124, 1);
+}
+.highlight-blue {
+	color: rgba(35, 131, 226, 1);
+	fill: rgba(35, 131, 226, 1);
+}
+.highlight-purple {
+	color: rgba(181, 119, 214, 1);
+	fill: rgba(181, 119, 214, 1);
+}
+.highlight-pink {
+	color: rgba(219, 105, 153, 1);
+	fill: rgba(219, 105, 153, 1);
+}
+.highlight-red {
+	color: rgba(229, 100, 88, 1);
+	fill: rgba(229, 100, 88, 1);
+}
+.highlight-default_background {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray_background {
+	background: rgba(240, 239, 237, 1);
+}
+.highlight-brown_background {
+	background: rgba(245, 237, 233, 1);
+}
+.highlight-orange_background {
+	background: rgba(251, 235, 222, 1);
+}
+.highlight-yellow_background {
+	background: rgba(249, 243, 220, 1);
+}
+.highlight-teal_background {
+	background: rgba(232, 241, 236, 1);
+}
+.highlight-blue_background {
+	background: rgba(232, 242, 250, 1);
+}
+.highlight-purple_background {
+	background: rgba(243, 235, 249, 1);
+}
+.highlight-pink_background {
+	background: rgba(250, 233, 241, 1);
+}
+.highlight-red_background {
+	background: rgba(252, 233, 231, 1);
+}
+.block-color-default {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray {
+	color: rgba(142, 139, 134, 1);
+	fill: rgba(142, 139, 134, 1);
+}
+.block-color-brown {
+	color: rgba(182, 137, 101, 1);
+	fill: rgba(182, 137, 101, 1);
+}
+.block-color-orange {
+	color: rgba(213, 128, 59, 1);
+	fill: rgba(213, 128, 59, 1);
+}
+.block-color-yellow {
+	color: rgba(229, 178, 68, 1);
+	fill: rgba(229, 178, 68, 1);
+}
+.block-color-teal {
+	color: rgba(85, 167, 124, 1);
+	fill: rgba(85, 167, 124, 1);
+}
+.block-color-blue {
+	color: rgba(35, 131, 226, 1);
+	fill: rgba(35, 131, 226, 1);
+}
+.block-color-purple {
+	color: rgba(181, 119, 214, 1);
+	fill: rgba(181, 119, 214, 1);
+}
+.block-color-pink {
+	color: rgba(219, 105, 153, 1);
+	fill: rgba(219, 105, 153, 1);
+}
+.block-color-red {
+	color: rgba(229, 100, 88, 1);
+	fill: rgba(229, 100, 88, 1);
+}
+.block-color-default_background {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray_background {
+	background: rgba(240, 239, 237, 1);
+}
+.block-color-brown_background {
+	background: rgba(245, 237, 233, 1);
+}
+.block-color-orange_background {
+	background: rgba(251, 235, 222, 1);
+}
+.block-color-yellow_background {
+	background: rgba(249, 243, 220, 1);
+}
+.block-color-teal_background {
+	background: rgba(232, 241, 236, 1);
+}
+.block-color-blue_background {
+	background: rgba(232, 242, 250, 1);
+}
+.block-color-purple_background {
+	background: rgba(243, 235, 249, 1);
+}
+.block-color-pink_background {
+	background: rgba(250, 233, 241, 1);
+}
+.block-color-red_background {
+	background: rgba(252, 233, 231, 1);
+}
+.select-value-color-default { background-color: rgba(42, 28, 0, 0.07); }
+.select-value-color-gray { background-color: rgba(28, 19, 1, 0.11); }
+.select-value-color-brown { background-color: rgba(127, 51, 0, 0.156); }
+.select-value-color-orange { background-color: rgba(196, 88, 0, 0.203); }
+.select-value-color-yellow { background-color: rgba(209, 156, 0, 0.282); }
+.select-value-color-green { background-color: rgba(0, 96, 38, 0.156); }
+.select-value-color-blue { background-color: rgba(0, 99, 174, 0.172); }
+.select-value-color-purple { background-color: rgba(92, 0, 163, 0.141); }
+.select-value-color-pink { background-color: rgba(183, 0, 78, 0.152); }
+.select-value-color-red { background-color: rgba(206, 24, 0, 0.164); }
+
+.checkbox {
+	display: inline-flex;
+	vertical-align: text-bottom;
+	width: 16;
+	height: 16;
+	background-size: 16px;
+	margin-left: 2px;
+	margin-right: 5px;
+}
+
+.checkbox-on {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+
+.checkbox-off {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+	
+</style></head><body><article id="2636405c-f8b0-80f7-a30e-dd7ffd05056f" class="page sans"><header><h1 class="page-title">WebSocket API 명세서</h1><p class="page-description"></p></header><div class="page-body"><p id="2636405c-f8b0-80cc-924d-ed3cf48110f3" class="">
+</p><h1 id="2636405c-f8b0-8068-afcd-eff6d79df7c7" class="">0. 메시지 포멧</h1><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" integrity="sha512-7Z9J3l1+EYfeaPKcGXu3MS/7T+w19WtKQY/n+xzmw4hZhJ9tyYmcUS+4QqAlzhicE5LAfMQSF3iFTK9bQdTxXg==" crossorigin="anonymous" referrerPolicy="no-referrer"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" integrity="sha512-tN7Ec6zAFaVSG3TpNAKtk4DOHNpSwKHxxrsiw4GHKESGPs5njn/0sMCUMl2svV4wo4BK/rCP7juYz+zx+l6oeQ==" crossorigin="anonymous" referrerPolicy="no-referrer"/><pre id="2636405c-f8b0-800e-9eb5-f3bd75573040" class="code code-wrap"><code class="language-JavaScript" style="white-space:pre-wrap;word-break:break-all">{
+  &quot;type&quot;: &quot;MESSAGE_TYPE&quot;,
+  &quot;payload&quot;: {
+
+  }
+}</code></pre><h1 id="2636405c-f8b0-805f-8d03-dae6522fa251" class="">1. 메시지 타입</h1><p id="2636405c-f8b0-808a-ac74-f31b564cb927" class="">
+</p><div id="4a13ab4e-8e5d-4ed8-bba3-12b9de1bc050" class="collection-content"><h4 class="collection-title">1.1  방 관련 메시지</h4><table class="collection-content"><thead><tr><th><span class="icon property-icon"><img src="https://www.notion.so/icons/reorder_gray.svg" style="width:14px;height:14px;display:block"/></span>메시지 타입</th><th><span class="icon property-icon"><img src="https://www.notion.so/icons/user_gray.svg" style="width:14px;height:14px;display:block"/></span>보내는 사람</th><th><span class="icon property-icon"><img src="https://www.notion.so/icons/user_gray.svg" style="width:14px;height:14px;display:block"/></span>받는 사람</th><th><span class="icon property-icon"><div data-testid="/icons/description_gray.svg" style="width:14px;height:14px;flex-shrink:0;transform:scale(1.2);mask:url(/icons/description_gray.svg?mode=light) no-repeat center;-webkit-mask:url(/icons/description_gray.svg?mode=light) no-repeat center;background-color:rgba(142, 139, 134, 1);fill:rgba(142, 139, 134, 1)"></div></span>설명</th><th><span class="icon property-icon"><div data-testid="/icons/burst_gray.svg" style="width:14px;height:14px;flex-shrink:0;transform:scale(1.2);mask:url(/icons/burst_gray.svg?mode=light) no-repeat center;-webkit-mask:url(/icons/burst_gray.svg?mode=light) no-repeat center;background-color:rgba(142, 139, 134, 1);fill:rgba(142, 139, 134, 1)"></div></span>상태</th></tr></thead><tbody><tr id="90ffc95e-2040-49de-8255-0798ef092bf6"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%201%20%EB%B0%A9%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%204a13ab4e8e5d4ed8bba312b9de1bc050/CREATE_ROOM%2090ffc95e204049de82550798ef092bf6.html">CREATE_ROOM</a></td><td class="cell-jV[@"><span class="status-value select-value-color-purple"><div class="status-dot status-dot-color-purple"></div>유저</span></td><td class="cell-o\iH"><span class="status-value select-value-color-red"><div class="status-dot status-dot-color-red"></div>서버</span></td><td class="cell-I?^~">방 생성</td><td class="cell-g]G["><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="a1cabca8-1ee6-4706-92d5-a2f1439ea2dd"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%201%20%EB%B0%A9%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%204a13ab4e8e5d4ed8bba312b9de1bc050/ENTER_ROOM%20a1cabca81ee6470692d5a2f1439ea2dd.html">ENTER_ROOM</a></td><td class="cell-jV[@"><span class="status-value select-value-color-purple"><div class="status-dot status-dot-color-purple"></div>유저</span></td><td class="cell-o\iH"><span class="status-value select-value-color-red"><div class="status-dot status-dot-color-red"></div>서버</span></td><td class="cell-I?^~">방 입장 요청</td><td class="cell-g]G["><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="9fab6b38-9a0b-440d-8f7a-96cae44292a3"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%201%20%EB%B0%A9%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%204a13ab4e8e5d4ed8bba312b9de1bc050/ENTER_NEW_USER%209fab6b389a0b440d8f7a96cae44292a3.html">ENTER_NEW_USER</a></td><td class="cell-jV[@"><span class="status-value select-value-color-red"><div class="status-dot status-dot-color-red"></div>서버</span></td><td class="cell-o\iH"><span class="status-value select-value-color-purple"><div class="status-dot status-dot-color-purple"></div>유저</span></td><td class="cell-I?^~">새로운 유저 방 입장 알림</td><td class="cell-g]G["><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="4520978f-bf3f-4327-ab2d-8332242bf87b"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%201%20%EB%B0%A9%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%204a13ab4e8e5d4ed8bba312b9de1bc050/EXIT_USER%204520978fbf3f4327ab2d8332242bf87b.html">EXIT_USER</a></td><td class="cell-jV[@"><span class="status-value select-value-color-purple"><div class="status-dot status-dot-color-purple"></div>유저</span></td><td class="cell-o\iH"><span class="status-value select-value-color-red"><div class="status-dot status-dot-color-red"></div>서버</span></td><td class="cell-I?^~">유저가 방에서 나갈 때 요청</td><td class="cell-g]G["><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="53a65182-c3c1-4cb3-9053-56d37a23f7f8"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%201%20%EB%B0%A9%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%204a13ab4e8e5d4ed8bba312b9de1bc050/EXIT_ROOM%2053a65182c3c14cb3905356d37a23f7f8.html">EXIT_ROOM</a></td><td class="cell-jV[@"><span class="status-value select-value-color-red"><div class="status-dot status-dot-color-red"></div>서버</span></td><td class="cell-o\iH"><span class="status-value select-value-color-purple"><div class="status-dot status-dot-color-purple"></div>유저</span></td><td class="cell-I?^~">유저가 방에서 나갔음을 알림</td><td class="cell-g]G["><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="1baa301a-5b7e-45fa-8ab2-1159ad589434"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%201%20%EB%B0%A9%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%204a13ab4e8e5d4ed8bba312b9de1bc050/KICK%201baa301a5b7e45fa8ab21159ad589434.html">KICK</a></td><td class="cell-jV[@"><span class="status-value select-value-color-purple"><div class="status-dot status-dot-color-purple"></div>유저</span></td><td class="cell-o\iH"><span class="status-value select-value-color-red"><div class="status-dot status-dot-color-red"></div>서버</span></td><td class="cell-I?^~">강제 퇴장 요청</td><td class="cell-g]G["><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="647f27b2-7631-428d-9a1c-a34947956514"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%201%20%EB%B0%A9%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%204a13ab4e8e5d4ed8bba312b9de1bc050/KICKED%20647f27b27631428d9a1ca34947956514.html">KICKED</a></td><td class="cell-jV[@"><span class="status-value select-value-color-red"><div class="status-dot status-dot-color-red"></div>서버</span></td><td class="cell-o\iH"><span class="status-value select-value-color-purple"><div class="status-dot status-dot-color-purple"></div>유저</span></td><td class="cell-I?^~">강제 퇴장 당한 유저 메시지</td><td class="cell-g]G["><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr></tbody></table><br/><br/></div><div id="01b7db6c-3293-4a23-bcb1-70bcef89fd4a" class="collection-content"><h4 class="collection-title">1.2 게임 진행 관련 메시지</h4><table class="collection-content"><thead><tr><th><span class="icon property-icon"><div data-testid="/icons/font_gray.svg" style="width:14px;height:14px;flex-shrink:0;transform:scale(1.2);mask:url(/icons/font_gray.svg?mode=light) no-repeat center;-webkit-mask:url(/icons/font_gray.svg?mode=light) no-repeat center;background-color:rgba(142, 139, 134, 1);fill:rgba(142, 139, 134, 1)"></div></span>메시지 타입</th><th><span class="icon property-icon"><div data-testid="/icons/burst_gray.svg" style="width:14px;height:14px;flex-shrink:0;transform:scale(1.2);mask:url(/icons/burst_gray.svg?mode=light) no-repeat center;-webkit-mask:url(/icons/burst_gray.svg?mode=light) no-repeat center;background-color:rgba(142, 139, 134, 1);fill:rgba(142, 139, 134, 1)"></div></span>보내는 사람</th><th><span class="icon property-icon"><div data-testid="/icons/burst_gray.svg" style="width:14px;height:14px;flex-shrink:0;transform:scale(1.2);mask:url(/icons/burst_gray.svg?mode=light) no-repeat center;-webkit-mask:url(/icons/burst_gray.svg?mode=light) no-repeat center;background-color:rgba(142, 139, 134, 1);fill:rgba(142, 139, 134, 1)"></div></span>받는 사람</th><th><span class="icon property-icon"><div data-testid="/icons/description_gray.svg" style="width:14px;height:14px;flex-shrink:0;transform:scale(1.2);mask:url(/icons/description_gray.svg?mode=light) no-repeat center;-webkit-mask:url(/icons/description_gray.svg?mode=light) no-repeat center;background-color:rgba(142, 139, 134, 1);fill:rgba(142, 139, 134, 1)"></div></span>설명</th><th><span class="icon property-icon"><div data-testid="/icons/burst_gray.svg" style="width:14px;height:14px;flex-shrink:0;transform:scale(1.2);mask:url(/icons/burst_gray.svg?mode=light) no-repeat center;-webkit-mask:url(/icons/burst_gray.svg?mode=light) no-repeat center;background-color:rgba(142, 139, 134, 1);fill:rgba(142, 139, 134, 1)"></div></span>상태</th></tr></thead><tbody><tr id="deb44037-ae85-4ace-aeab-6dd583ada1f1"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%202%20%EA%B2%8C%EC%9E%84%20%EC%A7%84%ED%96%89%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%2001b7db6c32934a23bcb170bcef89fd4a/START_GAME%20deb44037ae854aceaeab6dd583ada1f1.html">START_GAME</a></td><td class="cell-DnKg"><span class="status-value select-value-color-purple"><div class="status-dot status-dot-color-purple"></div>유저</span></td><td class="cell-pX?j"><span class="status-value select-value-color-red"><div class="status-dot status-dot-color-red"></div>서버</span></td><td class="cell-Ys`B">게임 시작 요청</td><td class="cell-y|pq"><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="8afe2884-ee8b-47b7-aef5-645f78462ee5"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%202%20%EA%B2%8C%EC%9E%84%20%EC%A7%84%ED%96%89%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%2001b7db6c32934a23bcb170bcef89fd4a/GAME_STATE_CHANGE%208afe2884ee8b47b7aef5645f78462ee5.html">GAME_STATE_CHANGE</a></td><td class="cell-DnKg"><span class="status-value select-value-color-red"><div class="status-dot status-dot-color-red"></div>서버</span></td><td class="cell-pX?j"><span class="status-value select-value-color-purple"><div class="status-dot status-dot-color-purple"></div>유저</span></td><td class="cell-Ys`B">턴 변경 알림</td><td class="cell-y|pq"><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="6bfb9f2e-c02b-406c-b918-f26147a58b3d"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%202%20%EA%B2%8C%EC%9E%84%20%EC%A7%84%ED%96%89%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%2001b7db6c32934a23bcb170bcef89fd4a/GAME_END%206bfb9f2ec02b406cb918f26147a58b3d.html">GAME_END</a></td><td class="cell-DnKg"><span class="status-value select-value-color-red"><div class="status-dot status-dot-color-red"></div>서버</span></td><td class="cell-pX?j"><span class="status-value select-value-color-purple"><div class="status-dot status-dot-color-purple"></div>유저</span></td><td class="cell-Ys`B">게임 종료 알림</td><td class="cell-y|pq"><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="2636405c-f8b0-804d-8a3d-c1aece2728d7"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%202%20%EA%B2%8C%EC%9E%84%20%EC%A7%84%ED%96%89%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%2001b7db6c32934a23bcb170bcef89fd4a/GAME_RETIRED%202636405cf8b0804d8a3dc1aece2728d7.html">GAME_RETIRED</a></td><td class="cell-DnKg"><span class="status-value select-value-color-red"><div class="status-dot status-dot-color-red"></div>서버</span></td><td class="cell-pX?j"><span class="status-value select-value-color-purple"><div class="status-dot status-dot-color-purple"></div>유저</span></td><td class="cell-Ys`B">중도 탈락</td><td class="cell-y|pq"><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr></tbody></table><br/><br/></div><div id="3153b82f-085d-492f-ad24-a488672fe071" class="collection-content"><h4 class="collection-title">1.3 게임 관련 메시지 (액션 요청 및 결과)</h4><table class="collection-content"><thead><tr><th><span class="icon property-icon"><div data-testid="/icons/font_gray.svg" style="width:14px;height:14px;flex-shrink:0;transform:scale(1.2);mask:url(/icons/font_gray.svg?mode=light) no-repeat center;-webkit-mask:url(/icons/font_gray.svg?mode=light) no-repeat center;background-color:rgba(142, 139, 134, 1);fill:rgba(142, 139, 134, 1)"></div></span>메시지 타입</th><th><span class="icon property-icon"><div data-testid="/icons/list_gray.svg" style="width:14px;height:14px;flex-shrink:0;transform:scale(1.2);mask:url(/icons/list_gray.svg?mode=light) no-repeat center;-webkit-mask:url(/icons/list_gray.svg?mode=light) no-repeat center;background-color:rgba(142, 139, 134, 1);fill:rgba(142, 139, 134, 1)"></div></span>보내는 사람</th><th><span class="icon property-icon"><div data-testid="/icons/list_gray.svg" style="width:14px;height:14px;flex-shrink:0;transform:scale(1.2);mask:url(/icons/list_gray.svg?mode=light) no-repeat center;-webkit-mask:url(/icons/list_gray.svg?mode=light) no-repeat center;background-color:rgba(142, 139, 134, 1);fill:rgba(142, 139, 134, 1)"></div></span>받는 사람</th><th><span class="icon property-icon"><div data-testid="/icons/description_gray.svg" style="width:14px;height:14px;flex-shrink:0;transform:scale(1.2);mask:url(/icons/description_gray.svg?mode=light) no-repeat center;-webkit-mask:url(/icons/description_gray.svg?mode=light) no-repeat center;background-color:rgba(142, 139, 134, 1);fill:rgba(142, 139, 134, 1)"></div></span>설명</th><th><span class="icon property-icon"><div data-testid="/icons/friends_gray.svg" style="width:14px;height:14px;flex-shrink:0;transform:scale(1.2);mask:url(/icons/friends_gray.svg?mode=light) no-repeat center;-webkit-mask:url(/icons/friends_gray.svg?mode=light) no-repeat center;background-color:rgba(142, 139, 134, 1);fill:rgba(142, 139, 134, 1)"></div></span>작업자</th><th><span class="icon property-icon"><div data-testid="/icons/burst_gray.svg" style="width:14px;height:14px;flex-shrink:0;transform:scale(1.2);mask:url(/icons/burst_gray.svg?mode=light) no-repeat center;-webkit-mask:url(/icons/burst_gray.svg?mode=light) no-repeat center;background-color:rgba(142, 139, 134, 1);fill:rgba(142, 139, 134, 1)"></div></span>상태</th></tr></thead><tbody><tr id="84e3a0a6-83e6-447a-804f-d677e364825d"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%203%20%EA%B2%8C%EC%9E%84%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%20(%EC%95%A1%EC%85%98%20%EC%9A%94%EC%B2%AD%20%EB%B0%8F%20%EA%B2%B0%EA%B3%BC)%203153b82f085d492fad24a488672fe071/TRADE_LAND%2084e3a0a683e6447a804fd677e364825d.html">TRADE_LAND</a></td><td class="cell-;P@P"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-{XcN"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-Hc@m">땅 거래 요청/결과</td><td class="cell-YMnz"><span class="user"><img src="https://lh3.googleusercontent.com/a/ACg8ocLO0zO1ZCadxZjyk71Os9l2BRmooRBai9PzZmk5MLihOKBI6Q=s100" class="icon user-icon"/>[구미_05반_하승재] </span></td><td class="cell-MrzE"><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="a5852c67-f318-4559-b925-e2ee96517a51"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%203%20%EA%B2%8C%EC%9E%84%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%20(%EC%95%A1%EC%85%98%20%EC%9A%94%EC%B2%AD%20%EB%B0%8F%20%EA%B2%B0%EA%B3%BC)%203153b82f085d492fad24a488672fe071/USE_CARD(%EC%82%AC%EC%9A%A9X)%20a5852c67f3184559b925e2ee96517a51.html">USE_CARD(사용X)</a></td><td class="cell-;P@P"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-{XcN"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-Hc@m">찬스 카드 사용 요청/결과</td><td class="cell-YMnz"><span class="user"><img src="https://lh3.googleusercontent.com/a/ACg8ocJL8IRzVWDZRHQilyL-rx0WalmG6Bjwmhk-ozyouj6b=s100" class="icon user-icon"/>준하 박</span></td><td class="cell-MrzE"><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="80308bfb-6c95-4e48-abda-8dff477c8d90"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%203%20%EA%B2%8C%EC%9E%84%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%20(%EC%95%A1%EC%85%98%20%EC%9A%94%EC%B2%AD%20%EB%B0%8F%20%EA%B2%B0%EA%B3%BC)%203153b82f085d492fad24a488672fe071/USE_DICE%2080308bfb6c954e48abda8dff477c8d90.html">USE_DICE</a></td><td class="cell-;P@P"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-{XcN"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-Hc@m">주사위 던지기 요청/결과</td><td class="cell-YMnz"><span class="user"><img src="https://lh3.googleusercontent.com/a/ACg8ocLO0zO1ZCadxZjyk71Os9l2BRmooRBai9PzZmk5MLihOKBI6Q=s100" class="icon user-icon"/>[구미_05반_하승재] </span></td><td class="cell-MrzE"><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="f4a4a4d8-6f7f-4fa3-8e2e-56909c65468c"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%203%20%EA%B2%8C%EC%9E%84%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%20(%EC%95%A1%EC%85%98%20%EC%9A%94%EC%B2%AD%20%EB%B0%8F%20%EA%B2%B0%EA%B3%BC)%203153b82f085d492fad24a488672fe071/DRAW_CARD%20f4a4a4d86f7f4fa38e2e56909c65468c.html">DRAW_CARD</a></td><td class="cell-;P@P"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-{XcN"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-Hc@m">카드 뽑기 요청/결과</td><td class="cell-YMnz"><span class="user"><img src="https://lh3.googleusercontent.com/a/ACg8ocJL8IRzVWDZRHQilyL-rx0WalmG6Bjwmhk-ozyouj6b=s100" class="icon user-icon"/>준하 박</span></td><td class="cell-MrzE"><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="eef73e22-ac1b-4b4b-94f6-8b231fac8d55"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%203%20%EA%B2%8C%EC%9E%84%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%20(%EC%95%A1%EC%85%98%20%EC%9A%94%EC%B2%AD%20%EB%B0%8F%20%EA%B2%B0%EA%B3%BC)%203153b82f085d492fad24a488672fe071/CONSTRUCT_BUILDING%20eef73e22ac1b4b4b94f68b231fac8d55.html">CONSTRUCT_BUILDING</a></td><td class="cell-;P@P"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-{XcN"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-Hc@m">건물 건설 요청/결과</td><td class="cell-YMnz"><span class="user"><img src="https://lh3.googleusercontent.com/a/ACg8ocLO0zO1ZCadxZjyk71Os9l2BRmooRBai9PzZmk5MLihOKBI6Q=s100" class="icon user-icon"/>[구미_05반_하승재] </span></td><td class="cell-MrzE"><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="2636405c-f8b0-8028-95f0-e92cf83fa132"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%203%20%EA%B2%8C%EC%9E%84%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%20(%EC%95%A1%EC%85%98%20%EC%9A%94%EC%B2%AD%20%EB%B0%8F%20%EA%B2%B0%EA%B3%BC)%203153b82f085d492fad24a488672fe071/JAIL_EVENT%202636405cf8b0802895f0e92cf83fa132.html">JAIL_EVENT</a></td><td class="cell-;P@P"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-{XcN"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-Hc@m">감옥 이벤트 처리 </td><td class="cell-YMnz"><span class="user"><img src="https://lh3.googleusercontent.com/a/ACg8ocLO0zO1ZCadxZjyk71Os9l2BRmooRBai9PzZmk5MLihOKBI6Q=s100" class="icon user-icon"/>[구미_05반_하승재] </span></td><td class="cell-MrzE"><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="2636405c-f8b0-807e-a37a-d5fd49a91335"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%203%20%EA%B2%8C%EC%9E%84%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%20(%EC%95%A1%EC%85%98%20%EC%9A%94%EC%B2%AD%20%EB%B0%8F%20%EA%B2%B0%EA%B3%BC)%203153b82f085d492fad24a488672fe071/WORLD_TRAVEL_EVENT%202636405cf8b0807ea37ad5fd49a91335.html">WORLD_TRAVEL_EVENT</a></td><td class="cell-;P@P"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-{XcN"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-Hc@m">세계 여행 이벤트 처리</td><td class="cell-YMnz"><span class="user"><img src="https://lh3.googleusercontent.com/a/ACg8ocLO0zO1ZCadxZjyk71Os9l2BRmooRBai9PzZmk5MLihOKBI6Q=s100" class="icon user-icon"/>[구미_05반_하승재] </span></td><td class="cell-MrzE"><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr><tr id="2686405c-f8b0-804f-ab82-fccad99a0c3e"><td class="cell-title"><a href="WebSocket%20API%20%EB%AA%85%EC%84%B8%EC%84%9C%202636405cf8b080f7a30edd7ffd05056f/1%203%20%EA%B2%8C%EC%9E%84%20%EA%B4%80%EB%A0%A8%20%EB%A9%94%EC%8B%9C%EC%A7%80%20(%EC%95%A1%EC%85%98%20%EC%9A%94%EC%B2%AD%20%EB%B0%8F%20%EA%B2%B0%EA%B3%BC)%203153b82f085d492fad24a488672fe071/ANGEL_DEFENSE(%EC%82%AC%EC%9A%A9X)%202686405cf8b0804fab82fccad99a0c3e.html">ANGEL_DEFENSE(사용X)</a></td><td class="cell-;P@P"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-{XcN"><span class="selected-value select-value-color-red">서버</span><span class="selected-value select-value-color-purple">유저</span></td><td class="cell-Hc@m">천사 카드 이벤트 처리</td><td class="cell-YMnz"><span class="user"><img src="https://lh3.googleusercontent.com/a/ACg8ocJL8IRzVWDZRHQilyL-rx0WalmG6Bjwmhk-ozyouj6b=s100" class="icon user-icon"/>준하 박</span></td><td class="cell-MrzE"><span class="status-value select-value-color-green"><div class="status-dot status-dot-color-green"></div>완료</span></td></tr></tbody></table><br/><br/></div><ul id="24cf5510-7816-4858-9b84-6e261bd42780" class="bulleted-list"><li style="list-style-type:disc">천사카드 (ANGEL): 방어용 카드, 뽑으면<br/>보유하다가 피해 시 자동 소모즉발카드 (INSTANT): 뽑는 즉시 효과 발동, 별도</li></ul><ul id="639c9e11-a5d3-4a8c-86fe-ee3d115979dd" class="bulleted-list"><li style="list-style-type:disc">즉발카드 (INSTANT): 뽑는 즉시 효과 발동, 별도<br/>보관하지 않음<p id="174e6adb-b6c6-4bc1-922d-c1055b8ece7f" class="">🔄 카드 뽑기 흐름 (DRAW_CARD)</p><ol type="1" id="b8ed1be9-4904-4b4d-8a93-4a5ad9a35bb6" class="numbered-list" start="1"><li>카드 뽑기 요청: 플레이어가 찬스칸에 도착하여<br/>카드 뽑기</li></ol><ol type="1" id="d0dc243c-e1ed-47ff-9914-29d2d724de69" class="numbered-list" start="2"><li>뽑을 카드 결정:</li></ol><ul id="0a8add0f-20c4-4a0b-9881-ffee0b5379a2" class="bulleted-list"><li style="list-style-type:circle">DB에서 모든 카드 조회</li></ul><ul id="0561ed32-4cb5-4168-a10a-43db0022e92a" class="bulleted-list"><li style="list-style-type:circle">천사카드가 이미 누군가 보유중이면 제외</li></ul><ul id="ebd8a928-3865-42ae-83d0-33d32d237dda" class="bulleted-list"><li style="list-style-type:circle">나머지 카드 중 랜덤 선택</li></ul><ol type="1" id="a577b277-7383-409d-82b7-2c5c8abac842" class="numbered-list" start="1"><li>카드 타입별 처리:</li></ol><ul id="67b4dddb-5c92-4393-96b0-8ddb64e21909" class="bulleted-list"><li style="list-style-type:circle">천사카드: 플레이어 보유 상태로 변경 +<br/>덱에서 제거</li></ul><ul id="19bbec9d-d281-4420-9910-8461b0f16b40" class="bulleted-list"><li style="list-style-type:circle">즉발카드: 즉시 효과 적용 (돈/위치/감옥 등)</li></ul><p id="7047ba43-944f-4a28-9ec2-8357013b6d1e" class="">🛡️ 천사카드 방어 흐름</p><ol type="1" id="09668f88-590a-4b82-8664-7b65760755f2" class="numbered-list" start="1"><li>자동 방어: 플레이어가 피해를 받을 상황 발생</li></ol><ol type="1" id="3824ecfa-60e0-4fd6-97ee-548f3119f8e8" class="numbered-list" start="2"><li>천사카드 보유 확인: 해당 플레이어가<br/>천사카드를 가지고 있는지 체크</li></ol><ol type="1" id="4b6e42e8-4b79-4839-a24b-2415a870e932" class="numbered-list" start="3"><li>방어 발동:</li></ol><ul id="07ecec51-bfc6-4516-b06b-eb29e08afa2d" class="bulleted-list"><li style="list-style-type:circle">천사카드를 플레이어에게서 제거</li></ul><ul id="c2cc5bed-e5a9-4e13-91a4-fcfa36c8312b" class="bulleted-list"><li style="list-style-type:circle">덱에 천사카드 다시 추가 (다른 플레이어가<br/>뽑을 수 있도록)</li></ul><ul id="b2ef3532-e009-4052-bc74-00b1b6d42f36" class="bulleted-list"><li style="list-style-type:circle">피해 무효화</li></ul><p id="cc675b5f-1c6c-4aae-9e5d-57548153dfb5" class="">⚡ 즉발카드 효과 분류</p><p id="e32d31a2-5ded-4e8c-bbfc-b9f8ef469222" class="">효과값(effectValue)에 따른 분류:</p><ul id="812a6e21-fb60-430c-a4cf-73223f194644" class="bulleted-list"><li style="list-style-type:circle">effectValue = 10: 감옥 이동</li></ul><ul id="733ce5df-5d2a-45e7-a4d0-78821195abd2" class="bulleted-list"><li style="list-style-type:circle">|effectValue| ≥ 10000: 돈 증감 효과</li></ul><ul id="8cdddcb6-7005-46a3-8d9f-074fdf9d82d6" class="bulleted-list"><li style="list-style-type:circle">|effectValue| &lt; 10000: 위치 이동 효과</li></ul><p id="becebd4d-deb5-4318-9ecc-ee573cdcea78" class="">🔒 동시성 제어</p><p id="3c7293a2-34ad-47ff-b05b-bfb39a372b5d" class="">천사카드 중복 방지:</p><ol type="1" id="b71594e1-00bd-4654-a919-63ec98412f62" class="numbered-list" start="1"><li>초기 상태: angelCardInDeck = true (덱에<br/>천사카드 존재)</li></ol><ol type="1" id="2b090f3c-dbe6-4260-945b-de0c3306a9e6" class="numbered-list" start="2"><li>누군가 뽑음: angelCardInDeck = false (다른<br/>사람은 못 뽑음)</li></ol><ol type="1" id="2f821730-dad8-4112-a04b-bf9022060819" class="numbered-list" start="3"><li>사용 완료: angelCardInDeck = true (다시 뽑기<br/>가능)</li></ol><p id="a8774966-50e7-43a6-a75d-ddc0a1823c48" class="">📊 데이터 저장 구조</p><ul id="b77f9216-1c6e-4ca6-a131-4bee8718d489" class="bulleted-list"><li style="list-style-type:circle">천사카드: 플레이어 상태의 anglecard 플래그로<br/>관리</li></ul><ul id="35af9ee1-b464-488d-9828-00be4d38e9ff" class="bulleted-list"><li style="list-style-type:circle">즉발카드: 별도 저장 없음, 뽑는 즉시 소모</li></ul><ul id="a61c2678-6253-4719-bc4d-c56a8a8905a2" class="bulleted-list"><li style="list-style-type:circle">게임 상태: Redis에 CreateMapPayload 형태로<br/>저장</li></ul></li></ul><p id="2646405c-f8b0-806a-bfaf-f556632e2312" class="">
+</p><hr id="2646405c-f8b0-80d6-b639-d24fa9ee3276"/><p id="2646405c-f8b0-809e-96c6-d1cd84f3e3a6" class="">
+</p><h2 id="2646405c-f8b0-802a-ab89-debc9094f67a" class="">맵 정의</h2><p id="6c64da50-7f36-4b3a-8092-1e5ef96dd3cc" class="">칸 정의<br/>일반땅 :<br/>1. 아무도 사지 않은 경우 - 일정 금액을 지불하고 증서구매, 건설 가능<br/>2. 나의 땅인 경우 - 추가 건설이 가능한 경우 건설 가능. 외에는 아무 효과 X, 아니면 월세 받기?<br/>3. 적의 땅인 경우 - 증서와 건물의 가격 총합의 일정 배율만큼 통행료 지불. 땅을 구매하고 싶은 경우 증서와 건물의 가격 총합의 일정 배율만큼 지불하고 통째로 구매 가능</p><p id="811fbe6d-91de-4a9c-943a-c7ebee6c9b9e" class="">특수칸 : 아래 각 특수칸마다 기재</p><p id="d51c432a-610a-4c5c-b20c-4bbeba44551c" class="">찬스칸 :<br/>1. 그 땅을 밟은 경우 찬스카드 한 장을 랜덤으로 뽑음<br/>2. 여기서 나오는 카드는 금융 정책, 이슈, 게임카드 중 1개<br/>3. 천사카드를 제외한 모든 카드는 즉발로 효과 발생<br/>4. 천사카드는 보유 가능. 통행료 지불이나 기타 부정적인 효과가 발생한 경우 천사카드를 사용하여 회피 가능.<br/>5. 천사카드는 게임 내 단 1장. 누군가 보유하다가 사용하면 다시 찬스카드 목록으로 들어감.</p><p id="511e26ee-42ad-454a-b984-f02464abc5bc" class="">싸피특별땅 :<br/>1. 땅만 구매 가능(건설 X)<br/>2. 5개의 싸피특별땅을 모두 구매할 경우 승리 또는 메리트 부여</p><p id="23c0d3ec-e50e-406c-a0e2-d0b711b0073f" class="">번호	칸 이름	비고<br/>0	시작	특수칸<br/>- 지나가거나 도착하면 월급 받음<br/><del>- 정확히 시작칸에 도착하면 내 땅 중 한 곳에 건설 가능</del></p><p id="763d13ec-788d-48b1-ba3f-bad5d4b96bdb" class="">1 ~ 2	일반땅</p><p id="0ef89271-e63c-4a12-9238-3dcc10cd9b3a" class="">3	찬스	찬스카드 (1번째 줄)</p><p id="57a62cca-dd1d-43ca-a5d6-313087d2e006" class="">4	일반땅</p><p id="2f0baa1f-5558-4a85-b3b4-983cfd689509" class="">5 	싸피특별땅</p><p id="11f099ba-1f3c-4c70-ac62-e3d62ff524fa" class="">6	일반땅</p><p id="d5cfaeab-140f-4966-86d4-a9739ac636a3" class="">7	감옥	특수칸<br/>- 찬스카드 효과로 오거나 이곳을 정확히 밟을 경우 3턴간 이동 불가<br/>- 감옥에 도착 시 1턴 뒤부터 보석금으로 일정 금액을 지불하면 바로 탈출 가능<br/>- 천사 카드는 사용 불가능<br/>- 화면에 전세 사기, 시세 조작 등 다양한 원인 랜덤으로 표시</p><p id="c8bc418e-46d6-4901-a70a-ec9fc1a2946b" class="">8 ~ 10 일반땅</p><p id="90e846c4-19e1-47dc-a67c-4dbc0820e42f" class="">11	찬스	찬스카드 (2번째 줄)</p><p id="a78a22e0-a873-4fad-b3e9-79ad29686052" class="">12	일반땅</p><p id="0f1d5f17-ea4c-4fd6-8478-17bf3e2366d2" class="">13 	싸피특별땅</p><p id="a644d812-56cd-43b5-9689-6509a4951e64" class="">14	박람회	특수칸<br/>- 전체 땅 값 일정 배율만큼 증가<br/>- 또는 내 땅만 또는 원하는 땅만 적용?</p><p id="e3668a88-795a-4994-9b3d-6180115ffa62" class="">15 ~	17 일반땅</p><p id="705b051f-970c-488e-bdeb-5aa1e9e5d093" class="">18	싸피특별땅</p><p id="fdb41e3d-72f3-4691-8249-a2445fe7cb2b" class="">19	찬스	찬스카드 (3번째 줄)</p><p id="d600b470-a111-432a-9b63-4e763284012e" class="">20 	싸피특별땅</p><p id="861ea245-da67-4593-ac5a-ce2905aad194" class="">21	비행기	특수칸<br/>- 일정 금액을 지불하고 원하는 땅으로 바로 이동<br/>- 그 곳으로 순간이동이 아니라 그 사이의 땅을 모두 지나가므로(21번부터 시작해서 22, 23... 순서대로 이동)목표 사이에 시작칸이 있다면 지나가면서 월급 받음</p><p id="c57c5fc4-e1cc-4cd7-a5aa-dd8630a6f902" class="">22 ~ 25 일반땅</p><p id="f0615447-4447-49c1-8bb2-0acd4cc2ac2d" class="">28	싸피특별땅</p><p id="80bb453f-793b-48d7-8905-6852f60829fe" class="">27	찬스	찬스카드 (4번째 줄)</p><p id="9b0f23ec-c629-4c2b-a1c3-c6422965b3d6" class="">28 ~ 31 일반땅</p><p id="2646405c-f8b0-8066-bc6d-d33c4216dcd9" class="">
+</p><hr id="aa1357ae-13ee-4edb-805c-a540964fea29"/><p id="2646405c-f8b0-8092-9b42-ebf73081f049" class="">
+</p><p id="157fe0ed-4d41-4624-b393-3f8718365a7a" class="">땅 및 건설 비용(예시)<br/>번호	도시	땅값 주택  빌딩  호텔(만원)<br/>1	익산	50	20	35	50<br/>2	순천	60	25	40	60<br/>4	아산	70	28	48	70<br/>5	부산(특별땅) 200<br/>6	청주	90	36	63	90<br/>8	천안	100	40	70	100<br/>9	목포	110	45	77	110<br/>10	여수	120	48	84	120<br/>12	나주	130	52	91	130<br/>13	광주(특별땅) 180<br/>15	포항	150	60	105	150<br/>16	김천	160	64	112	160<br/>17	대구	170	68	119	170<br/>18	구미(특별땅) 160<br/>20	대전(특별땅) 180<br/>22	수원	200	80	140	200<br/>23	인천	210	84	147	210<br/>24	고양	220	88	154	220<br/>25	창원	230	92	161	230<br/>26	서울(특별땅) 220<br/>28	성남	250	100	175	250<br/>29	과천	270	108	189	270<br/>30	하남	285	114	199	285<br/>31	인천	300	120	210	300</p><p id="2646405c-f8b0-8031-8073-ddaa1159063d" class="">
+</p><p id="2646405c-f8b0-8089-b93f-d4ed52a6fc6f" class="">
+</p><p id="2646405c-f8b0-8008-91d9-e67c8b72c0ee" class="">
+</p><p id="2646405c-f8b0-80d2-944a-d169d990d7c9" class="">
+</p><p id="2646405c-f8b0-80bd-be4e-d35e3bc1a33c" class="">
+</p><p id="2646405c-f8b0-800b-b3ad-c3bb2d383183" class="">
+</p><p id="2646405c-f8b0-8057-ae0d-d54b9a4ce1b5" class="">
+</p><p id="2646405c-f8b0-80c5-bf06-dc24fef2f6d7" class="">
+</p><p id="2646405c-f8b0-80e2-8317-eebe3c5d5805" class="">
+</p><p id="2636405c-f8b0-80e8-a28c-d656b68a844d" class=""><del>돈 들어올 때 메시지 = 유저 이름+ 유저 자산 </del></p><p id="2636405c-f8b0-801b-bd8f-f441b8bf75e2" class=""><del>이자 들어올 때 메시지 </del></p><p id="2636405c-f8b0-802a-b124-c01820c1afd4" class=""><del>다른 사람 땅 들어갔을 때 돈 회수 메시지 = 통행료 지불 / ㅇㅇ 님이 ㄷㄷ 님의 땅에 들어가서 통행료 지불</del></p><p id="2636405c-f8b0-8078-8908-ec91dd246115" class=""><del>감옥 메시지 (첫 회) = 누가 감옥에 들어갔냐?</del></p><p id="2636405c-f8b0-8022-81a7-ff9baf60d57c" class=""><del>감옥 갔을 때, 자기가 몇 턴 뒤에 나갈 수 있는지 메시지(계속) == ㅇㅇ 님이 감옥이라 N턴뒤에 나갈 수 있다 == OO 의 턴마다 나옴</del></p><p id="2636405c-f8b0-80d5-9e47-fa8803de0370" class=""><del>세계여행 == ㅇㅇ 이 세계여행</del></p><p id="2636405c-f8b0-80e9-be59-d28a1dc55552" class=""><del>월급 들어올 때 메시지 == 플레이어 이름 + 돈 들어왔다</del></p><p id="2636405c-f8b0-8033-981d-d3e75a86d338" class="">
+</p><p id="2636405c-f8b0-800f-8d11-c68bff239dfd" class="">
+</p><p id="2636405c-f8b0-8017-88db-d5e49ef13290" class="">
+</p><p id="2636405c-f8b0-803d-af24-d7cc33156554" class="">
+</p><p id="2636405c-f8b0-800c-a522-e5fd6475ae6e" class="">
+</p></div></article><span class="sans" style="font-size:14px;padding-top:2em"></span></body></html>
