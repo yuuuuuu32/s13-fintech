@@ -17,9 +17,14 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8081',
+        target: 'http://j13d106.p.ssafy.io:8081',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/ws': {
+        target: 'ws://j13d106.p.ssafy.io:8081',
+        ws: true,
+        changeOrigin: true,
       },
     },
     headers: {

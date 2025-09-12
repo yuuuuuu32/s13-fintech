@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "ROLLUP_SKIP_NODEJS_NATIVE=1 vite",
+    "build": "ROLLUP_SKIP_NODEJS_NATIVE=1 tsc -b && ROLLUP_SKIP_NODEJS_NATIVE=1 vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "ROLLUP_SKIP_NODEJS_NATIVE=1 vite preview"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.18.2",
