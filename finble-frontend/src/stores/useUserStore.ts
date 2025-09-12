@@ -1,8 +1,24 @@
 import { create } from 'zustand';
 import { getMyInfo } from '../api/user'; // getMyInfo 함수를 import 합니다.
 
+// Helper to decode JWT
+function parseJwt(token: string) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+}
+
 // 백엔드의 UserInfoResponse 와 유사한 타입을 정의합니다.
 interface UserInfo {
+  userId: string; // Add userId field
   email: string;
   name: string;
   nickname: string;
@@ -21,13 +37,31 @@ export const useUserStore = create<UserState>((set) => ({
   setUserInfo: (userInfo) => set({ userInfo }),
   // 사용자 정보를 가져오는 fetchUserInfo 함수를 구현합니다.
   fetchUserInfo: async () => {
+    const token = localStorage.getItem('jwt');
+    if (!token) {
+      return; // No token, no user
+    }
+
     try {
-      const userInfo = await getMyInfo();
-      set({ userInfo });
+      const decodedToken = parseJwt(token);
+      const apiResponse = await getMyInfo();
+
+      if (decodedToken && decodedToken.id && apiResponse) {
+        const userInfo: UserInfo = {
+          userId: String(decodedToken.id), // Get ID from token
+          email: apiResponse.email,
+          name: apiResponse.name || apiResponse.nickname, // Use name or nickname
+          nickname: apiResponse.nickname,
+          icon: apiResponse.icon,
+        };
+        set({ userInfo });
+      } else {
+        console.error("Failed to get user info from token or API", { decodedToken, apiResponse });
+        set({ userInfo: null });
+      }
     } catch (error) {
       console.error('사용자 정보를 가져오는데 실패했습니다.', error);
-      // 필요하다면 에러 처리 로직을 추가할 수 있습니다.
-      // 예: set({ userInfo: null }); 또는 특정 에러 상태를 관리
+      set({ userInfo: null });
     }
   },
 }));

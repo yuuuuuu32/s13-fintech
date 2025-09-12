@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { boardData as initialBoardData, BuildingType } from '../data/boardData.ts'
 import type { TileData } from '../data/boardData.ts'
-import { currentUser } from '../../lobby/store/useLobbyStore'
-import { connectWebSocket, disconnectWebSocket, sendMessage, subscribeToTopic } from '../../../utils/websocket'
+
+import { sendMessage, subscribeToTopic } from '../../../utils/websocket'
 
 type GamePhase = 'WAITING_FOR_ROLL' | 'DICE_ROLLING' | 'PLAYER_MOVING' | 'TILE_ACTION' | 'WORLD_TRAVEL' | 'GAME_OVER' | 'MANAGE_PROPERTY' | 'WORLD_TRAVEL_MOVE'
 type ModalType = 'NONE' | 'BUY_PROPERTY' | 'ACQUIRE_PROPERTY' | 'CHANCE_CARD' | 'INFO' | 'JAIL' | 'EXPO' | 'MANAGE_PROPERTY' | 'INSUFFICIENT_FUNDS'
@@ -204,7 +204,7 @@ const BAIL_AMOUNT = 500000;
 export const useGameStore = create<GameState>()((set, get) => ({
   gameId: null,
   players: [
-    { id: currentUser.id, name: `${currentUser.name}`, money: 2200000, position: 0, character: 'cone', properties: [], isInJail: false, jailTurns: 0, isTraveling: false, lapCount: 0 },
+    { id: 'user-1', name: '플레이어 1', money: 2200000, position: 0, character: 'cone', properties: [], isInJail: false, jailTurns: 0, isTraveling: false, lapCount: 0 },
     { id: 'player-2', name: '플레이어 2', money: 2000000, position: 0, character: 'sphere', properties: [], isInJail: false, jailTurns: 0, isTraveling: false, lapCount: 0 },
   ],
   board: JSON.parse(JSON.stringify(initialBoardData)), // 초기 보드 데이터 깊은 복사
@@ -222,26 +222,15 @@ export const useGameStore = create<GameState>()((set, get) => ({
 
   connect: (gameId: string) => {
     set({ gameId });
-    connectWebSocket({
-      onConnect: () => {
-        console.log('Game WebSocket connected!');
-        subscribeToTopic('GAME_STATE_CHANGE', (message) => {
-          console.log('Received game update:', message);
-          get().updateGameState(message);
-        });
-      },
-      onDisconnect: () => {
-        console.log('Game WebSocket disconnected.');
-      },
-      onMessage: (topic, message) => {
-        console.log(`Received message on ${topic}:`, message);
-        // Handle specific message types if needed, or let updateGameState handle it
-      },
+    console.log('Game store connected to game:', gameId);
+    subscribeToTopic('GAME_STATE_CHANGE', (message) => {
+      console.log('Received game update:', message);
+      get().updateGameState(message.payload);
     });
   },
 
   disconnect: () => {
-    disconnectWebSocket();
+    console.log('Game store disconnected.');
   },
 
   send: (destination: string, body: any) => {

@@ -3,7 +3,7 @@ import { useGameStore } from '../store/useGameStore.ts'
 import { useNavigate } from 'react-router-dom';
 import { BuildingType } from '../data/boardData.ts';
 import type { TileData } from '../data/boardData.ts';
-import { currentUser } from '../../lobby/store/useLobbyStore.ts';
+import { useUserStore } from '../../../stores/useUserStore';
 import { Modal, Box, Typography, Button, Card, CardContent, Grid, LinearProgress, List, ListItem, ListItemButton, ListItemText } from '@mui/material';
 
 const BAIL_AMOUNT = 500000; 
@@ -132,6 +132,7 @@ const GameOverModalContent = ({ winner, handleGoToLobby, modalStyle }) => ( // m
 );
 
 export function GameUI() {
+  const { userInfo } = useUserStore();
   const players = useGameStore(state => state.players);
   const currentPlayerIndex = useGameStore(state => state.currentPlayerIndex);
   const gamePhase = useGameStore(state => state.gamePhase);
@@ -222,7 +223,7 @@ export function GameUI() {
 
       <Grid container spacing={2} sx={{ p: 2, pointerEvents: 'all' }}>
         {players.map((player, index) => {
-          const isMyPlayer = player.id === currentUser.id;
+          const isMyPlayer = player.id === userInfo?.userId;
           const totalAssets = calculateTotalAssets(player, board);
           return (
             <Grid item xs={6} key={player.id} sx={{ display: 'flex', justifyContent: index === 0 ? 'flex-start' : 'flex-end' }}>
