@@ -26,6 +26,7 @@ public class CardService {
     private final ObjectMapper objectMapper;
     private final GameRedisService gameRedisService;
     private final CardRepository cardRepository;
+    private final EventService eventService;
     private final Random random = new Random();
     
     /**
@@ -220,7 +221,7 @@ public class CardService {
             if (drawnCard.getCardType() == Card.CardType.ANGEL) {
                 handleAngelCardDrawn(roomId, userId, gameMapState);
             } else {
-                applyInstantCardEffectFromDB(drawnCard, player);
+                applyInstantCardEffectFromDB(roomId, userName, drawnCard, player);
                 gameRedisService.saveGameMapState(roomId, gameMapState);
             }
             
@@ -287,7 +288,7 @@ public class CardService {
     }
     
     
-    private void applyInstantCardEffectFromDB(Card card, CreateMapPayload.PlayerState player) {
+    private void applyInstantCardEffectFromDB(String roomId, String userName, Card card, CreateMapPayload.PlayerState player) {
         try {
             String effectType = card.getEffectType();
             Integer effectValue = card.getEffectValue();
@@ -308,7 +309,7 @@ public class CardService {
                     log.info("즉발카드 효과 적용 - 돈(퍼센트): cardName={}, percent={}, description={}", card.getName(), effectValue, description);
                     break;
                 case "JAIL":
-                    applyJailEffect(player);
+                    applyJailEffect(roomId, userName);
                     log.info("즉발카드 효과 적용 - 감옥: cardName={}, description={}", card.getName(), description);
                     break;
                 case "MOVE":
@@ -342,7 +343,8 @@ public class CardService {
                 return false;
             }
             
-            applyInstantCardEffectFromDB(card, player);
+            String userName = player.getNickname(); // PlayerState에서 nickname 추출
+            applyInstantCardEffectFromDB(roomId, userName, card, player);
             
             gameRedisService.saveGameMapState(roomId, gameMapState);
             log.info("즉발카드 효과 적용 완료: roomId={}, userId={}, cardName={}", roomId, userId, cardName);
@@ -368,10 +370,9 @@ public class CardService {
         player.setPosition(newPosition);
     }
     
-    private void applyJailEffect(CreateMapPayload.PlayerState player) {
-        player.setPosition(7); // 감옥은 7번 위치
-        player.setInJail(true);
-        player.setJailTurns(3);
+    private void applyJailEffect(String roomId, String userName) {
+        // EventService의 기존 감옥 로직 재활용
+        eventService.sendPlayerToJail(roomId, userName, 3);
     }
     
     private void applyMoneyPercentEffectSimple(CreateMapPayload.PlayerState player, int percent) {
@@ -384,10 +385,10 @@ public class CardService {
     
     private void applyAbsolutePositionEffect(CreateMapPayload.PlayerState player, int position) {
         player.setPosition(position);
-        // 시작점(0번)으로 이동하면 월급 지급
+        // 시작점(0번)으로 이동하면 월급 지급 (EventService와 통일)
         if (position == 0) {
             int currentMoney = player.getMoney();
-            player.setMoney(currentMoney + 200000); // 월급 20만원
+            player.setMoney(currentMoney + 1000); // 월급 1,000원 (EventService와 동일)
         }
     }
     
@@ -463,7 +464,7 @@ public class CardService {
             if (salary) {
                 // 시작점 이동 시 월급 지급
                 int currentMoney = player.getMoney();
-                player.setMoney(currentMoney + 200000); // 월급 20만원
+                player.setMoney(currentMoney + 1000); // 월급 1,000원 (EventService와 동일)
             }
         } catch (Exception e) {
             log.error("위치 효과 적용 실패: effectData={}", effectData, e);
