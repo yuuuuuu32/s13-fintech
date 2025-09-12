@@ -3,7 +3,6 @@ package com.ssafy.BlueMarble.domain.game.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.GameMap;
-import com.ssafy.BlueMarble.domain.game.dto.MapCell;
 import com.ssafy.BlueMarble.domain.game.entity.GameState;
 import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.game.repository.TileRepository;
@@ -41,13 +40,17 @@ public class MapService {
     private static final int MAP_SIZE = 32;
     private static final Random random = new Random();
 
-    // 이벤트 칸 위치와 타입을 매핑하는 배열
-    private static final MapCell.EventCellInfo[] EVENT_CELLS = {
-            new MapCell.EventCellInfo(0, "Start", MapCell.EventType.START_ZONE),
-            new MapCell.EventCellInfo(7, "Special", MapCell.EventType.SPECIAL),
-            new MapCell.EventCellInfo(15, "Jail", MapCell.EventType.JAIL),
-            new MapCell.EventCellInfo(31, "World Travel", MapCell.EventType.WORLD_TRAVEL)
-    };// 3 11 19 27
+    // 이벤트 칸 위치와 타입을 매핑하는 Map (위치 -> 타일 정보)
+    private static final Map<Integer, Tile> EVENT_CELLS = Map.of(
+            0, Tile.builder().id(0L).name("시작").type(Tile.TileType.START).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("지나가거나 도착하면 월급 받음").build(),
+            3, Tile.builder().id(3L).name("찬스").type(Tile.TileType.CHANCE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("찬스카드 뽑기").build(),
+            11, Tile.builder().id(11L).name("부산").type(Tile.TileType.SPECIAL).landPrice(200).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build(),
+            15, Tile.builder().id(15L).name("감옥").type(Tile.TileType.JAIL).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("3턴간 이동 불가, 보석금으로 탈출 가능").build(),
+            19, Tile.builder().id(19L).name("대전").type(Tile.TileType.SPECIAL).landPrice(200).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build(),
+            20, Tile.builder().id(20L).name("구미").type(Tile.TileType.SPECIAL).landPrice(160).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build(),
+            27, Tile.builder().id(27L).name("서울").type(Tile.TileType.SPECIAL).landPrice(220).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build(),
+            31, Tile.builder().id(31L).name("세계여행").type(Tile.TileType.AIRPLANE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("일정 금액 지불하고 원하는 땅으로 이동").build()
+    );
 
     /**
      * 새로운 게임 맵 상태 생성 (방에서 게임 시작할 때 호출)
@@ -178,11 +181,27 @@ public class MapService {
      */
     public GameMap createMap() {
         GameMap gameMap = new GameMap();
-        List<MapCell> mapCells = new ArrayList<>(Collections.nCopies(MAP_SIZE, null));
+        List<Tile> mapCells = new ArrayList<>(Collections.nCopies(MAP_SIZE, null));
 
         // 이벤트 칸 고정 배치
-        for (MapCell.EventCellInfo eventCell : EVENT_CELLS) {
-            mapCells.set(eventCell.position(), createEventCell(eventCell.position(), eventCell.name(), eventCell.eventType()));
+        for (Map.Entry<Integer, Tile> entry : EVENT_CELLS.entrySet()) {
+            int position = entry.getKey();
+            Tile eventTile = entry.getValue();
+            // 위치 정보를 포함한 새로운 Tile 객체 생성
+            Tile positionedTile = Tile.builder()
+                    .name(eventTile.getName())
+                    .type(eventTile.getType())
+                    .landPrice(eventTile.getLandPrice())
+                    .housePrice(eventTile.getHousePrice())
+                    .buildingPrice(eventTile.getBuildingPrice())
+                    .hotelPrice(eventTile.getHotelPrice())
+                    .description(eventTile.getDescription())
+                    .build();
+            positionedTile.setCellNumber(position);
+            positionedTile.setOwnerName(null);
+            positionedTile.setToll(eventTile.getLandPrice());
+            positionedTile.setBuildingType(Tile.BuildingType.FIELD);
+            mapCells.set(position, positionedTile);
         }
 
         // 도시 칸 배치 (랜덤하게 배치함)
@@ -194,34 +213,26 @@ public class MapService {
         for (int i = 0; i < MAP_SIZE; i++) {
             if (mapCells.get(i) == null && tileIdx < cityPool.size()) {
                 Tile tile = cityPool.get(tileIdx++);
-                mapCells.set(i, createCityCell(i, tile));
+                // 일반 도시 타일 생성
+                Tile cityTile = Tile.builder()
+                        .name(tile.getName())
+                        .type(Tile.TileType.NORMAL)
+                        .landPrice(tile.getLandPrice())
+                        .housePrice(tile.getHousePrice())
+                        .buildingPrice(tile.getBuildingPrice())
+                        .hotelPrice(tile.getHotelPrice())
+                        .description(tile.getDescription())
+                        .build();
+                cityTile.setCellNumber(i);
+                cityTile.setOwnerName(null);
+                cityTile.setToll(tile.getLandPrice());
+                cityTile.setBuildingType(Tile.BuildingType.FIELD);
+                mapCells.set(i, cityTile);
             }
         }
 
         gameMap.setCells(mapCells);
         return gameMap;
-    }
-
-    private MapCell createEventCell(int position, String name, MapCell.EventType eventType) {
-        return MapCell.builder()
-                .cellNumber(position)
-                .cellName(name)
-                .ownerName(null)
-                .toll(0)
-                .buildingType(null)
-                .eventType(eventType)
-                .build();
-    }
-
-    private MapCell createCityCell(int position, Tile tile) {
-        return MapCell.builder()
-                .cellNumber(position)
-                .cellName(tile.getName())
-                .ownerName(null)
-                .toll(tile.getLandPrice())
-                .buildingType(MapCell.BuildingType.FIELD)
-                .eventType(null)
-                .build();
     }
 
     /**
