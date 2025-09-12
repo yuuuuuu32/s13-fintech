@@ -47,7 +47,7 @@ public class MapService {
             new MapCell.EventCellInfo(7, "Special", MapCell.EventType.SPECIAL),
             new MapCell.EventCellInfo(15, "Jail", MapCell.EventType.JAIL),
             new MapCell.EventCellInfo(31, "World Travel", MapCell.EventType.WORLD_TRAVEL)
-    };
+    };// 3 11 19 27
 
     /**
      * 새로운 게임 맵 상태 생성 (방에서 게임 시작할 때 호출)
@@ -68,14 +68,16 @@ public class MapService {
 
         // 플레이어 순서 랜덤 결정
         List<String> shuffledPlayers = new ArrayList<>(playerIds);
+        List<String> playerNames = new ArrayList<>();
         Collections.shuffle(shuffledPlayers, random);
 
         // 플레이어 상태 초기화
         Map<String, CreateMapPayload.PlayerState> players = new ConcurrentHashMap<>();
         for (String playerId : shuffledPlayers) {
+            String playerName = getPlayerNickname(playerId);
             CreateMapPayload.PlayerState playerState = CreateMapPayload.PlayerState.builder()
                     .userId(playerId)
-                    .nickname(getPlayerNickname(playerId))
+                    .nickname(playerName)
                     .position(0) // 시작 위치
                     .money(20000) // 초기 자금
                     .ownedProperties(new ArrayList<>())
@@ -85,6 +87,7 @@ public class MapService {
                     .anglecard(false) // 게임 시작 시 천사카드 미보유
                     .build();
             players.put(playerId, playerState);
+            playerNames.add(playerName);
         }
 
         // 게임 상태 생성
@@ -93,7 +96,7 @@ public class MapService {
                 .roomId(roomId)
                 .gameState(GameState.PLAYING)
                 .currentMap(gameMap)
-                .playerOrder(shuffledPlayers)
+                .playerOrder(playerNames)
                 .players(players)
                 .currentPlayerIndex(0)
                 .angelCardInDeck(true) // 게임 시작 시 천사카드는 덱에 포함

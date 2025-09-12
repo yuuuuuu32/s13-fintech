@@ -1,6 +1,5 @@
 package com.ssafy.BlueMarble.domain.game.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
