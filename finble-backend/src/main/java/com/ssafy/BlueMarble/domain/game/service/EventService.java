@@ -223,7 +223,7 @@ public class EventService {
         // 예외처리
         //TODO : 본인의 턴에만 주사위를 던질 수 있었야함
         String currentTurnUserId = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
-        if(!currentTurnUserId.equals(userId)){
+        if(!currentTurnUserId.equals(useDiceRequest.getUserName())){
             throw new BusinessException(BusinessError.INVALID_TURN);
         }
         CreateMapPayload.PlayerState player = gameState.getPlayers().get(userId);
@@ -237,7 +237,7 @@ public class EventService {
         
         // 4. 위치 계산
         int currentPosition = player.getPosition();
-        int newPosition = (currentPosition + diceNum) % 32; // 28개 칸 순환
+        int newPosition = (currentPosition + diceNum) % 32; // 32개 칸 순환
         
         // 5. 시작점 통과 여부
         int salaryBonus = 0;
@@ -275,6 +275,13 @@ public class EventService {
         }
         
         // 9. 게임 상태 저장
+        // TODO : 현재 턴인 사람의 정보를 업데이트해야함
+        if(gameState.getCurrentPlayerIndex() == gameState.getPlayers().size()-1){
+            gameState.setCurrentPlayerIndex(0);
+        }else{
+            gameState.setCurrentPlayerIndex(gameState.getCurrentPlayerIndex() + 1);
+        }
+
         gameRedisService.saveGameMapState(roomId, gameState);
         
         // 10. 결과 메시지 전송
