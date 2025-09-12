@@ -225,7 +225,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
     connectWebSocket({
       onConnect: () => {
         console.log('Game WebSocket connected!');
-        subscribeToTopic(`/topic/game/${gameId}`, (message) => {
+        subscribeToTopic('GAME_STATE_CHANGE', (message) => {
           console.log('Received game update:', message);
           get().updateGameState(message);
         });
@@ -269,7 +269,12 @@ export const useGameStore = create<GameState>()((set, get) => ({
     }
 
     if (gameId) {
-      send(`/app/game/${gameId}/roll-dice`, { playerId: currentPlayer.id });
+      send(`/app/game/${gameId}/roll-dice`, {
+        type: "USE_DICE",
+        payload: {
+          playerId: currentPlayer.id
+        }
+      });
     } else {
       console.warn('Game ID not set. Cannot send roll dice message.');
       set({ gamePhase: 'DICE_ROLLING' }); // Fallback for local testing
