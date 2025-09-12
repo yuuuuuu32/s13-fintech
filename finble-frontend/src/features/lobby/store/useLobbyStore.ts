@@ -17,6 +17,7 @@ export interface GameRoom {
   status: 'waiting' | 'playing';
 }
 
+// Zustand 스토어 상태 + 액션 인터페이스
 interface LobbyState {
   rooms: GameRoom[];
   isLoading: boolean;
@@ -192,7 +193,7 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
     set((state) => ({
       rooms: [...state.rooms, newRoom],
     }));
-    return newRoom.id;
+    return newRoom.id; // 생성된 방 ID 반환 (라우팅용)
   },
   subscribeToLobbyUpdates: () => {
     subscribeToTopic('GAME_STATE_CHANGE', (message) => {
