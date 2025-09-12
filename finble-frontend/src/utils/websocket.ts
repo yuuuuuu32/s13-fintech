@@ -13,13 +13,13 @@ export const getWebSocketStatus = (): boolean => {
   return isConnected;
 };
 
-// 구독 콜백을 저장할 맵 (토픽별로 여러 콜백이 있을 수 있음)
-const subscriptions: { [topic: string]: ((message: any) => void)[] } = {};
+// 구독 콜백을 저장할 맵 (메시지 타입별로 여러 콜백이 있을 수 있음)
+const subscriptions: { [messageType: string]: ((message: any) => void)[] } = {};
 
 interface WebSocketCallbacks {
   onConnect: () => void;
   onDisconnect: () => void;
-  onMessage: (topic: string, message: any) => void; // 이제 topic도 전달
+  onMessage: (messageType: string, message: any) => void; // 이제 messageType도 전달
 }
 
 export const connectWebSocket = (callbacks: WebSocketCallbacks) => {
@@ -41,7 +41,7 @@ export const connectWebSocket = (callbacks: WebSocketCallbacks) => {
     }
     callbacks.onConnect();
 
-    // 연결 성공 후, 이전에 구독했던 토픽들을 다시 구독 (필요시)
+    // 연결 성공 후, 이전에 구독했던 메시지 타입들을 다시 구독 (필요시)
     // 순수 WebSocket에서는 토픽 재구독 개념이 없으므로, 메시지 핸들러를 다시 설정하는 것으로 대체
     // 또는 백엔드에서 연결 시 모든 구독 정보를 다시 보내주는 방식이 필요
   };
@@ -50,13 +50,13 @@ export const connectWebSocket = (callbacks: WebSocketCallbacks) => {
     console.log('Received raw WebSocket message:', event.data); // 원본 메시지 출력
     try {
       const parsedMessage = JSON.parse(event.data as string);
-      // 백엔드에서 메시지에 'topic' 필드를 포함하여 보내준다고 가정
-      const topic = parsedMessage.topic || 'default'; // 백엔드와 협의 필요
-      callbacks.onMessage(topic, parsedMessage);
+      // 백엔드에서 메시지에 'type' 필드를 포함하여 보내준다고 가정
+      const messageType = parsedMessage.type; // 백엔드와 협의 필요
+      callbacks.onMessage(messageType, parsedMessage);
 
-      // 구독된 토픽에 대한 콜백 호출
-      if (subscriptions[topic]) {
-        subscriptions[topic].forEach(callback => callback(parsedMessage));
+      // 구독된 메시지 타입에 대한 콜백 호출
+      if (subscriptions[messageType]) {
+        subscriptions[messageType].forEach(callback => callback(parsedMessage));
       }
     } catch (e) {
       console.error('Error parsing WebSocket message:', e);
@@ -110,24 +110,24 @@ export const disconnectWebSocket = () => {
   }
 };
 
-export const subscribeToTopic = (topic: string, callback: (message: any) => void): (() => void) => {
+export const subscribeToTopic = (messageType: string, callback: (message: any) => void): (() => void) => {
   // 순수 WebSocket은 STOMP처럼 토픽 구독 개념이 없음.
   // 백엔드에서 메시지에 토픽 정보를 포함하여 보내주고, 프론트엔드에서 필터링해야 함.
-  // 여기서는 단순히 콜백을 저장하고, onmessage에서 해당 토픽 메시지 수신 시 호출하도록 구현.
-  if (!subscriptions[topic]) {
-    subscriptions[topic] = [];
+  // 여기서는 단순히 콜백을 저장하고, onmessage에서 해당 메시지 타입 수신 시 호출하도록 구현.
+  if (!subscriptions[messageType]) {
+    subscriptions[messageType] = [];
   }
-  subscriptions[topic].push(callback);
-  console.log(`Subscribing to topic: ${topic} (pure WebSocket simulation)`);
+  subscriptions[messageType].push(callback);
+  console.log(`Subscribing to message type: ${messageType} (pure WebSocket simulation)`);
 
   // 구독을 해제할 수 있는 함수 반환
   const unsubscribe = () => {
-    if (subscriptions[topic]) {
-      subscriptions[topic] = subscriptions[topic].filter(cb => cb !== callback);
-      if (subscriptions[topic].length === 0) {
-        delete subscriptions[topic]; // 더 이상 구독자가 없으면 토픽 제거
+    if (subscriptions[messageType]) {
+      subscriptions[messageType] = subscriptions[messageType].filter(cb => cb !== callback);
+      if (subscriptions[messageType].length === 0) {
+        delete subscriptions[messageType]; // 더 이상 구독자가 없으면 메시지 타입 제거
       }
-      console.log(`Unsubscribed from topic: ${topic}`);
+      console.log(`Unsubscribed from message type: ${messageType}`);
     }
   };
   return unsubscribe;

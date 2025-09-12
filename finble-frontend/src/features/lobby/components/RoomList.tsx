@@ -11,6 +11,7 @@ interface RoomListProps {
 
 export function RoomList({ isLoading, error }: RoomListProps) {
   const rooms = useLobbyStore((state) => state.rooms);
+  const fetchRooms = useLobbyStore((state) => state.fetchRooms); // Add this line
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const renderContent = () => {
@@ -46,7 +47,7 @@ export function RoomList({ isLoading, error }: RoomListProps) {
         <header className="room-list-header">
           <h2>ACTIVE ROOMS</h2>
           <div className="header-actions">
-            <button className="quick-join-button">QUICK JOIN</button>
+            <button className="refresh-button" onClick={fetchRooms}>REFRESH</button>
             <button className="create-room-button" onClick={() => setIsModalOpen(true)}>
               CREATE ROOM
             </button>

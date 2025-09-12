@@ -19,14 +19,21 @@ export const getRoomList = async (): Promise<GameRoom[]> => {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      // 캐시 방지를 위해 타임스탬프를 쿼리 파라미터로 추가
+      params: {
+        _:`new Date().getTime()`,
+        size: 100, // 페이지 크기를 100으로 설정
+      },
     });
     
+    console.log('[필터링 전]', response.data.content);
+    const filteredRooms = response.data.content.filter((room) => room.userCnt > 0);
+    console.log('[필터링 후]', filteredRooms);
+
     // API 응답(content)을 프론트엔드에서 사용할 GameRoom[] 형태로 변환합니다.
-    // 현재는 백엔드 DTO와 GameRoom 타입이 거의 일치하지만,
-    // status처럼 프론트엔드에만 필요한 값을 추가하는 등의 처리를 여기서 할 수 있습니다.
-    return response.data.content.map((room) => ({
-      ...room,
-      status: 'waiting', // API에 status가 없으므로 임시로 추가
+    return filteredRooms.map((room) => ({
+        ...room,
+        status: 'waiting', // API에 status가 없으므로 임시로 추가
     }));
 
   } catch (error) {

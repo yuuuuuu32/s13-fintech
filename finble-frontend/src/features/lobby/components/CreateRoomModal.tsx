@@ -8,7 +8,7 @@ export const CreateRoomModal = ({ isOpen, onClose }) => {
   const [maxPlayers, setMaxPlayers] = useState(4);
   const [isLoading, setIsLoading] = useState(false); // 로딩 상태 추가
   const [error, setError] = useState<string | null>(null); // 에러 상태 추가
-  const navigate = useNavigate(); // navigate는 사용하지 않지만, 기존 코드에 있어 유지
+  const navigate = useNavigate();
   const createRoom = useLobbyStore((state) => state.createRoom); // createRoom 액션 가져오기
 
   if (!isOpen) return null;
@@ -25,10 +25,9 @@ export const CreateRoomModal = ({ isOpen, onClose }) => {
     setIsLoading(true); // 로딩 시작
 
     try {
-      await createRoom(roomName.trim(), maxPlayers);
+      const roomId = await createRoom(roomName.trim(), maxPlayers);
       onClose(); // 성공 시 모달 닫기
-      // 방 생성 후 즉시 이동하는 로직은 백엔드에서 roomId를 직접 반환하지 않으므로 제거합니다.
-      // 사용자는 방 목록이 업데이트되면 새로 생성된 방을 클릭하여 입장해야 합니다.
+      navigate(`/room/${roomId}`); // 새로 생성된 방으로 이동
     } catch (err) {
       console.error('방 생성 실패:', err);
       setError('방 생성에 실패했습니다. 다시 시도해주세요.'); // 에러 메시지 설정

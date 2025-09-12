@@ -5,6 +5,7 @@
   display: flex; /* 내부 요소를 세로로 배치하기 위해 flex 사용 */
   flex-direction: column;
   min-height: 0; /* Grid/Flex 중첩 시 높이 계산 오류를 방지하는 핵심 속성 */
+  height: 100%; /* 부모 그리드 셀의 높이를 채우도록 설정 (스크롤 문제 해결) */
   min-width: 0;
   
   /* --- 디자인 스타일 --- */

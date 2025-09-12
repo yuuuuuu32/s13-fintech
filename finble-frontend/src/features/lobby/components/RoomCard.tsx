@@ -25,12 +25,12 @@ export const RoomCard = ({ room }: RoomCardProps) => {
       onClick={handleJoinRoom} 
       role="button" 
       tabIndex={0}
-      aria-label={`Join room ${room.name}`}
+      aria-label={`Join room ${room.roomName || room.name || '제목 없음'}`}
       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleJoinRoom()}
     >
       <div className="room-card-inner">
         <div className="room-header">
-          <h3 className="room-name">{room.name}</h3>
+          <h3 className="room-name">{room.roomName || room.name || '제목 없음'}</h3>
           <span className={`room-status ${room.status}`}>{room.status}</span>
         </div>
         <div className="room-info">
