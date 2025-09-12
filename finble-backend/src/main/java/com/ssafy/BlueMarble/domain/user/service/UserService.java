@@ -8,6 +8,7 @@ import com.ssafy.BlueMarble.domain.user.entity.User;
 import com.ssafy.BlueMarble.domain.user.repository.UserRepository;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -82,5 +83,13 @@ public class UserService {
 
     public UserSearchResponseDTO searchUser(String userName) {
         return userRepository.findByNickname(userName);
+    }
+
+    public String getUserIdByNickname(CreateMapPayload gameMapState, String userName) {
+        return gameMapState.getPlayers().entrySet().stream()
+                .filter(entry -> userName.equals(entry.getValue().getNickname()))
+                .map(entry -> entry.getKey())
+                .findFirst()
+                .orElse(null);
     }
 }

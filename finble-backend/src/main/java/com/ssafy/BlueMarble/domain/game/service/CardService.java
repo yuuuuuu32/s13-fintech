@@ -9,6 +9,7 @@ import com.ssafy.BlueMarble.websocket.dto.payload.game.DrawCardPayload;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
+import com.ssafy.BlueMarble.domain.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -29,8 +30,8 @@ public class CardService {
     private final ObjectMapper objectMapper;
     private final GameRedisService gameRedisService;
     private final CardRepository cardRepository;
-    private final EventService eventService;
     private final SessionMessageService sessionMessageService;
+    private final UserService userService;
     private final Random random = new Random();
     
     /**
@@ -44,7 +45,7 @@ public class CardService {
                 return false;
             }
             
-            String userId = getUserIdByNickname(gameMapState, userName);
+            String userId = userService.getUserIdByNickname(gameMapState, userName);
             if (userId == null) {
                 log.error("플레이어를 찾을 수 없음: userName={}", userName);
                 return false;
@@ -74,13 +75,6 @@ public class CardService {
         }
     }
     
-    private String getUserIdByNickname(CreateMapPayload gameMapState, String userName) {
-        return gameMapState.getPlayers().entrySet().stream()
-                .filter(entry -> userName.equals(entry.getValue().getNickname()))
-                .map(entry -> entry.getKey())
-                .findFirst()
-                .orElse(null);
-    }
     
     private boolean hasCard(String roomId, String userId, String cardName) {
         List<String> cards = getPlayerCards(roomId, userId);
@@ -202,7 +196,7 @@ public class CardService {
                 return null;
             }
             
-            String userId = getUserIdByNickname(gameMapState, userName);
+            String userId = userService.getUserIdByNickname(gameMapState, userName);
             if (userId == null) {
                 log.error("플레이어를 찾을 수 없음: userName={}", userName);
                 return null;
@@ -389,8 +383,30 @@ public class CardService {
     }
     
     private void applyJailEffect(String roomId, String userName) {
-        // EventService의 기존 감옥 로직 재활용
-        eventService.sendPlayerToJail(roomId, userName, 3);
+        try {
+            CreateMapPayload gameMapState = gameRedisService.getGameMapState(roomId);
+            if (gameMapState == null) {
+                log.error("게임 맵 상태를 찾을 수 없음: roomId={}", roomId);
+                return;
+            }
+            
+            String userId = userService.getUserIdByNickname(gameMapState, userName);
+            if (userId == null) {
+                log.error("플레이어를 찾을 수 없음: userName={}", userName);
+                return;
+            }
+            
+            CreateMapPayload.PlayerState player = gameMapState.getPlayers().get(userId);
+            if (player != null) {
+                player.setInJail(true);
+                player.setJailTurns(3);
+                player.setPosition(8); // 감옥 위치 (무인도)
+                gameRedisService.saveGameMapState(roomId, gameMapState);
+                log.info("플레이어 감옥 송치: roomId={}, userName={}", roomId, userName);
+            }
+        } catch (Exception e) {
+            log.error("감옥 송치 실패: roomId={}, userName={}", roomId, userName, e);
+        }
     }
     
     private void applyMoneyPercentEffectSimple(CreateMapPayload.PlayerState player, int percent) {
