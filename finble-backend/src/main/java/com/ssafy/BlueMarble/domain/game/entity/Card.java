@@ -32,6 +32,7 @@ public class Card {
     @Column
     private Integer effectValue;
     
+    
     @Column(nullable = false)
     private boolean isImmediate;
     

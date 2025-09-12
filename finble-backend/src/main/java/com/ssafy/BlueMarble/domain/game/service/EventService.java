@@ -35,8 +35,35 @@ public class EventService {
     private final RoomService roomService;
     private final ObjectMapper objectMapper;
     private final SessionMessageService sessionMessageService;
+    private final CardService cardService;
     private final UserRedisService userRedisService;
     private final Random random = new Random();
+
+    // 찬스 칸 위치 정의 (data.sql 참고)
+    private static final int[] CHANCE_POSITIONS = {3, 11, 19, 27};
+
+    /**
+     * 해당 위치가 찬스 칸인지 확인
+     */
+    private boolean isChancePosition(int position) {
+        for (int chancePos : CHANCE_POSITIONS) {
+            if (chancePos == position) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * userName(nickname)을 통해 userId를 찾는 메서드
+     */
+    private String getUserIdByNickname(CreateMapPayload gameMapState, String userName) {
+        return gameMapState.getPlayers().entrySet().stream()
+                .filter(entry -> userName.equals(entry.getValue().getNickname()))
+                .map(entry -> entry.getKey())
+                .findFirst()
+                .orElse(null);
+    }
 
     /**
      * 감옥 이벤트 처리
@@ -273,7 +300,7 @@ public class EventService {
             // 땅이 비어있으면 구매 가능
             canBuyLand = true;
         }
-        
+
         // 9. 게임 상태 저장
         // TODO : 현재 턴인 사람의 정보를 업데이트해야함
         if(gameState.getCurrentPlayerIndex() == gameState.getPlayers().size()-1){
@@ -282,7 +309,16 @@ public class EventService {
             gameState.setCurrentPlayerIndex(gameState.getCurrentPlayerIndex() + 1);
         }
 
-        gameRedisService.saveGameMapState(roomId, gameState);
+        //10. 찬스 칸 확인 및 자동 카드 뽑기
+        if (isChancePosition(newPosition)) {
+            log.info("플레이어가 찬스 칸에 도착: position={}, userName={}", newPosition, useDiceRequest.getUserName());
+            // 카드 뽑기 (내부에서 상태 변경, 저장 및 메시지 전송)
+            cardService.drawCard(roomId, useDiceRequest.getUserName());
+            player = gameState.getPlayers().get(userId);
+        } else {
+            // 찬스 칸이 아니면, 주사위 이동 및 통행료 결과만 저장
+            gameRedisService.saveGameMapState(roomId, gameState);
+        }
         
         // 10. 결과 메시지 전송
         UseDicePayload payload = UseDicePayload.builder()
