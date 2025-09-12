@@ -96,7 +96,7 @@ public class LandService {
         }
 
         // 6. 땅 주인을 구매자로 변경
-        targetCell.setOwner(tradeLandRequest.getBuyerName());
+        targetCell.setOwnerName(tradeLandRequest.getBuyerName());
 
         // 7. 구매자의 자산 업데이트
         buyer.setMoney(buyer.getMoney() - targetCell.getToll());

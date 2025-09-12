@@ -189,7 +189,6 @@ public class MapService {
             Tile eventTile = entry.getValue();
             // 위치 정보를 포함한 새로운 Tile 객체 생성
             Tile positionedTile = Tile.builder()
-                    .id(eventTile.getId())
                     .name(eventTile.getName())
                     .type(eventTile.getType())
                     .landPrice(eventTile.getLandPrice())
@@ -199,8 +198,8 @@ public class MapService {
                     .description(eventTile.getDescription())
                     .build();
             positionedTile.setCellNumber(position);
-            positionedTile.setOwner(null);
-            positionedTile.updateToll(eventTile.getLandPrice());
+            positionedTile.setOwnerName(null);
+            positionedTile.setToll(eventTile.getLandPrice());
             positionedTile.setBuildingType(Tile.BuildingType.FIELD);
             mapCells.set(position, positionedTile);
         }
@@ -216,7 +215,6 @@ public class MapService {
                 Tile tile = cityPool.get(tileIdx++);
                 // 일반 도시 타일 생성
                 Tile cityTile = Tile.builder()
-                        .id(tile.getId())
                         .name(tile.getName())
                         .type(Tile.TileType.NORMAL)
                         .landPrice(tile.getLandPrice())
@@ -226,8 +224,8 @@ public class MapService {
                         .description(tile.getDescription())
                         .build();
                 cityTile.setCellNumber(i);
-                cityTile.setOwner(null);
-                cityTile.updateToll(tile.getLandPrice());
+                cityTile.setOwnerName(null);
+                cityTile.setToll(tile.getLandPrice());
                 cityTile.setBuildingType(Tile.BuildingType.FIELD);
                 mapCells.set(i, cityTile);
             }

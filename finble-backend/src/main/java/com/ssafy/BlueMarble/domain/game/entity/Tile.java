@@ -2,6 +2,7 @@ package com.ssafy.BlueMarble.domain.game.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "tiles")
@@ -11,6 +12,7 @@ public class Tile {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @JsonIgnore
     private Long id;
     
     @Column(nullable = false)
@@ -42,9 +44,11 @@ public class Tile {
     private int cellNumber; // 맵상의 위치
     
     @Transient
+    @Setter
     private String ownerName;
     
     @Transient
+    @Setter
     private int toll;
     
     @Setter
@@ -65,14 +69,6 @@ public class Tile {
         this.ownerName = null;
         this.toll = landPrice; // 초기 통행료는 땅 값
         this.buildingType = BuildingType.FIELD;
-    }
-
-    public void setOwner(String ownerName) {
-        this.ownerName = ownerName;
-    }
-
-    public void updateToll(int toll) {
-        this.toll = toll;
     }
 
     // BuildingType enum 추가
