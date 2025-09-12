@@ -37,12 +37,9 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
   error: null,
   fetchRooms: async () => {
     set({ isLoading: true, error: null });
-    console.log('fetchRooms: Before fetching, current rooms:', get().rooms);
     try {
       const rooms = await getRoomList();
-      console.log('fetchRooms: Rooms received from API:', rooms);
       set({ rooms, isLoading: false });
-      console.log('fetchRooms: After fetching, updated rooms:', rooms);
     } catch (error) {
       set({ isLoading: false, error: '방 목록을 불러오는 데 실패했습니다.' });
       console.error(error); // 에러 로그 추가

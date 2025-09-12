@@ -22,14 +22,16 @@ export default function LobbyPage() {
     if (token) {
       fetchUserInfo(); // 사용자 정보를 가져오는 함수는 그대로 유지
 
-      // WebSocket 연결 시도 로직 제거
-      // connectWebSocket({...});
-
-      // 컴포넌트 언마운트 시 WebSocket 연결 해제 로직 제거
-      // return () => { disconnectWebSocket(); };
-
       fetchRooms(); // 로비 진입 시 방 목록은 계속 가져옴
       subscribeToLobbyUpdates(); // 로비 업데이트 구독은 계속 유지
+
+      // 자동 새로고침 설정 (45초마다)
+      const intervalId = setInterval(() => {
+        fetchRooms();
+      }, 5000); // 5초
+
+      // 컴포넌트 언마운트 시 인터벌 해제
+      return () => clearInterval(intervalId);
     }
   }, [fetchUserInfo, fetchRooms, subscribeToLobbyUpdates]); // fetchUserInfo는 여전히 의존성 배열에 포함
 
