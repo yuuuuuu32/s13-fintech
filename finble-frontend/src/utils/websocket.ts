@@ -1,5 +1,4 @@
-// import * as Stomp from 'stompjs'; // StompJS 임포트 제거
-// import { IMessage } from 'stompjs'; // IMessage 임포트 제거
+import { useWebSocketStore } from '../stores/useWebSocketStore';
 
 const WEBSOCKET_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`; // 백엔드 WebSocket 주소
 
@@ -35,6 +34,8 @@ export const initializeWebSocket = () => {
   webSocket.onopen = () => {
     console.log('WebSocket connection established.');
     isConnected = true;
+    useWebSocketStore.getState().setIsConnected(true);
+    useWebSocketStore.getState().setIsWebSocketReady(true); // WebSocket 준비 완료 상태 설정
     if (reconnectTimeout) {
       clearTimeout(reconnectTimeout);
       reconnectTimeout = null;
@@ -47,8 +48,12 @@ export const initializeWebSocket = () => {
       const parsedMessage = JSON.parse(event.data as string);
       const messageType = parsedMessage.type;
 
+      console.log(`Received message of type: ${messageType}`);
+
       if (subscriptions[messageType]) {
         subscriptions[messageType].forEach(callback => callback(parsedMessage));
+      } else {
+        console.log(`No subscription found for message type: ${messageType}`);
       }
     } catch (e) {
       console.error('Error parsing WebSocket message:', e);
@@ -58,6 +63,8 @@ export const initializeWebSocket = () => {
   webSocket.onclose = (event) => {
     console.log('WebSocket disconnected:', event);
     isConnected = false;
+    useWebSocketStore.getState().setIsConnected(false);
+    useWebSocketStore.getState().setIsWebSocketReady(false); // WebSocket 준비 상태 초기화
     if (!manualDisconnect) { // 수동 종료가 아닐 경우에만 재연결
       if (!reconnectTimeout) {
         reconnectTimeout = setTimeout(() => {
@@ -80,6 +87,8 @@ export const disconnectWebSocket = () => {
     webSocket.close();
     webSocket = null;
     isConnected = false;
+    useWebSocketStore.getState().setIsConnected(false);
+    useWebSocketStore.getState().setIsWebSocketReady(false); // WebSocket 준비 상태 초기화
     if (reconnectTimeout) {
       clearTimeout(reconnectTimeout);
       reconnectTimeout = null;

@@ -21,7 +21,7 @@ export const getRoomList = async (): Promise<GameRoom[]> => {
       },
       // 캐시 방지를 위해 타임스탬프를 쿼리 파라미터로 추가
       params: {
-        _:`new Date().getTime()`,
+        _: new Date().getTime(),
         size: 100, // 페이지 크기를 100으로 설정
       },
     });

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { subscribeToTopic, sendMessage } from '../../../utils/websocket';
 import type { Player, GameRoom } from '../../lobby/store/useLobbyStore';
 import { useLobbyStore } from '../../lobby/store/useLobbyStore';
+import { useWebSocketStore } from '../../../stores/useWebSocketStore'; // 추가
 
 interface RoomState {
   room: GameRoom | null;
@@ -43,6 +44,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     try {
       const playersPayload = await new Promise<any>((resolve, reject) => {
         const unsubscribeOk = subscribeToTopic('ENTER_ROOM_OK', (message: any) => {
+          console.log('ENTER_ROOM_OK received:', message);
           unsubscribeOk();
           unsubscribeFail();
           unsubscribeNotFound();
@@ -50,6 +52,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         });
 
         const unsubscribeFail = subscribeToTopic('ENTER_ROOM_FAIL', (message: any) => {
+          console.log('ENTER_ROOM_FAIL received:', message);
           unsubscribeOk();
           unsubscribeFail();
           unsubscribeNotFound();
@@ -57,6 +60,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         });
 
         const unsubscribeNotFound = subscribeToTopic('ROOM_ID_NOT_FOUND', (message: any) => {
+          console.log('ROOM_ID_NOT_FOUND received:', message);
           unsubscribeOk();
           unsubscribeFail();
           unsubscribeNotFound();
@@ -70,6 +74,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
           }
         });
 
+        console.log('Setting timeout for room entry...');
         setTimeout(() => {
           unsubscribeOk();
           unsubscribeFail();
@@ -95,7 +100,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       set({ room: newRoomState });
 
       // Now subscribe to real-time updates
-      const enterNewUserSub = subscribeToTopic(`/topic/room/${roomId}/enter`, (message) => {
+      const enterNewUserSub = subscribeToTopic('ENTER_NEW_USER', (message) => {
         const newPlayer = message.payload;
         get().addPlayer({
           id: newPlayer.userId,
@@ -104,15 +109,47 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         });
       });
   
-      const exitUserSub = subscribeToTopic(`/topic/room/${roomId}/exit`, (message) => {
+      const exitUserSub = subscribeToTopic('EXIT_USER', (message) => {
         const exitingPlayerId = message.payload.userId;
         get().removePlayer(exitingPlayerId);
+      });
+
+      const kickUserSub = subscribeToTopic('KICK_USER', (message) => {
+        const kickedPlayerId = message.payload.userId;
+        get().removePlayer(kickedPlayerId);
+      });
+
+      const kickedSub = subscribeToTopic('KICKED', () => {
+        // You have been kicked, navigate to lobby
+        window.location.href = '/lobby';
+      });
+
+      // 게임 시작 메시지 구독
+      const gameStartSub = subscribeToTopic('START_GAME_OBSERVE', (message) => {
+        // 1. 초기 게임 상태를 임시 저장소에 저장
+        useWebSocketStore.getState().setInitialGameState(message.payload);
+
+        // 2. 게임 상태를 'playing'으로 변경하여 페이지 이동 트리거
+        if (message.payload.gameState === 'PLAYING') {
+          set((state) => {
+            if (!state.room) return {};
+            return {
+                room: { ...state.room, status: 'playing' },
+            };
+          });
+        }
       });
   
       // Store unsubscribe functions to be called on cleanup
       set({ cleanup: () => {
+        setTimeout(() => {
+          useLobbyStore.getState().exitRoom(roomId);
+        }, 100); // 100ms delay
         enterNewUserSub();
         exitUserSub();
+        kickUserSub();
+        kickedSub();
+        gameStartSub(); // cleanup에 추가
       }});
 
     } catch (error) {
