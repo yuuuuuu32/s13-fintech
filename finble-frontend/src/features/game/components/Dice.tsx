@@ -8,24 +8,26 @@ import { useGameStore } from '../store/useGameStore.ts';
 // 주사위 값에 따른 회전 값을 반환하는 헬퍼 함수
 const getRotationForDiceValue = (value: number): THREE.Quaternion => {
   const quaternion = new THREE.Quaternion();
+  // Using Euler angles for simplicity and clarity
   switch (value) {
-    case 1: // -Y up
-      quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
+    case 1: // -Y face up
+      quaternion.setFromEuler(new THREE.Euler(Math.PI, 0, 0));
       break;
-    case 2: // -Z up
-      quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+    case 2: // -Z face up
+      quaternion.setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
       break;
-    case 3: // -X up
-      quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+    case 3: // -X face up
+      quaternion.setFromEuler(new THREE.Euler(0, 0, -Math.PI / 2));
       break;
-    case 4: // +X up
-      quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.PI / 2);
+    case 4: // +X face up
+      quaternion.setFromEuler(new THREE.Euler(0, 0, Math.PI / 2));
       break;
-    case 5: // +Z up
-      quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+    case 5: // +Z face up
+      quaternion.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
       break;
-    case 6: // +Y up (default)
+    case 6: // +Y face up (default)
     default:
+      quaternion.setFromEuler(new THREE.Euler(0, 0, 0));
       break;
   }
   return quaternion;

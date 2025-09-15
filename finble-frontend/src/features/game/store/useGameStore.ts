@@ -400,7 +400,25 @@ export const useGameStore = create<GameState>()((set, get) => ({
 
   setDicePower: (power) => set({ dicePower: power }),
 
-  finishDiceRoll: () => set({ gamePhase: 'PLAYER_MOVING' }),
+  finishDiceRoll: () => {
+    set((state) => {
+        const { serverCurrentPosition, players, currentPlayerIndex } = state;
+        if (serverCurrentPosition === null) return {};
+
+        const updatedPlayers = players.map((p, index) => {
+            if (index === currentPlayerIndex) {
+                return { ...p, position: serverCurrentPosition };
+            }
+            return p;
+        });
+
+        return {
+            players: updatedPlayers,
+            gamePhase: 'PLAYER_MOVING',
+            serverCurrentPosition: null, // Clear the temp position
+        };
+    });
+  },
 
   setIsDiceRolled: (isRolled) => set({ isDiceRolled: isRolled }),
 
@@ -422,29 +440,15 @@ export const useGameStore = create<GameState>()((set, get) => ({
       const { payload } = message;
       
 
-      const { userName, diceNum1, diceNum2, diceNumSum, currentPosition, salaryBonus, canBuyLand, tollAmount, updatedAsset } = payload;
+      const { diceNum1, diceNum2, diceNumSum, currentPosition } = payload;
 
       get().setIsDiceRolled(false); // Reset flag before rolling
 
-      set((state) => {
-        const updatedPlayers = state.players.map(player =>
-          player.name === userName
-            ? {
-                ...player,
-                position: currentPosition,
-                money: updatedAsset.money,
-                properties: updatedAsset.properties || [],
-              }
-            : player
-        );
-
-        return {
-          players: updatedPlayers,
-          dice: [diceNum1, diceNum2], // 개별 주사위 값 사용
-          gamePhase: "DICE_ROLLING", // DICE_ROLLING으로 설정
-          serverDiceNum: diceNumSum, // 합계 사용
-          serverCurrentPosition: currentPosition, // 현재 위치 사용
-        };
+      set({
+        dice: [diceNum1, diceNum2],
+        serverDiceNum: diceNumSum,
+        serverCurrentPosition: currentPosition, 
+        gamePhase: "DICE_ROLLING",
       });
     });
   },
