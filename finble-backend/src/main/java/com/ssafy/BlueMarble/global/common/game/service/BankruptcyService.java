@@ -3,6 +3,7 @@ package com.ssafy.BlueMarble.global.common.game.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.service.GameRedisService;
+import com.ssafy.BlueMarble.domain.game.service.MapService;
 import com.ssafy.BlueMarble.domain.user.service.UserService;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
@@ -16,7 +17,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -26,6 +26,7 @@ public class BankruptcyService {
     private final GameRedisService gameRedisService;
     private final UserService userService;
     private final ObjectMapper objectMapper;
+    private final MapService mapService;
 
     public void handleBankruptcy(CreateMapPayload state) {
         // roomId
@@ -79,6 +80,8 @@ public class BankruptcyService {
             JsonNode payloadNode = objectMapper.valueToTree(payload);
             MessageDto message = new MessageDto(MessageType.GAME_END, payloadNode);
             sessionMessageService.sendMessageToRoom(roomId, message);
+            // 게임정보 모두 삭제
+            mapService.deleteGameMapState(roomId);
         }
     }
 }
