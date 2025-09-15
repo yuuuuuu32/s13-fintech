@@ -47,7 +47,7 @@ export const RoomCard = ({ room }: RoomCardProps) => {
         <div className="room-info">
           <div className="room-detail">
             <span className="label">Players:</span>
-            <span className="value">{(room.players ? room.players.length : 0)}/{room.maxPlayers}</span>
+            <span className="value">{room.playerCount}/{room.maxPlayers}</span>
           </div>
           {/* map과 mode를 표시하는 부분을 제거합니다. */}
         </div>

@@ -23,10 +23,12 @@ export function RoomList({ isLoading, error }: RoomListProps) {
       return <div className="error-message">{error}</div>;
     }
 
-    if (rooms.length === 0) {
+    const waitingRooms = rooms.filter(room => room.status === 'waiting');
+
+    if (waitingRooms.length === 0) {
       return (
         <div className="no-rooms-message">
-          <p>활성화된 방이 없습니다.</p>
+          <p>대기 중인 방이 없습니다.</p>
           <p>새로운 방을 만들어보세요!</p>
         </div>
       );
@@ -34,7 +36,7 @@ export function RoomList({ isLoading, error }: RoomListProps) {
 
     return (
       <div className="rooms-grid">
-        {rooms.map((room) => (
+        {waitingRooms.map((room) => (
           <RoomCard key={room.id} room={room} />
         ))}
       </div>

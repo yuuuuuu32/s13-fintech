@@ -29,13 +29,17 @@ export const getRoomList = async (): Promise<GameRoom[]> => {
     // API 응답(content)을 프론트엔드에서 사용할 GameRoom[] 형태로 변환합니다.
     // 현재는 백엔드 DTO와 GameRoom 타입이 거의 일치하지만,
     // status처럼 프론트엔드에만 필요한 값을 추가하는 등의 처리를 여기서 할 수 있습니다.
-    console.log(response.data.content);
-    return response.data.content.map((room: any) => ({
-      ...room,
-      id: room.roomId,         // room.roomId를 id에 매핑
-      name: room.roomName,       // room.roomName을 name에 매핑
-      status: 'waiting',
+    console.log('Raw API response:', response.data.content);
+    const mappedRooms = response.data.content.map((room: any) => ({
+      id: room.roomId,
+      name: room.roomName,
+      // roomState가 유효한 문자열인 경우에만 toLowerCase()를 호출하고, 아닐 경우 기본값 'waiting'을 사용합니다.
+      status: typeof room.roomState === 'string' ? room.roomState.toLowerCase() : 'waiting',
+      playerCount: room.userCnt,
+      maxPlayers: room.userLimit,
     }));
+    console.log('Mapped rooms for frontend:', mappedRooms);
+    return mappedRooms;
   } catch (error) {
     // 여기서 발생한 에러는 이 함수를 호출한 곳(예: Zustand 스토어)에서 처리합니다.
     console.error('방 목록 API 호출에 실패했습니다:', error);
