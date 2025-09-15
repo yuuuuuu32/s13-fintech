@@ -60,6 +60,10 @@ public class MapService {
         if (roomId == null) {
             throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
         }
+        // 게임상태 업데이트
+        String stateKey = "room:" + roomId + ":state";
+        redisTemplate.opsForValue().set(stateKey, GameState.PLAYING.name());
+
         String usersKey = "room:" + roomId + ":users";
         Set<String> playerIds = redisTemplate.opsForSet().members(usersKey);
         if (playerIds == null || playerIds.isEmpty()) {
