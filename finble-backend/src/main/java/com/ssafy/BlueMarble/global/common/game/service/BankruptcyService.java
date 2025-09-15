@@ -8,12 +8,15 @@ import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.BankrutcyPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.EndGamePayload;
 import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -61,14 +64,21 @@ public class BankruptcyService {
     }
 
     private void checkGameEndCondition(String roomId, CreateMapPayload gameState) {
-        long activePlayers = gameState.getPlayers().values().stream()
+        //TODO : 게임 종료 로직 실행
+
+        List<CreateMapPayload.PlayerState> activePlayers = gameState.getPlayers().values().stream()
                 .filter(CreateMapPayload.PlayerState::isActive)
-                .count();
+                .toList();
 
-        if (activePlayers <= 1) {
-            log.info("게임 종료 조건 만족: roomId={}, 남은 활성 플레이어={}", roomId, activePlayers);
-            //TODO : 게임 종료 로직 실행
+        if (activePlayers.size() <= 1) {
+            String winnerName = activePlayers.isEmpty() ? "No Winner" : activePlayers.get(0).getNickname();
+            EndGamePayload payload = EndGamePayload.builder()
+                    .winnerName(winnerName)
+                    .build();
 
+            JsonNode payloadNode = objectMapper.valueToTree(payload);
+            MessageDto message = new MessageDto(MessageType.GAME_END, payloadNode);
+            sessionMessageService.sendMessageToRoom(roomId, message);
         }
     }
 }

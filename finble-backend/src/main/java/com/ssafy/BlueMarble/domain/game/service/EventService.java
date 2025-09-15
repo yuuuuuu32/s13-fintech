@@ -229,7 +229,7 @@ public class EventService {
         }
 
         // 3. 주사위 던지기
-        int diceNum = random.nextInt(6) + 1;
+        int diceNum = random.nextInt(12) + 1;
         
         // 4. 위치 계산
         int currentPosition = player.getPosition();
@@ -274,6 +274,7 @@ public class EventService {
         // TODO : 현재 턴인 사람의 정보를 업데이트해야함
         if(gameState.getCurrentPlayerIndex() == gameState.getPlayers().size()-1){
             gameState.setCurrentPlayerIndex(0);
+            gameState.setGameTurn(gameState.getGameTurn() + 1);
         }else{
             gameState.setCurrentPlayerIndex(gameState.getCurrentPlayerIndex() + 1);
         }
