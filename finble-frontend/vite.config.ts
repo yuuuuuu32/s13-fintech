@@ -15,6 +15,7 @@ export default defineConfig({
     },
   },
   server: {
+    port: 5173,
     proxy: {
       '/api': {
         target: 'http://j13d106.p.ssafy.io:8081',
