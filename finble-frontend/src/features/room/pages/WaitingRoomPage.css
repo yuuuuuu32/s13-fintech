@@ -1,0 +1,91 @@
+.waiting-room-wrapper {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #0A0B17;
+  color: white;
+}
+
+.waiting-room-wrapper .app-container {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.waiting-room-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+.room-header {
+  text-align: center;
+}
+
+.room-header h1 {
+  margin-bottom: 0.5rem;
+}
+
+.room-header p {
+  font-size: 1.2rem;
+  color: #ccc;
+  margin: 0;
+}
+
+.player-grid {
+  width: 100%;
+  max-width: 800px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.player-card {
+  padding: 2rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  text-align: center;
+  font-size: 1.2rem;
+  border: 1px solid rgba(0, 255, 255, 0.2);
+}
+
+.room-actions {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.exit-button,
+.start-button {
+  padding: 1rem 2rem;
+  font-size: 1.5rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.exit-button {
+  background-color: #555;
+  color: white;
+}
+
+.exit-button:hover {
+  background-color: #777;
+}
+
+.start-button {
+  background-color: #00ffff;
+  color: #0A0B17;
+}
+
+.start-button:hover {
+  background-color: #00dddd;
+}
+
+.waiting-room-loading {
+  color: white;
+  text-align: center;
+  padding-top: 4rem;
+}

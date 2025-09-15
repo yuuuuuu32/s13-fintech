@@ -4,7 +4,7 @@ import ProtectedRoute from '../../router/ProtectedRoute'
 
 export const gameRouter: RouteObject[] = [
   {
-    path: 'game',
+    path: 'game/:gameId',
     element: (
       <ProtectedRoute>
         <GameCanvas />

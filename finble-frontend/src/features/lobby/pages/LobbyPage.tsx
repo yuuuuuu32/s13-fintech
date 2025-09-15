@@ -25,7 +25,7 @@ export default function LobbyPage() {
       fetchRooms(); // 로비 진입 시 방 목록은 계속 가져옴
       subscribeToLobbyUpdates(); // 로비 업데이트 구독은 계속 유지
 
-      // 자동 새로고침 설정 (45초마다)
+      // 자동 새로고침 설정 (5초마다)
       const intervalId = setInterval(() => {
         fetchRooms();
       }, 5000); // 5초
