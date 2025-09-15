@@ -38,7 +38,7 @@ public class MapService {
     private final RoomService roomService;
 
     private static final int MAP_SIZE = 32;
-    private static final Random random = new Random();
+    private static final Random random = new Random(System.nanoTime());
 
     // 이벤트 칸 위치와 타입을 매핑하는 Map (위치 -> 타일 정보)
     private static final Map<Integer, Tile> EVENT_CELLS = Map.of(
@@ -99,6 +99,7 @@ public class MapService {
                 .roomId(roomId)
                 .gameState(GameState.PLAYING)
                 .currentMap(gameMap)
+                .gameTurn(0L)
                 .playerOrder(playerNames)
                 .players(players)
                 .currentPlayerIndex(0)

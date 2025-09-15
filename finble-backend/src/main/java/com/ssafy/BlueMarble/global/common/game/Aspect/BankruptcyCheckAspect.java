@@ -5,8 +5,8 @@ import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.annotation.After;
 import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.annotation.Before;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -19,8 +19,8 @@ public class BankruptcyCheckAspect {
 
     private final BankruptcyService bankruptcyService;
 
-    @Before("execution(* com.ssafy.BlueMarble.domain.game.service.GameRedisService.saveGameMapState(..))")
-    public void checkBankruptcyBeforeSave(JoinPoint joinPoint) {
+    @After("execution(* com.ssafy.BlueMarble.domain.game.service.GameRedisService.saveGameMapState(..))")
+    public void checkBankruptcyAfterSave(JoinPoint joinPoint) {
         try {
             Object[] args = joinPoint.getArgs();
             String roomId = (String) args[0];  // 첫 번째 파라미터

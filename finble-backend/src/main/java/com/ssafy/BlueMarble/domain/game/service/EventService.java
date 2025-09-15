@@ -229,11 +229,12 @@ public class EventService {
         }
 
         // 3. 주사위 던지기
-        int diceNum = random.nextInt(12) + 1;
-        
+        int diceNum1 = random.nextInt(6) + 1;
+        int diceNum2 = random.nextInt(6) + 1;
+        int diceNumSum  = diceNum1 + diceNum2;
         // 4. 위치 계산
         int currentPosition = player.getPosition();
-        int newPosition = (currentPosition + diceNum) % 32; // 32개 칸 순환
+        int newPosition = (currentPosition + diceNumSum) % 32; // 32개 칸 순환
         
         // 5. 시작점 통과 여부
         int salaryBonus = 0;
@@ -293,7 +294,9 @@ public class EventService {
         // 10. 결과 메시지 전송
         UseDicePayload payload = UseDicePayload.builder()
                 .userName(useDiceRequest.getUserName())
-                .diceNum(diceNum)
+                .diceNum1(diceNum1)
+                .diceNum2(diceNum2)
+                .diceNumSum(diceNumSum)
                 .currentPosition(newPosition)
                 .salaryBonus(salaryBonus)
                 .canBuyLand(canBuyLand)
