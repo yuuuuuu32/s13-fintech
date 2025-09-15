@@ -20,6 +20,7 @@ public enum MessageType {
     START_GAME_OBSERVE,
     GAME_STATE_CHANGE,
     ROLE_ASSIGNMENT,
+    GAME_RETIRED,
     GAME_END,
 
     // 게임 로직 관련
