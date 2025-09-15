@@ -19,7 +19,7 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://j13d106.p.ssafy.io:8081', // 배포 서버
-        //target: 'http://localhost:8081', // 로컬 개발 서버
+        // target: 'http://localhost:8081', // 로컬 개발 서버
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },

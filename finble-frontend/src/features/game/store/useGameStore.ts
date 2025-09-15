@@ -91,9 +91,14 @@ interface GameState {
   totalTurns: number;
   currentTurn: number;
   expoLocation: number | null;
+  serverDiceNum: number | null; // New: Stores diceNum from server temporarily
+  serverCurrentPosition: number | null; // New: Stores currentPosition from server temporarily
+  isDiceRolled: boolean;
   initializeGame: (initialState: any) => void; // 추가
   setDicePower: (power: number) => void;
   rollDice: () => void;
+  finishDiceRoll: () => void;
+  setIsDiceRolled: (isRolled: boolean) => void;
   movePlayer: (diceValues: [number, number]) => void;
   handleTileAction: () => void;
   buyProperty: () => void;
@@ -335,6 +340,9 @@ export const useGameStore = create<GameState>()((set, get) => ({
   totalTurns: 20,
   currentTurn: 1,
   expoLocation: null,
+  serverDiceNum: null, // Initialize new state
+  serverCurrentPosition: null, // New: Stores currentPosition from server temporarily
+  isDiceRolled: false,
 
   initializeGame: (initialState: any) => {
     const playerNicknamesOrder: string[] = initialState.playerOrder;
@@ -358,7 +366,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
           name: serverPlayer.nickname,
           money: serverPlayer.money,
           position: serverPlayer.position,
-          properties: serverPlayer.ownedProperties,
+          properties: serverPlayer.ownedProperties || [],
           isInJail: serverPlayer.inJail,
           jailTurns: serverPlayer.jailTurns,
           character: characterPrefabs[index % characterPrefabs.length],
@@ -392,6 +400,10 @@ export const useGameStore = create<GameState>()((set, get) => ({
 
   setDicePower: (power) => set({ dicePower: power }),
 
+  finishDiceRoll: () => set({ gamePhase: 'PLAYER_MOVING' }),
+
+  setIsDiceRolled: (isRolled) => set({ isDiceRolled: isRolled }),
+
   connect: (gameId: string) => {
     set({ gameId });
     console.log("Game store connected to game:", gameId);
@@ -399,10 +411,41 @@ export const useGameStore = create<GameState>()((set, get) => ({
       console.log("Received game update (GAME_STATE_CHANGE):", message);
       get().updateGameState(message.payload);
     });
-    // START_GAME_OBSERVE 메시지 구독 추가
     subscribeToTopic("START_GAME_OBSERVE", (message) => {
       console.log("Received game update (START_GAME_OBSERVE):", message);
       get().updateGameState(message.payload);
+    });
+
+    // USE_DICE 메시지 구독 추가
+    subscribeToTopic("USE_DICE", (message) => {
+      console.log("Received USE_DICE message:", message);
+      const { payload } = message;
+      
+
+      const { userName, diceNum1, diceNum2, diceNumSum, currentPosition, salaryBonus, canBuyLand, tollAmount, updatedAsset } = payload;
+
+      get().setIsDiceRolled(false); // Reset flag before rolling
+
+      set((state) => {
+        const updatedPlayers = state.players.map(player =>
+          player.name === userName
+            ? {
+                ...player,
+                position: currentPosition,
+                money: updatedAsset.money,
+                properties: updatedAsset.properties || [],
+              }
+            : player
+        );
+
+        return {
+          players: updatedPlayers,
+          dice: [diceNum1, diceNum2], // 개별 주사위 값 사용
+          gamePhase: "DICE_ROLLING", // DICE_ROLLING으로 설정
+          serverDiceNum: diceNumSum, // 합계 사용
+          serverCurrentPosition: currentPosition, // 현재 위치 사용
+        };
+      });
     });
   },
 
@@ -421,6 +464,8 @@ export const useGameStore = create<GameState>()((set, get) => ({
   rollDice: () => {
     const { gamePhase, players, currentPlayerIndex, gameId, send } = get();
     const currentPlayer = players[currentPlayerIndex];
+
+    console.log("rollDice called. Current gamePhase:", gamePhase);
 
     if (gamePhase !== "WAITING_FOR_ROLL") return;
 
