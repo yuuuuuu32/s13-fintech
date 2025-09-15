@@ -41,10 +41,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       console.log('User authenticated, initializing WebSocket.');
       initializeWebSocket();
       isSocketInitialized = true;
-    } else if (!userInfo && isSocketInitialized) {
-      console.log('User logged out, disconnecting WebSocket.');
-      disconnectWebSocket();
-      isSocketInitialized = false;
     }
   }, [userInfo]);
 
@@ -53,12 +49,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   if (!token || !userInfo) {
-    // Ensure socket is disconnected if we are redirecting to login
-    if (isSocketInitialized) {
-      console.log('No token or user info, disconnecting WebSocket.');
-      disconnectWebSocket();
-      isSocketInitialized = false;
-    }
     return <Navigate to="/login" replace />;
   }
 
