@@ -14,7 +14,7 @@ export interface Player {
 export interface GameRoom {
   id: string;
   name: string;
-  players: Player[];
+  playerCount: number;
   maxPlayers: number;
   status: 'waiting' | 'playing';
 }
@@ -85,11 +85,7 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
       const newRoom: GameRoom = {
         id: roomCreationResult.roomId,
         name: roomName,
-        players: [{
-          id: userInfo.userId,
-          name: userInfo.nickname,
-          isOwner: true,
-        }],
+        playerCount: 1, // 방 생성자는 1명
         maxPlayers: userLimit,
         status: 'waiting',
       };
@@ -118,7 +114,7 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
 
           set((state) => ({
             rooms: state.rooms.map((room) =>
-              room.id === roomId ? { ...room, players } : room
+              room.id === roomId ? { ...room, playerCount: players.length } : room
             ),
           }));
 
@@ -183,11 +179,7 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
     const newRoom: GameRoom = {
       id: `room-${Date.now()}`,
       name: roomName,
-      players: [{
-        id: userInfo.userId,
-        name: userInfo.nickname,
-        isOwner: true, // Assuming the creator is the owner
-      }],
+      playerCount: 1,
       maxPlayers: 4,
       status: 'waiting',
     };
