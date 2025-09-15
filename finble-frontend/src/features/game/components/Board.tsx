@@ -1,15 +1,18 @@
-import { RigidBody } from '@react-three/rapier'
-import { useGameStore } from '../store/useGameStore.ts'
-import { Tile } from './Tile.tsx'
+import { RigidBody } from '@react-three/rapier';
+import { useGameStore } from '../store/useGameStore.ts';
+import { BaseTile } from './tiles/BaseTile';
+import { NormalTile } from './tiles/NormalTile';
+import { ChanceTile } from './tiles/ChanceTile';
+import { SpecialTile } from './tiles/SpecialTile';
 
 // 32칸 기준, 각 타일의 3D 위치를 계산하는 함수
 const getPosition = (index: number): [number, number, number] => {
-  const TILES_PER_SIDE = 8; 
+  const TILES_PER_SIDE = 8;
   const TILE_WIDTH = 4;
   const HALF_BOARD_WIDTH = (TILES_PER_SIDE * TILE_WIDTH) / 2 - TILE_WIDTH / 2;
   const HALF_BOARD_DEPTH = (TILES_PER_SIDE * TILE_WIDTH) / 2 - TILE_WIDTH / 2;
 
-  const position: [number, number, number] = [0, 0, 0]
+  const position: [number, number, number] = [0, 0, 0];
   const side = Math.floor(index / TILES_PER_SIDE);
   const indexOnSide = index % TILES_PER_SIDE;
 
@@ -17,49 +20,63 @@ const getPosition = (index: number): [number, number, number] => {
     case 0:
       position[0] = HALF_BOARD_WIDTH - indexOnSide * TILE_WIDTH;
       position[2] = HALF_BOARD_DEPTH;
-      break
+      break;
     case 1:
       position[0] = -HALF_BOARD_WIDTH;
       position[2] = HALF_BOARD_DEPTH - indexOnSide * TILE_WIDTH;
-      break
+      break;
     case 2:
       position[0] = -HALF_BOARD_WIDTH + indexOnSide * TILE_WIDTH;
       position[2] = -HALF_BOARD_DEPTH;
-      break
+      break;
     case 3:
       position[0] = HALF_BOARD_WIDTH;
       position[2] = -HALF_BOARD_DEPTH + indexOnSide * TILE_WIDTH;
-      break
+      break;
   }
-  return position
-}
+  return position;
+};
 
 const getTextRotationY = (index: number): number => {
-    const TILES_PER_SIDE = 8
-    const side = Math.floor(index / TILES_PER_SIDE)
+  const TILES_PER_SIDE = 8;
+  const side = Math.floor(index / TILES_PER_SIDE);
 
-    switch (side) {
-        case 0: return 0;
-        case 1: return Math.PI / 2;
-        case 2: return Math.PI;
-        case 3: return -Math.PI / 2;
-        default: return 0;
-    }
-}
+  switch (side) {
+    case 0: return 0;
+    case 1: return Math.PI / 2;
+    case 2: return Math.PI;
+    case 3: return -Math.PI / 2;
+    default: return 0;
+  }
+};
 
 export function Board() {
   const board = useGameStore(state => state.board);
-  const TILES_PER_SIDE = 8
+  const TILES_PER_SIDE = 8;
   const TILE_WIDTH = 4;
   const TILE_DEPTH = 6;
-  const BOARD_SIZE = TILES_PER_SIDE * TILE_WIDTH
+  const BOARD_SIZE = TILES_PER_SIDE * TILE_WIDTH;
 
   return (
     <group>
       {board.map((tile, index) => {
+        if (!tile) return null; // Handle null tiles in board data
         const position = getPosition(index);
         const textRotationY = getTextRotationY(index);
-        return <Tile key={index} tile={tile} tileIndex={index} position={position} textRotationY={textRotationY} />
+
+        return (
+          <BaseTile
+            key={index}
+            tile={tile}
+            tileIndex={index}
+            position={position}
+            textRotationY={textRotationY}
+          >
+            {(tile.type === 'city' || tile.type === 'company') && <NormalTile tile={tile} tileIndex={index} />}
+            {tile.type === 'chance' && <ChanceTile tile={tile} />}
+            {tile.type === 'special' && <SpecialTile tile={tile} />}
+          </BaseTile>
+        );
       })}
       
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
@@ -79,5 +96,5 @@ export function Board() {
         </mesh>
       </RigidBody>
     </group>
-  )
+  );
 }

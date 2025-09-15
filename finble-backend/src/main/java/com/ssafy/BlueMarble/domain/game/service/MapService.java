@@ -38,7 +38,7 @@ public class MapService {
     private final RoomService roomService;
 
     private static final int MAP_SIZE = 32;
-    private static final Random random = new Random();
+    private static final Random random = new Random(System.nanoTime());
 
     // 이벤트 칸 위치와 타입을 매핑하는 Map (위치 -> 타일 정보)
     private static final Map<Integer, Tile> EVENT_CELLS = Map.of(
@@ -60,6 +60,10 @@ public class MapService {
         if (roomId == null) {
             throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
         }
+        // 게임상태 업데이트
+        String stateKey = "room:" + roomId + ":state";
+        redisTemplate.opsForValue().set(stateKey, GameState.PLAYING.name());
+
         String usersKey = "room:" + roomId + ":users";
         Set<String> playerIds = redisTemplate.opsForSet().members(usersKey);
         if (playerIds == null || playerIds.isEmpty()) {
@@ -99,6 +103,7 @@ public class MapService {
                 .roomId(roomId)
                 .gameState(GameState.PLAYING)
                 .currentMap(gameMap)
+                .gameTurn(0L)
                 .playerOrder(playerNames)
                 .players(players)
                 .currentPlayerIndex(0)

@@ -3,7 +3,7 @@ import { useGameStore } from '../store/useGameStore.ts'
 import { useNavigate } from 'react-router-dom';
 import { BuildingType } from '../data/boardData.ts';
 import type { TileData } from '../data/boardData.ts';
-import { currentUser } from '../../lobby/store/useLobbyStore.ts';
+import { useUserStore } from '../../../stores/useUserStore';
 import { Modal, Box, Typography, Button, Card, CardContent, Grid, LinearProgress, List, ListItem, ListItemButton, ListItemText } from '@mui/material';
 
 const BAIL_AMOUNT = 500000; 
@@ -132,6 +132,7 @@ const GameOverModalContent = ({ winner, handleGoToLobby, modalStyle }) => ( // m
 );
 
 export function GameUI() {
+  const { userInfo } = useUserStore();
   const players = useGameStore(state => state.players);
   const currentPlayerIndex = useGameStore(state => state.currentPlayerIndex);
   const gamePhase = useGameStore(state => state.gamePhase);
@@ -167,7 +168,7 @@ export function GameUI() {
   }, []);
 
   const handleChargeStart = () => {
-    if (gamePhase !== 'WAITING_FOR_ROLL') return;
+    if (gamePhase !== 'WAITING_FOR_ROLL' || !isMyTurn) return;
     setIsCharging(true);
     setGauge(0);
     let power = 0;
@@ -198,6 +199,7 @@ export function GameUI() {
   const winner = winnerId ? players.find(p => p.id === winnerId) : null;
   const isGameOver = gamePhase === 'GAME_OVER';
   const currentPlayer = players[currentPlayerIndex];
+  const isMyTurn = currentPlayer?.id === userInfo?.userId;
 
   const modalStyle = {
     position: 'absolute' as const,
@@ -222,7 +224,7 @@ export function GameUI() {
 
       <Grid container spacing={2} sx={{ p: 2, pointerEvents: 'all' }}>
         {players.map((player, index) => {
-          const isMyPlayer = player.id === currentUser.id;
+          const isMyPlayer = player.id === userInfo?.userId;
           const totalAssets = calculateTotalAssets(player, board);
           return (
             <Grid item xs={6} key={player.id} sx={{ display: 'flex', justifyContent: index === 0 ? 'flex-start' : 'flex-end' }}>
@@ -259,7 +261,7 @@ export function GameUI() {
           onMouseDown={handleChargeStart}
           onMouseUp={handleChargeEnd}
           onMouseLeave={handleChargeEnd}
-          disabled={gamePhase !== 'WAITING_FOR_ROLL'}
+          disabled={gamePhase !== 'WAITING_FOR_ROLL' || !isMyTurn}
           sx={{ width: 250, height: 60, fontSize: '1.2rem' }}
         >
           {currentPlayer.isInJail ? '무인도...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
