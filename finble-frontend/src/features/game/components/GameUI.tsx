@@ -168,7 +168,7 @@ export function GameUI() {
   }, []);
 
   const handleChargeStart = () => {
-    if (gamePhase !== 'WAITING_FOR_ROLL') return;
+    if (gamePhase !== 'WAITING_FOR_ROLL' || !isMyTurn) return;
     setIsCharging(true);
     setGauge(0);
     let power = 0;
@@ -199,6 +199,7 @@ export function GameUI() {
   const winner = winnerId ? players.find(p => p.id === winnerId) : null;
   const isGameOver = gamePhase === 'GAME_OVER';
   const currentPlayer = players[currentPlayerIndex];
+  const isMyTurn = currentPlayer?.id === userInfo?.userId;
 
   const modalStyle = {
     position: 'absolute' as const,
@@ -260,7 +261,7 @@ export function GameUI() {
           onMouseDown={handleChargeStart}
           onMouseUp={handleChargeEnd}
           onMouseLeave={handleChargeEnd}
-          disabled={gamePhase !== 'WAITING_FOR_ROLL'}
+          disabled={gamePhase !== 'WAITING_FOR_ROLL' || !isMyTurn}
           sx={{ width: 250, height: 60, fontSize: '1.2rem' }}
         >
           {currentPlayer.isInJail ? '무인도...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
