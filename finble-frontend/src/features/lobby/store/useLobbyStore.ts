@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { getRoomList } from '../../../api/rooms';
-import { sendMessage, subscribeToTopic, connectWebSocket, disconnectWebSocket } from '../../../utils/websocket';
+import { sendMessage, subscribeToTopic } from '../../../utils/websocket';
+import { useUserStore } from '../../../stores/useUserStore';
 
 // 각 플레이어의 정보를 정의합니다.
 export interface Player {
   id: string;
   name: string;
+  isOwner: boolean;
 }
 
 // GameRoom 타입에서 map과 mode를 제거합니다.
@@ -23,14 +25,12 @@ interface LobbyState {
   error: string | null;
   fetchRooms: () => Promise<void>;
   createRoom: (roomName: string, userLimit: number) => Promise<string>;
-  enterRoom: (roomId: string) => Promise<any>; // 방 입장 함수 추가
-  addRoomOptimistically: (room: GameRoom) => void; // Optimistically add a new room
-  addRoom: (roomName: string) => string; // TODO: 이 함수는 나중에 제거하거나 변경될 예정
-  subscribeToLobbyUpdates: () => void; // 실시간 업데이트 구독
+  enterRoom: (roomId: string) => Promise<any>;
+  exitRoom: (roomId: string) => void;
+  addRoomOptimistically: (room: GameRoom) => void;
+  addRoom: (roomName: string) => string;
+  subscribeToLobbyUpdates: () => void;
 }
-
-// 가짜 유저 데이터 (로그인 기능 구현 전 임시 사용)
-export const currentUser = { id: 'user-me', name: '나' };
 
 export const useLobbyStore = create<LobbyState>((set, get) => ({
   rooms: [], // 초기 데이터는 빈 배열로 설정
@@ -47,42 +47,26 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
       console.error(error); // 에러 로그 추가
     }
   },
-    createRoom: async (roomName: string, userLimit: number) => {
-    try {
-      // WebSocket 연결 시도
-      await new Promise<void>((resolve, reject) => {
-        connectWebSocket({
-          onConnect: () => {
-            console.log('useLobbyStore: WebSocket connected for room creation.');
-            resolve();
-          },
-          onDisconnect: () => {
-            console.error('useLobbyStore: WebSocket disconnected during room creation.');
-            reject(new Error('WebSocket disconnected during room creation.'));
-          },
-          onMessage: (topic, message) => {
-            // 방 생성 결과 메시지 처리 (선택 사항, 백엔드 명세에 따라)
-            console.log(`useLobbyStore: Received message on ${topic}:`, message);
-          },
-        });
-      });
+  createRoom: async (roomName: string, userLimit: number) => {
+    const { userInfo } = useUserStore.getState();
+    if (!userInfo) {
+      throw new Error("User is not authenticated.");
+    }
 
-      // --- 이 부분에 응답 대기 로직 추가 ---
+    try {
       const roomCreationResult = await new Promise<any>((resolve, reject) => {
-        // 백엔드가 응답을 보낼 메시지 타입을 구독
         const unsubscribeOk = subscribeToTopic('CREATE_ROOM_OK', (message: any) => {
-          unsubscribeOk(); // 응답 받았으니 구독 해제
-          unsubscribeFail(); // 다른 구독도 해제
+          unsubscribeOk();
+          unsubscribeFail();
           resolve(message.payload);
         });
 
         const unsubscribeFail = subscribeToTopic('CREATE_ROOM_FAIL', (message: any) => {
-          unsubscribeOk(); // 다른 구독도 해제
-          unsubscribeFail(); // 응답 받았으니 구독 해제
+          unsubscribeOk();
+          unsubscribeFail();
           reject(new Error(message.message));
         });
 
-        // WebSocket 메시지를 통해 방 생성 요청
         sendMessage('/app/room/create', {
           type: "CREATE_ROOM",
           payload: {
@@ -90,70 +74,51 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
             userLimit,
           }
         });
-        console.log('Room creation request sent.');
 
-        // 타임아웃 설정 (응답이 너무 오래 걸릴 경우)
         setTimeout(() => {
           unsubscribeOk();
           unsubscribeFail();
           reject(new Error('Room creation response timeout.'));
-        }, 10000); // 10초 타임아웃
+        }, 10000);
       });
 
-      console.log('Room creation successful:', roomCreationResult);
-      // Optimistically add the new room to the state
       const newRoom: GameRoom = {
         id: roomCreationResult.roomId,
         name: roomName,
-        players: [currentUser],
+        players: [{
+          id: userInfo.userId,
+          name: userInfo.nickname,
+          isOwner: true,
+        }],
         maxPlayers: userLimit,
         status: 'waiting',
       };
-      console.log('createRoom: newRoom object before optimistic add:', newRoom);
       get().addRoomOptimistically(newRoom);
       
-      // 방 생성 성공 후 추가 로직 (예: 방으로 이동)
-      console.log('createRoom: After optimistic add, current rooms:', get().rooms);
-      return roomCreationResult.roomId; // Return the roomId
+      return roomCreationResult.roomId;
 
     } catch (error) {
       console.error('방 생성 요청 실패:', error);
-      // 에러 처리 로직 추가 (예: 모달 표시)
-      throw error; // 에러를 다시 던져서 CreateRoomModal에서 catch하도록 함
-    } finally {
-      // 방 생성 요청 후 WebSocket 연결 해제 (요청에 따라)
-      // disconnectWebSocket(); // 이 줄은 제거된 상태
-      // console.log('useLobbyStore: WebSocket disconnected after room creation attempt.'); // 이 줄도 제거된 상태
+      throw error;
     }
   },
   enterRoom: async (roomId: string) => {
     try {
-      await new Promise<void>((resolve, reject) => {
-        connectWebSocket({
-          onConnect: () => {
-            console.log('useLobbyStore: WebSocket connected for room entry.');
-            resolve();
-          },
-          onDisconnect: () => {
-            console.error('useLobbyStore: WebSocket disconnected during room entry.');
-            reject(new Error('WebSocket disconnected during room entry.'));
-          },
-          onMessage: (topic, message) => {
-            // 방 입장 결과 메시지 처리 (선택 사항, 백엔드 명세에 따라)
-            console.log(`useLobbyStore: Received message on ${topic}:`, message);
-          },
-        });
-      });
       const roomEntryResult = await new Promise<any>((resolve, reject) => {
         const unsubscribeOk = subscribeToTopic('ENTER_ROOM_OK', (message: any) => {
           unsubscribeOk();
           unsubscribeFail();
-          unsubscribeNotFound(); // 추가
+          unsubscribeNotFound();
           
-          // 스토어의 rooms 상태를 새로운 플레이어 목록으로 업데이트합니다.
+          const players: Player[] = message.payload.map((p: any) => ({
+            id: p.userId,
+            name: p.nickname,
+            isOwner: p.isOwner,
+          }));
+
           set((state) => ({
             rooms: state.rooms.map((room) =>
-              room.id === roomId ? { ...room, players: message.payload } : room
+              room.id === roomId ? { ...room, players } : room
             ),
           }));
 
@@ -163,11 +128,10 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
         const unsubscribeFail = subscribeToTopic('ENTER_ROOM_FAIL', (message: any) => {
           unsubscribeOk();
           unsubscribeFail();
-          unsubscribeNotFound(); // 추가
+          unsubscribeNotFound();
           reject(new Error(message.message || '입장할 수 없는 방입니다.'));
         });
 
-        // ROOM_ID_NOT_FOUND 메시지 처리 추가
         const unsubscribeNotFound = subscribeToTopic('ROOM_ID_NOT_FOUND', (message: any) => {
           unsubscribeOk();
           unsubscribeFail();
@@ -175,23 +139,21 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
           reject(new Error(message.message || '방 ID를 찾을 수 없습니다.'));
         });
 
-                sendMessage('/app/room/enter', {
-          type: "ENTER_ROOM", // 방에 접속할 때는 ENTER_ROOM을 사용합니다.
+        sendMessage('/app/room/enter', {
+          type: "ENTER_ROOM",
           payload: {
             roomId: parseInt(roomId, 10),
           }
         });
-        console.log(sendMessage)
+
         setTimeout(() => {
           unsubscribeOk();
           unsubscribeFail();
-          unsubscribeNotFound(); // 추가
+          unsubscribeNotFound();
           reject(new Error('Room entry response timeout.'));
-        }, 10000); // 10초 타임아웃
+        }, 10000);
       });
 
-      console.log('Room entry successful:', roomEntryResult);
-      // 성공 시, 여기서 스토어 상태를 업데이트 할 수 있습니다.
       return roomEntryResult;
 
     } catch (error) {
@@ -199,16 +161,33 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
       throw error;
     }
   },
+  exitRoom: (roomId: string) => {
+    sendMessage('/app/room/exit', {
+      type: 'EXIT_ROOM',
+      payload: {
+        roomId: parseInt(roomId, 10),
+      },
+    });
+    console.log(`Sent EXIT_ROOM for room ${roomId}`);
+  },
   addRoomOptimistically: (room: GameRoom) => {
     set((state) => ({
       rooms: [...state.rooms, room],
     }));
   },
   addRoom: (roomName) => {
+    const { userInfo } = useUserStore.getState();
+    if (!userInfo) {
+        throw new Error("User is not authenticated.");
+    }
     const newRoom: GameRoom = {
       id: `room-${Date.now()}`,
       name: roomName,
-      players: [currentUser],
+      players: [{
+        id: userInfo.userId,
+        name: userInfo.nickname,
+        isOwner: true, // Assuming the creator is the owner
+      }],
       maxPlayers: 4,
       status: 'waiting',
     };
@@ -218,10 +197,8 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
     return newRoom.id;
   },
   subscribeToLobbyUpdates: () => {
-    subscribeToTopic('GAME_STATE_CHANGE', (message) => { // 로비 업데이트는 GAME_STATE_CHANGE로 가정
+    subscribeToTopic('GAME_STATE_CHANGE', (message) => {
       console.log('로비 업데이트 수신:', message);
-      // 메시지 내용에 따라 rooms 상태를 업데이트
-      // 현재는 단순화를 위해 업데이트 메시지가 오면 전체 목록을 다시 가져옴
       get().fetchRooms();
     });
   },

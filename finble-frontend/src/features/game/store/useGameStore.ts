@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { boardData as initialBoardData, BuildingType } from '../data/boardData.ts'
 import type { TileData } from '../data/boardData.ts'
-import { currentUser } from '../../lobby/store/useLobbyStore'
-import { connectWebSocket, disconnectWebSocket, sendMessage, subscribeToTopic } from '../../../utils/websocket'
+
+import { sendMessage, subscribeToTopic } from '../../../utils/websocket'
 
 type GamePhase = 'WAITING_FOR_ROLL' | 'DICE_ROLLING' | 'PLAYER_MOVING' | 'TILE_ACTION' | 'WORLD_TRAVEL' | 'GAME_OVER' | 'MANAGE_PROPERTY' | 'WORLD_TRAVEL_MOVE'
 type ModalType = 'NONE' | 'BUY_PROPERTY' | 'ACQUIRE_PROPERTY' | 'CHANCE_CARD' | 'INFO' | 'JAIL' | 'EXPO' | 'MANAGE_PROPERTY' | 'INSUFFICIENT_FUNDS'
@@ -50,6 +50,7 @@ interface GameState {
   totalTurns: number
   currentTurn: number
   expoLocation: number | null
+  initializeGame: (initialState: any) => void; // 추가
   setDicePower: (power: number) => void
   rollDice: () => void
   movePlayer: (diceValues: [number, number]) => void
@@ -203,11 +204,8 @@ const BAIL_AMOUNT = 500000;
 
 export const useGameStore = create<GameState>()((set, get) => ({
   gameId: null,
-  players: [
-    { id: currentUser.id, name: `${currentUser.name}`, money: 2200000, position: 0, character: 'cone', properties: [], isInJail: false, jailTurns: 0, isTraveling: false, lapCount: 0 },
-    { id: 'player-2', name: '플레이어 2', money: 2000000, position: 0, character: 'sphere', properties: [], isInJail: false, jailTurns: 0, isTraveling: false, lapCount: 0 },
-  ],
-  board: JSON.parse(JSON.stringify(initialBoardData)), // 초기 보드 데이터 깊은 복사
+  players: [],
+  board: [],
   currentPlayerIndex: 0,
   gamePhase: 'WAITING_FOR_ROLL',
   dice: [1, 1],
@@ -218,30 +216,64 @@ export const useGameStore = create<GameState>()((set, get) => ({
   currentTurn: 1,
   expoLocation: null,
 
+  initializeGame: (initialState: any) => {
+    const playerNicknamesOrder: string[] = initialState.playerOrder;
+    const playersMap: { [key: string]: any } = initialState.players;
+    const allServerPlayers = Object.values(playersMap);
+    const characterPrefabs = ['cone', 'sphere', 'box', 'torus'];
+
+    const playersArray: Player[] = playerNicknamesOrder.map((nickname, index) => {
+        const serverPlayer = allServerPlayers.find(p => p.nickname === nickname);
+        if (!serverPlayer) {
+            console.error(`Player with nickname ${nickname} not found in players map.`);
+            return null; 
+        }
+        return {
+            id: serverPlayer.userId,
+            name: serverPlayer.nickname,
+            money: serverPlayer.money,
+            position: serverPlayer.position,
+            properties: serverPlayer.ownedProperties,
+            isInJail: serverPlayer.inJail,
+            jailTurns: serverPlayer.jailTurns,
+            character: characterPrefabs[index % characterPrefabs.length],
+            isTraveling: false,
+            lapCount: 0,
+        };
+    }).filter(p => p !== null) as Player[];
+
+    if (playersArray.length !== allServerPlayers.length) {
+        console.error("Mismatch between playerOrder and players map. Falling back to default order.");
+    }
+
+    const mappedState = {
+        gameId: initialState.roomId,
+        board: initialState.currentMap.cells.map((cell: any) => cell || { name: '빈칸', type: 'EMPTY' }),
+        players: playersArray,
+        currentPlayerIndex: initialState.currentPlayerIndex,
+        gamePhase: 'WAITING_FOR_ROLL',
+    };
+    set(mappedState);
+  },
+
   setDicePower: (power) => set({ dicePower: power }),
 
   connect: (gameId: string) => {
     set({ gameId });
-    connectWebSocket({
-      onConnect: () => {
-        console.log('Game WebSocket connected!');
-        subscribeToTopic('GAME_STATE_CHANGE', (message) => {
-          console.log('Received game update:', message);
-          get().updateGameState(message);
-        });
-      },
-      onDisconnect: () => {
-        console.log('Game WebSocket disconnected.');
-      },
-      onMessage: (topic, message) => {
-        console.log(`Received message on ${topic}:`, message);
-        // Handle specific message types if needed, or let updateGameState handle it
-      },
+    console.log('Game store connected to game:', gameId);
+    subscribeToTopic('GAME_STATE_CHANGE', (message) => {
+      console.log('Received game update (GAME_STATE_CHANGE):', message);
+      get().updateGameState(message.payload);
+    });
+    // START_GAME_OBSERVE 메시지 구독 추가
+    subscribeToTopic('START_GAME_OBSERVE', (message) => {
+      console.log('Received game update (START_GAME_OBSERVE):', message);
+      get().updateGameState(message.payload);
     });
   },
 
   disconnect: () => {
-    disconnectWebSocket();
+    console.log('Game store disconnected.');
   },
 
   send: (destination: string, body: any) => {

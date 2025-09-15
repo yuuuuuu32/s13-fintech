@@ -7,23 +7,44 @@ import { Player } from '../components/Player.tsx'
 import { GameUI } from '../components/GameUI.tsx'
 import { Dice } from '../components/Dice.tsx'
 import { useEffect } from 'react'
+import { useParams } from 'react-router-dom'
+import { useWebSocketStore } from '../../../stores/useWebSocketStore'
 
 export default function GameCanvas() {
   const players = useGameStore((state) => state.players)
   const connect = useGameStore((state) => state.connect)
   const disconnect = useGameStore((state) => state.disconnect)
+  const initializeGame = useGameStore((state) => state.initializeGame);
 
-  // Dummy gameId for testing. In a real app, this would come from routing or context.
-  const gameId = 'test-game-id'; 
+  const { 
+    isWebSocketReady, 
+    initialGameState, 
+    setInitialGameState 
+  } = useWebSocketStore();
+
+  const { gameId } = useParams<{ gameId: string }>();
 
   useEffect(() => {
-    connect(gameId);
+    if (initialGameState && isWebSocketReady) {
+        console.log("Initializing game from stored state:", initialGameState);
+        initializeGame(initialGameState);
+        setInitialGameState(null); // Clear the state after using it
+    }
+  }, [initialGameState, isWebSocketReady, initializeGame, setInitialGameState]);
+
+  useEffect(() => {
+    if (gameId && isWebSocketReady) { // WebSocket이 준비되었을 때만 connect 호출
+      connect(gameId);
+    }
     return () => {
       disconnect();
     };
-  }, [connect, disconnect, gameId]);
+  }, [connect, disconnect, gameId, isWebSocketReady]); // isWebSocketReady를 의존성 배열에 추가
 
-  console.log('Players in GameCanvas:', players);
+  if (players.length === 0) {
+    return <div>Loading game...</div>; // 데이터가 로드될 때까지 로딩 상태를 표시
+  }
+
   console.log('Players in GameCanvas:', players);
 
   return (
