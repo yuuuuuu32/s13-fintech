@@ -9,6 +9,7 @@ import './WaitingRoomPage.css';
 
 export default function WaitingRoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
+  console.log("WaitingRoomPage - roomId from useParams:", roomId);
   const navigate = useNavigate();
 
   const exitRoom = useLobbyStore((state) => state.exitRoom);
@@ -47,7 +48,7 @@ export default function WaitingRoomPage() {
 
   const handleStartGame = () => {
     if (roomId) {
-      sendMessage('/app/game/start', { type: "START_GAME", payload: { roomId: parseInt(roomId, 10) } });
+      sendMessage('/app/game/start', { type: "START_GAME", payload: {} });
     }
   };
 
