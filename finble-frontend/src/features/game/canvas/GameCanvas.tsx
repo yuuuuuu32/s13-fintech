@@ -9,6 +9,7 @@ import { Dice } from '../components/Dice.tsx'
 import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useWebSocketStore } from '../../../stores/useWebSocketStore'
+import TurnOrderSelection from '../components/TurnOrderSelection';
 
 export default function GameCanvas() {
   const players = useGameStore((state) => state.players)
@@ -49,6 +50,7 @@ export default function GameCanvas() {
 
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+      <TurnOrderSelection />
       <GameUI />
       <Canvas camera={{ position: [0, 40, 40], fov: 50 }} shadows>
         <Sky sunPosition={[100, 20, 100]} />

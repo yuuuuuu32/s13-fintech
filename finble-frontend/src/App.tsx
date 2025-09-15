@@ -1,8 +1,15 @@
 import { Outlet } from 'react-router-dom';
 import { useEffect } from 'react';
 import './App.css';
+import { useUserStore } from './stores/useUserStore';
 
 function App() {
+  const initializeUser = useUserStore((state) => state.initializeUserFromLocalStorage);
+
+  useEffect(() => {
+    initializeUser();
+  }, [initializeUser]);
+
   // Ctrl+휠 스크롤로 인한 확대/축소 방지
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {

@@ -77,14 +77,6 @@ export const useUserStore = create<UserState>((set, get) => ({
       return; // No token, no user
     }
 
-    // 이미 userInfo가 존재하면 API 호출을 건너뜁니다.
-    // 이 로직은 ProtectedRoute에서 initializeUserFromLocalStorage를 먼저 호출한 후
-    // userInfo가 여전히 null일 때만 fetchUserInfo를 호출하도록 할 때 유용합니다.
-    if (get().userInfo && get().userInfo.userId) { // userId가 유효한지 추가 확인
-      console.log('User info already exists in store, skipping API call.');
-      return;
-    }
-
     try {
       const decodedToken = parseJwt(token);
       const apiResponse = await getMyInfo();
