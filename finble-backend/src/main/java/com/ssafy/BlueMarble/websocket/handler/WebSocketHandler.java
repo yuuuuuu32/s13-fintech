@@ -159,8 +159,8 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 break;
             // DRAW_CARD는 찬스 칸 도착 시 자동으로 처리되므로 수동 요청은 제거
             case ANGEL_DEFENSE:
-                log.info("[WebSocket] 천사카드 방어 요청: sessionId={}", session.getId());
-                webSocketCardService.handleAngelDefense(session);
+                log.info("[WebSocket] 천사카드 방어 요청 (비활성화됨): sessionId={}", session.getId());
+                webSocketCardService.handleAngelDefense(session); // 비활성화 응답 전송
                 break;
         }
 

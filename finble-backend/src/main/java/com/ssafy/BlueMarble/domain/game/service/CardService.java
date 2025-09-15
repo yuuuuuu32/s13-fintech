@@ -9,7 +9,7 @@ import com.ssafy.BlueMarble.websocket.dto.payload.game.DrawCardPayload;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
-import com.ssafy.BlueMarble.domain.user.service.UserService;
+import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 @Service
@@ -31,7 +32,7 @@ public class CardService {
     private final GameRedisService gameRedisService;
     private final CardRepository cardRepository;
     private final SessionMessageService sessionMessageService;
-    private final UserService userService;
+    private final UserRedisService userRedisService;
     private final Random random = new Random();
     
     /**
@@ -45,7 +46,7 @@ public class CardService {
                 return false;
             }
             
-            String userId = userService.getUserIdByNickname(gameMapState, userName);
+            String userId = userRedisService.getUserIdByNickname(userName);
             if (userId == null) {
                 log.error("플레이어를 찾을 수 없음: userName={}", userName);
                 return false;
@@ -57,10 +58,7 @@ public class CardService {
                 return false;
             }
             
-            if (card.getCardType() == Card.CardType.ANGEL) {
-                log.info("천사카드는 USE_CARD로 직접 사용할 수 없음: roomId={}, userName={}", roomId, userName);
-                return false;
-            }
+            // 천사카드는 DB에 없으므로 체크 불필요
             
             if (card.isImmediate()) {
                 return applyInstantCardEffect(roomId, userId, cardName, gameMapState);
@@ -114,89 +112,69 @@ public class CardService {
     }
     
     /**
-     * 카드 추가
+     * 카드 추가 및 효과 적용 (천사카드는 DB에 없으므로 일반 카드만 처리)
      */
     public void addCard(String roomId, String userId, String cardName) {
         try {
-            if ("천사카드".equals(cardName)) {
-                handleAngelCardAcquisition(roomId, userId);
+            CreateMapPayload gameMapState = gameRedisService.getGameMapState(roomId);
+            if (gameMapState == null) {
+                log.error("게임 맵 상태를 찾을 수 없음: roomId={}", roomId);
                 return;
             }
-            
-            log.info("즉발형 카드 효과 적용: roomId={}, userId={}, cardName={}", roomId, userId, cardName);
-            
+
+            CreateMapPayload.PlayerState player = gameMapState.getPlayers().get(userId);
+            if (player == null) {
+                log.error("플레이어를 찾을 수 없음: userId={}", userId);
+                return;
+            }
+
+            Card card = cardRepository.findByName(cardName).orElse(null);
+            if (card == null) {
+                log.error("카드 정의를 찾을 수 없음: cardName={}", cardName);
+                return;
+            }
+
+            // 즉발형 카드만 처리
+            if (card.isImmediate()) {
+                String userName = player.getNickname();
+                applyInstantCardEffectFromDB(roomId, userName, card, player, gameMapState);
+
+                // 금융정책 카드가 아닌 경우만 상태 저장
+                if (!isFinancialPolicyCard(card)) {
+                    gameRedisService.saveGameMapState(roomId, gameMapState);
+                }
+
+                log.info("즉발형 카드 효과 적용 완료: roomId={}, userId={}, cardName={}", roomId, userId, cardName);
+            } else {
+                log.warn("즉발형이 아닌 카드는 addCard로 처리할 수 없음: cardName={}", cardName);
+            }
+
         } catch (Exception e) {
             log.error("카드 추가 실패: roomId={}, userId={}, cardName={}", roomId, userId, cardName, e);
         }
     }
     
-    private void handleAngelCardAcquisition(String roomId, String userId) {
-        try {
-            CreateMapPayload gameMapState = gameRedisService.getGameMapState(roomId);
-            if (gameMapState == null) {
-                log.error("게임 맵 상태를 찾을 수 없음: roomId={}", roomId);
-                return;
-            }
-            
-            if (!gameMapState.isAngelCardInDeck()) {
-                log.warn("천사카드가 이미 다른 플레이어가 보유중: roomId={}", roomId);
-                return;
-            }
-            
-            CreateMapPayload.PlayerState player = gameMapState.getPlayers().get(userId);
-            if (player != null) {
-                player.setAnglecard(true);
-                gameMapState.setAngelCardInDeck(false);
-                gameRedisService.saveGameMapState(roomId, gameMapState);
-                log.info("천사카드 획득: roomId={}, userId={}", roomId, userId);
-            }
-            
-        } catch (Exception e) {
-            log.error("천사카드 획득 처리 실패: roomId={}, userId={}", roomId, userId, e);
-        }
-    }
     
     /**
-     * 천사카드 방어 사용
-     */
-    public boolean useAngelCardDefense(String roomId, String userId) {
-        try {
-            CreateMapPayload gameMapState = gameRedisService.getGameMapState(roomId);
-            if (gameMapState == null) {
-                log.error("게임 맵 상태를 찾을 수 없음: roomId={}", roomId);
-                return false;
-            }
-            
-            CreateMapPayload.PlayerState player = gameMapState.getPlayers().get(userId);
-            if (player == null || !player.isAnglecard()) {
-                return false;
-            }
-            
-            player.setAnglecard(false);
-            gameMapState.setAngelCardInDeck(true);
-            gameRedisService.saveGameMapState(roomId, gameMapState);
-            
-            log.info("천사카드 방어 사용: roomId={}, userId={}", roomId, userId);
-            return true;
-            
-        } catch (Exception e) {
-            log.error("천사카드 방어 사용 실패: roomId={}, userId={}", roomId, userId, e);
-            return false;
-        }
-    }
-    
-    /**
-     * 카드 뽑기 및 결과 메시지 전송
+     * 카드 뽑기 및 결과 메시지 전송 (수동 요청용 - Redis에서 게임 상태 조회)
      */
     public DrawCardPayload.DrawCardResult drawCard(String roomId, String userName) {
+        CreateMapPayload gameMapState = gameRedisService.getGameMapState(roomId);
+        return drawCard(roomId, userName, gameMapState);
+    }
+
+    /**
+     * 카드 뽑기 및 결과 메시지 전송 (자동 요청용 - 게임 상태를 매개변수로 받음)
+     */
+    public DrawCardPayload.DrawCardResult drawCard(String roomId, String userName, CreateMapPayload gameMapState) {
         try {
-            CreateMapPayload gameMapState = gameRedisService.getGameMapState(roomId);
+            // EventService에서 넘겨받은 gameMapState 사용 (Redis 재조회 안함)
             if (gameMapState == null) {
-                log.error("게임 맵 상태를 찾을 수 없음: roomId={}", roomId);
+                log.error("게임 맵 상태가 null: roomId={}", roomId);
                 return null;
             }
             
-            String userId = userService.getUserIdByNickname(gameMapState, userName);
+            String userId = userRedisService.getUserIdByNickname(userName);
             if (userId == null) {
                 log.error("플레이어를 찾을 수 없음: userName={}", userName);
                 return null;
@@ -216,27 +194,31 @@ public class CardService {
             int beforePosition = player.getPosition();
             boolean beforeJail = player.isInJail();
             
-            if (drawnCard.getCardType() == Card.CardType.ANGEL) {
-                handleAngelCardDrawn(roomId, userId, gameMapState);
-            } else {
-                applyInstantCardEffectFromDB(roomId, userName, drawnCard, player);
-                gameRedisService.saveGameMapState(roomId, gameMapState);
-            }
+            // 천사카드는 DB에 없으므로 모든 카드가 즉발형 처리
+            applyInstantCardEffectFromDB(roomId, userName, drawnCard, player, gameMapState);
+            // 모든 카드 효과는 Redis에만 저장 (WebSocket으로 상태 push 안 함)
+            gameRedisService.saveGameMapState(roomId, gameMapState);
             
             // 효과 적용 후 상태 확인
             int afterMoney = player.getMoney();
             int afterPosition = player.getPosition();
             boolean afterJail = player.isInJail();
             
-            // 변화량 계산
+            // 변화량 계산 (금융정책 카드는 개인 변화만 추적)
             Integer moneyChange = (afterMoney != beforeMoney) ? (afterMoney - beforeMoney) : null;
             Integer newPosition = (afterPosition != beforePosition) ? afterPosition : null;
             Boolean jailStatus = (afterJail != beforeJail) ? afterJail : null;
             String effectDescription = drawnCard.getDescription();
+
+            // 금융정책 카드의 경우 전체 영향을 알림 메시지에 포함
+            if (isFinancialPolicyCard(drawnCard)) {
+                effectDescription += " (모든 플레이어에게 적용됨)";
+            }
             
             log.info("카드 뽑기 성공: roomId={}, userName={}, cardName={}", roomId, userName, drawnCard.getName());
-            
-            boolean hasAngelCard = player.isAnglecard();
+
+            // 천사카드는 DB에 없으므로 항상 false
+            boolean hasAngelCard = false;
 
             DrawCardPayload.DrawCardResult result = DrawCardPayload.DrawCardResult.builder()
                     .userName(userName)
@@ -246,6 +228,7 @@ public class CardService {
                     .newPosition(newPosition)
                     .jailStatus(jailStatus)
                     .effectDescription(effectDescription)
+                    .isFinancialPolicy(isFinancialPolicyCard(drawnCard))
                     .build();
 
             // 찬스 카드 결과 메시지 전송
@@ -271,13 +254,9 @@ public class CardService {
     private List<Card> getAvailableCardsFromDB(CreateMapPayload gameMapState) {
         try {
             List<Card> allCards = cardRepository.findAll();
-            
-            if (!gameMapState.isAngelCardInDeck()) {
-                allCards = allCards.stream()
-                        .filter(card -> card.getCardType() != Card.CardType.ANGEL)
-                        .toList();
-            }
-            
+
+            // 천사카드는 DB에 없으므로 필터링 불필요
+            // 모든 카드 반환
             return allCards;
         } catch (Exception e) {
             log.error("DB에서 카드 목록 조회 실패", e);
@@ -285,22 +264,7 @@ public class CardService {
         }
     }
     
-    private void handleAngelCardDrawn(String roomId, String userId, CreateMapPayload gameMapState) {
-        try {
-            CreateMapPayload.PlayerState player = gameMapState.getPlayers().get(userId);
-            if (player != null) {
-                player.setAnglecard(true);
-                gameMapState.setAngelCardInDeck(false);
-                gameRedisService.saveGameMapState(roomId, gameMapState);
-                log.info("천사카드 즉시 부여: roomId={}, userId={}", roomId, userId);
-            }
-        } catch (Exception e) {
-            log.error("천사카드 부여 실패: roomId={}, userId={}", roomId, userId, e);
-        }
-    }
-    
-    
-    private void applyInstantCardEffectFromDB(String roomId, String userName, Card card, CreateMapPayload.PlayerState player) {
+    private void applyInstantCardEffectFromDB(String roomId, String userName, Card card, CreateMapPayload.PlayerState player, CreateMapPayload gameMapState) {
         try {
             String effectType = card.getEffectType();
             Integer effectValue = card.getEffectValue();
@@ -332,6 +296,14 @@ public class CardService {
                     applyAbsolutePositionEffect(player, effectValue != null ? effectValue : 0);
                     log.info("즉발카드 효과 적용 - 위치: cardName={}, position={}, description={}", card.getName(), effectValue, description);
                     break;
+                case "ALL_MONEY_PERCENT":
+                    applyFinancialPolicyEffect(roomId, card, gameMapState);
+                    log.info("금융정책 카드 효과 적용 - 전체 플레이어 돈 퍼센트: cardName={}, percent={}, description={}", card.getName(), effectValue, description);
+                    break;
+                case "LAND_VALUE":
+                    applyLandValuePolicyEffect(roomId, card, gameMapState);
+                    log.info("금융정책 카드 효과 적용 - 토지 가치 변동: cardName={}, percent={}, description={}", card.getName(), effectValue, description);
+                    break;
                 default:
                     log.warn("지원되지 않는 효과 타입: cardName={}, effectType={}", card.getName(), effectType);
             }
@@ -348,20 +320,24 @@ public class CardService {
                 log.error("플레이어를 찾을 수 없음: userId={}", userId);
                 return false;
             }
-            
+
             Card card = cardRepository.findByName(cardName).orElse(null);
             if (card == null) {
                 log.error("DB에서 카드를 찾을 수 없음: cardName={}", cardName);
                 return false;
             }
-            
+
             String userName = player.getNickname(); // PlayerState에서 nickname 추출
-            applyInstantCardEffectFromDB(roomId, userName, card, player);
-            
-            gameRedisService.saveGameMapState(roomId, gameMapState);
+            applyInstantCardEffectFromDB(roomId, userName, card, player, gameMapState);
+
+            // 금융정책 카드의 경우 이미 내부에서 saveGameMapState와 WebSocket 전송 처리됨
+            if (!isFinancialPolicyCard(card)) {
+                gameRedisService.saveGameMapState(roomId, gameMapState);
+            }
+
             log.info("즉발카드 효과 적용 완료: roomId={}, userId={}, cardName={}", roomId, userId, cardName);
             return true;
-            
+
         } catch (Exception e) {
             log.error("즉발카드 효과 적용 실패: roomId={}, userId={}, cardName={}", roomId, userId, cardName, e);
             return false;
@@ -390,7 +366,7 @@ public class CardService {
                 return;
             }
             
-            String userId = userService.getUserIdByNickname(gameMapState, userName);
+            String userId = userRedisService.getUserIdByNickname(userName);
             if (userId == null) {
                 log.error("플레이어를 찾을 수 없음: userName={}", userName);
                 return;
@@ -507,31 +483,94 @@ public class CardService {
 
 
     /**
-     * 천사카드 자동 방어
+     * 금융정책 카드 효과 적용 (모든 플레이어의 돈에 영향)
      */
-    public boolean autoApplyAngelCardDefense(String roomId, String userId, int negativeAmount) {
+    private void applyFinancialPolicyEffect(String roomId, Card card, CreateMapPayload gameMapState) {
         try {
-            CreateMapPayload gameMapState = gameRedisService.getGameMapState(roomId);
+            // gameMapState는 매개변수로 받아서 사용 (Redis 재조회 안함)
             if (gameMapState == null) {
-                log.error("게임 맵 상태를 찾을 수 없음: roomId={}", roomId);
-                return false;
+                log.error("게임 맵 상태가 null: roomId={}", roomId);
+                return;
             }
-            
-            CreateMapPayload.PlayerState player = gameMapState.getPlayers().get(userId);
-            if (player == null || !player.isAnglecard()) {
-                return false;
+
+            Integer effectValue = card.getEffectValue();
+            if (effectValue == null) {
+                log.warn("금융정책 카드 효과값이 없음: cardName={}", card.getName());
+                return;
             }
-            
-            player.setAnglecard(false);
-            gameMapState.setAngelCardInDeck(true);
+
+            boolean isIncrease = card.getName().contains("인하") || card.getName().contains("호황");
+
+            for (CreateMapPayload.PlayerState player : gameMapState.getPlayers().values()) {
+                if (player.isActive()) {
+                    int currentMoney = player.getMoney();
+                    int change = (currentMoney * effectValue) / 100;
+
+                    if (!isIncrease) {
+                        change = -change;
+                    }
+
+                    int newMoney = Math.max(0, currentMoney + change);
+                    player.setMoney(newMoney);
+
+                    log.info("금융정책 효과 적용: userName={}, 기존금액={}, 변동률={}%, 변동액={}, 새금액={}",
+                            player.getNickname(), currentMoney, effectValue, change, newMoney);
+                }
+            }
+
             gameRedisService.saveGameMapState(roomId, gameMapState);
-            
-            log.info("천사카드 자동 방어 발동: roomId={}, userId={}, 차단된 피해={}", roomId, userId, negativeAmount);
-            return true;
-            
+            log.info("금융정책 카드 효과 전체 적용 완료: cardName={}, roomId={}", card.getName(), roomId);
+
         } catch (Exception e) {
-            log.error("천사카드 자동 방어 실패: roomId={}, userId={}", roomId, userId, e);
-            return false;
+            log.error("금융정책 카드 효과 적용 실패: cardName={}, roomId={}", card.getName(), roomId, e);
         }
     }
+
+    /**
+     * 토지 가치 변동 정책 효과 적용
+     */
+    private void applyLandValuePolicyEffect(String roomId, Card card, CreateMapPayload gameMapState) {
+        try {
+            // gameMapState는 매개변수로 받아서 사용 (Redis 재조회 안함)
+            if (gameMapState == null) {
+                log.error("게임 맵 상태가 null: roomId={}", roomId);
+                return;
+            }
+
+            Integer effectValue = card.getEffectValue();
+            if (effectValue == null) {
+                log.warn("토지 가치 정책 카드 효과값이 없음: cardName={}", card.getName());
+                return;
+            }
+
+            boolean isIncrease = card.getName().contains("호황");
+            String changeType = isIncrease ? "상승" : "하락";
+
+            // Redis에 토지 가치 변동 정보 저장
+            String landValueKey = "land_value_policy:" + roomId;
+            String policyData = String.format("{\"type\":\"%s\",\"percent\":%d,\"cardName\":\"%s\"}",
+                    changeType, effectValue, card.getName());
+
+            redisTemplate.opsForValue().set(landValueKey, policyData);
+
+            log.info("토지 가치 정책 적용: cardName={}, 변동타입={}, 변동률={}%, roomId={}",
+                    card.getName(), changeType, effectValue, roomId);
+
+            // 실제 토지 가격 변동은 부동산 구매/판매 시점에 적용
+            // 현재는 정책 정보만 저장하고, 거래 시 MapService에서 참조하여 적용
+
+        } catch (Exception e) {
+            log.error("토지 가치 정책 효과 적용 실패: cardName={}, roomId={}", card.getName(), roomId, e);
+        }
+    }
+
+    /**
+     * 금융정책 카드인지 확인
+     */
+    private boolean isFinancialPolicyCard(Card card) {
+        return card.getCardType() == Card.CardType.FINANCIAL_POLICY;
+    }
+
+
+
 }

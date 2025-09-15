@@ -51,7 +51,7 @@ public class Card {
         FINANCIAL_POLICY("금융정책"),
         ISSUE("이슈"),
         GAME_CARD("게임카드"),
-        ANGEL("천사카드");
+        ANGEL("천사카드"); // 비활성화됨 - DB에서 사용 안 함
         
         private final String description;
         

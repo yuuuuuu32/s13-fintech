@@ -18,10 +18,11 @@ public class DrawCardPayload {
     public static class DrawCardResult {
         private String userName;
         private String cardName;
-        private boolean anglecard;
+        private boolean anglecard; // 천사카드 비활성화됨 - 항상 false
         private Integer moneyChange;
         private Integer newPosition;
         private Boolean jailStatus;
         private String effectDescription;
+        private Boolean isFinancialPolicy; // 금융정책 카드 여부
     }
 }

@@ -98,27 +98,30 @@ public class WebSocketCardService {
     }
 
     /**
-     * 천사카드 방어 처리
+     * 천사카드 방어 처리 (비활성화됨 - DB에서 천사카드 주석처리)
      */
     public void handleAngelDefense(WebSocketSession session) {
         try {
             String roomId = roomService.getRoom(session.getId());
             String userId = webSocketSessionService.getUserIdBySessionId(session.getId());
-            
-            log.info("[WebSocket] 천사카드 방어 시작: roomId={}, userId={}", roomId, userId);
 
-            boolean success = cardService.useAngelCardDefense(roomId, userId);
+            log.info("[WebSocket] 천사카드 방어 요청 (비활성화됨): roomId={}, userId={}", roomId, userId);
+
+            // 천사카드는 DB에서 비활성화되어 있음
+            // boolean success = cardService.useAngelCardDefense(roomId, userId);
+            boolean success = false; // 항상 실패로 처리
 
             MessageDto responseMessage = new MessageDto(
                     MessageType.ANGEL_DEFENSE,
                     objectMapper.valueToTree(Map.of(
                             "success", success,
-                            "userId", userId
+                            "userId", userId,
+                            "message", "천사카드 기능이 비활성화되어 있습니다"
                     ))
             );
 
             sessionMessageService.sendMessageToRoom(roomId, responseMessage);
-            log.info("[WebSocket] 천사카드 방어 완료: roomId={}, success={}", roomId, success);
+            log.info("[WebSocket] 천사카드 방어 완료 (비활성화됨): roomId={}, success={}", roomId, success);
 
         } catch (Exception e) {
             log.error("[WebSocket] 천사카드 방어 중 오류 발생: sessionId={}", session.getId(), e);

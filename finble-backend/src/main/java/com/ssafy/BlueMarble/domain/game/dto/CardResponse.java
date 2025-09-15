@@ -31,7 +31,7 @@ public class CardResponse {
         private String cardName;
         private String cardType;
         private String description;
-        private boolean isAngelCard;
+        // private boolean isAngelCard; // 천사카드 비활성화됨
     }
     
     @Data

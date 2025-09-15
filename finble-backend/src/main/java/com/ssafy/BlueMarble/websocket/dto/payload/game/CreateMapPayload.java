@@ -19,7 +19,7 @@ public class CreateMapPayload {
     private List<String> playerOrder;            // 플레이어 순서
     private Map<String , PlayerState> players;    // 플레이어별 상태
     private int currentPlayerIndex;               // 현재 플레이어 인덱스
-    private boolean angelCardInDeck;             // 천사카드가 덱에 있는지 여부
+    // private boolean angelCardInDeck;             // 천사카드가 덱에 있는지 여부 (비활성화됨)
 
     @Data
     @Builder
@@ -33,6 +33,6 @@ public class CreateMapPayload {
         private boolean isInJail;                // 감옥에 있는지 여부
         private int jailTurns;                   // 감옥 남은 턴 수
         private boolean isActive;                // 활성 상태 여부
-        private boolean anglecard;               // 천사카드 보유 여부
+        // private boolean anglecard;               // 천사카드 보유 여부 (비활성화됨)
     }
 }

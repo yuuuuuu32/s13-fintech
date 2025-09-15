@@ -151,7 +151,11 @@ public class EventService {
         if (gameState.getCurrentMap().getCells().get(endPosition).getOwnerName() != null) {
             landOwner = gameState.getCurrentMap().getCells().get(endPosition).getOwnerName();
             tollAmount = gameState.getCurrentMap().getCells().get(endPosition).getToll();
-            owner = gameState.getPlayers().get(landOwner);
+            // landOwner는 nickname이므로 userId로 변환 필요
+            String ownerUserId = userRedisService.getUserIdByNickname(landOwner);
+            if (ownerUserId != null) {
+                owner = gameState.getPlayers().get(ownerUserId);
+            }
         }
 
         // 5. 통행료 처리 및 위치 업데이트
@@ -218,8 +222,8 @@ public class EventService {
 
         // 예외처리
         //TODO : 본인의 턴에만 주사위를 던질 수 있었야함
-        String currentTurnUserId = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
-        if(!currentTurnUserId.equals(useDiceRequest.getUserName())){
+        String currentTurnUserName = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
+        if(!currentTurnUserName.equals(useDiceRequest.getUserName())){
             throw new BusinessException(BusinessError.INVALID_TURN);
         }
         CreateMapPayload.PlayerState player = gameState.getPlayers().get(userId);
@@ -259,10 +263,13 @@ public class EventService {
             if (player.getMoney() >= tollAmount) {
                 player.setMoney(player.getMoney() - tollAmount);
                 
-                // 소유자에게 통행료 지급
-                CreateMapPayload.PlayerState owner = gameState.getPlayers().get(landOwner);
-                if (owner != null) {
-                    owner.setMoney(owner.getMoney() + tollAmount);
+                // 소유자에게 통행료 지급 (landOwner는 nickname이므로 userId로 변환 필요)
+                String ownerUserId = userRedisService.getUserIdByNickname(landOwner);
+                if (ownerUserId != null) {
+                    CreateMapPayload.PlayerState owner = gameState.getPlayers().get(ownerUserId);
+                    if (owner != null) {
+                        owner.setMoney(owner.getMoney() + tollAmount);
+                    }
                 }
             }
         } else {
@@ -270,24 +277,27 @@ public class EventService {
             canBuyLand = true;
         }
 
-        // 9. 게임 상태 저장
-        // TODO : 현재 턴인 사람의 정보를 업데이트해야함
-        if(gameState.getCurrentPlayerIndex() == gameState.getPlayers().size()-1){
+        // 9. 찬스 칸 확인 및 자동 카드 뽑기 (턴 종료 전에 먼저 처리)
+        if (isChancePosition(newPosition)) {
+            log.info("플레이어가 찬스 칸에 도착: position={}, userName={}", newPosition, useDiceRequest.getUserName());
+            // 카드 뽑기 및 효과 적용 (gameState를 넘겨서 턴 상태 유지)
+            cardService.drawCard(roomId, useDiceRequest.getUserName(), gameState);
+            // 카드 서비스에서 이미 상태를 저장했으므로 최신 상태 다시 가져올 필요 없음
+            // gameState와 player는 참조로 전달되어 이미 업데이트됨
+        } else {
+            // 찬스 칸이 아니면, 주사위 이동 및 통행료 결과만 저장
+            gameRedisService.saveGameMapState(roomId, gameState);
+        }
+
+        // 10. 턴 종료 - 다음 플레이어로 턴 변경
+        if(gameState.getCurrentPlayerIndex() == gameState.getPlayerOrder().size()-1){
             gameState.setCurrentPlayerIndex(0);
         }else{
             gameState.setCurrentPlayerIndex(gameState.getCurrentPlayerIndex() + 1);
         }
 
-        //10. 찬스 칸 확인 및 자동 카드 뽑기
-        if (isChancePosition(newPosition)) {
-            log.info("플레이어가 찬스 칸에 도착: position={}, userName={}", newPosition, useDiceRequest.getUserName());
-            // 카드 뽑기 (내부에서 상태 변경, 저장 및 메시지 전송)
-            cardService.drawCard(roomId, useDiceRequest.getUserName());
-            player = gameState.getPlayers().get(userId);
-        } else {
-            // 찬스 칸이 아니면, 주사위 이동 및 통행료 결과만 저장
-            gameRedisService.saveGameMapState(roomId, gameState);
-        }
+        // 턴 변경이 완료된 최종 상태 저장
+        gameRedisService.saveGameMapState(roomId, gameState);
         
         // 10. 결과 메시지 전송
         UseDicePayload payload = UseDicePayload.builder()

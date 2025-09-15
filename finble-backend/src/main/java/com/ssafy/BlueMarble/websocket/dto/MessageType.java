@@ -32,5 +32,6 @@ public enum MessageType {
     // 카드 관련
     DRAW_CARD,
     USE_CARD,
-    ANGEL_DEFENSE
+    ANGEL_DEFENSE,
+
 }
