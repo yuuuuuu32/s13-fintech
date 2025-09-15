@@ -126,7 +126,6 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
       // 게임 시작 메시지 구독
       const gameStartSub = subscribeToTopic('START_GAME_OBSERVE', (message) => {
-        console.log("useRoomStore - START_GAME_OBSERVE roomId:", message.payload.roomId);
         // 1. 초기 게임 상태를 임시 저장소에 저장
         useWebSocketStore.getState().setInitialGameState(message.payload);
 

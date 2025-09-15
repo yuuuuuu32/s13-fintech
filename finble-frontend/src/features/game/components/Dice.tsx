@@ -1,34 +1,34 @@
 import { Box, useTexture, Html } from '@react-three/drei';
 import { RigidBody, RapierRigidBody } from '@react-three/rapier';
 import { useFrame } from '@react-three/fiber';
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore.ts';
 
-// 윗면의 값을 계산하는 함수
-const getDiceValue = (rotation: THREE.Quaternion): number => {
-    let maxDot = -Infinity;
-    let value = 0;
-    const upVector = new THREE.Vector3(0, 1, 0);
-
-    const axes = [
-        { value: 6, vec: new THREE.Vector3(0, 1, 0) },
-        { value: 1, vec: new THREE.Vector3(0, -1, 0) },
-        { value: 5, vec: new THREE.Vector3(0, 0, 1) },
-        { value: 2, vec: new THREE.Vector3(0, 0, -1) },
-        { value: 4, vec: new THREE.Vector3(1, 0, 0) },
-        { value: 3, vec: new THREE.Vector3(-1, 0, 0) },
-    ];
-
-    for (const axis of axes) {
-        const worldVector = axis.vec.clone().applyQuaternion(rotation);
-        const dot = worldVector.dot(upVector);
-        if (dot > maxDot) {
-            maxDot = dot;
-            value = axis.value;
-        }
-    }
-    return value;
+// 주사위 값에 따른 회전 값을 반환하는 헬퍼 함수
+const getRotationForDiceValue = (value: number): THREE.Quaternion => {
+  const quaternion = new THREE.Quaternion();
+  switch (value) {
+    case 1: // -Y up
+      quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
+      break;
+    case 2: // -Z up
+      quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+      break;
+    case 3: // -X up
+      quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+      break;
+    case 4: // +X up
+      quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.PI / 2);
+      break;
+    case 5: // +Z up
+      quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+      break;
+    case 6: // +Y up (default)
+    default:
+      break;
+  }
+  return quaternion;
 };
 
 const initialDicePositions: [number, number, number][] = [[-2, 5, 0], [2, 5, 0]];
@@ -59,14 +59,16 @@ const Die = () => {
 export function Dice() {
   const diceRefs = useMemo(() => [React.createRef<RapierRigidBody>(), React.createRef<RapierRigidBody>()], []);
   const [isRolling, setIsRolling] = useState(false)
-  const hasMoved = useRef(false);
   const [displayDiceSum, setDisplayDiceSum] = useState<number | null>(null);
 
   const gamePhase = useGameStore((state) => state.gamePhase)
   const dicePower = useGameStore((state) => state.dicePower)
   const rollDiceAction = useGameStore((state) => state.rollDice)
-  const movePlayer = useGameStore((state) => state.movePlayer)
-  const board = useGameStore((state) => state.board);
+  const dice = useGameStore((state) => state.dice) // 서버에서 받은 개별 주사위 값
+  const serverDiceNum = useGameStore((state) => state.serverDiceNum) // 서버에서 받은 주사위 합계
+  const finishDiceRoll = useGameStore((state) => state.finishDiceRoll)
+  const isDiceRolled = useGameStore((state) => state.isDiceRolled)
+  const setIsDiceRolled = useGameStore((state) => state.setIsDiceRolled)
 
   useEffect(() => {
     const triggerRoll = () => {
@@ -81,7 +83,7 @@ export function Dice() {
   useEffect(() => {
     if (gamePhase === 'DICE_ROLLING') {
       setIsRolling(true)
-      hasMoved.current = false; // Reset when rolling starts
+      setDisplayDiceSum(null); // Clear previous sum
       diceRefs.forEach((ref, i) => {
         if (ref.current) {
           ref.current.setTranslation({ x: initialDicePositions[i][0], y: initialDicePositions[i][1], z: initialDicePositions[i][2] }, true)
@@ -99,7 +101,7 @@ export function Dice() {
   }, [gamePhase, dicePower, diceRefs]);
 
   useFrame(() => {
-    if (!isRolling || hasMoved.current) return
+    if (!isRolling) return
 
     const isStopped = diceRefs.every(ref => {
       if (!ref.current) return false
@@ -111,14 +113,23 @@ export function Dice() {
              Math.abs(angvel.x) < threshold && Math.abs(angvel.y) < threshold && Math.abs(angvel.z) < threshold
     })
 
-    if (isStopped) {
-      hasMoved.current = true;
+    if (isStopped && !isDiceRolled) {
       setIsRolling(false)
-      const diceValues = diceRefs.map(ref => getDiceValue(ref.current.rotation())) as [number, number]
-      console.log(`주사위 결과: ${diceValues[0]}, ${diceValues[1]}`)
-      movePlayer(diceValues)
-      setDisplayDiceSum(diceValues[0] + diceValues[1]);
-      setTimeout(() => { setDisplayDiceSum(null); }, 2000);
+      setIsDiceRolled(true)
+      
+      // 서버에서 받은 주사위 값으로 주사위의 최종 회전을 설정
+      diceRefs.forEach((ref, i) => {
+        if (ref.current && dice[i] !== undefined) {
+          ref.current.setRotation(getRotationForDiceValue(dice[i]), true);
+        }
+      });
+
+      console.log(`서버 주사위 결과: ${dice[0]}, ${dice[1]}`)
+      setDisplayDiceSum(serverDiceNum);
+      setTimeout(() => {
+        setDisplayDiceSum(null);
+        finishDiceRoll();
+      }, 2000);
     }
   })
   

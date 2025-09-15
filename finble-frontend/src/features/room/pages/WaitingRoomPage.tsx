@@ -9,7 +9,6 @@ import './WaitingRoomPage.css';
 
 export default function WaitingRoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
-  console.log("WaitingRoomPage - roomId from useParams:", roomId);
   const navigate = useNavigate();
 
   const exitRoom = useLobbyStore((state) => state.exitRoom);
