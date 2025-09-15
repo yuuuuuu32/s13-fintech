@@ -1,6 +1,19 @@
 import { useWebSocketStore } from '../stores/useWebSocketStore';
 
-const WEBSOCKET_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`; // 백엔드 WebSocket 주소
+const getWebSocketUrl = (): string => {
+	// 개발 환경(Vite dev server)에서는 프록시 `/ws`를 사용해 동일 출처로 연결
+	// 프로덕션 또는 외부 접근 시에는 현재 호스트/프로토콜 기반으로 구성
+	const { protocol, host } = window.location;
+	const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
+	// dev 프록시를 타면 `/ws` 그대로, 그 외엔 호스트:8081/ws 로 시도
+	// 로컬 개발 서버(5173 등)에서도 프록시 `/ws`가 설정되어 있으므로 그대로 사용 가능
+	if (host.includes('localhost') || host.includes('127.0.0.1')) {
+		return `${wsProtocol}//${host}/ws`;
+	}
+	return `${wsProtocol}//${host}/ws`;
+};
+
+const WEBSOCKET_URL = getWebSocketUrl();
 
 let webSocket: WebSocket | null = null; // 순수 WebSocket 객체
 let reconnectTimeout: NodeJS.Timeout | null = null;
