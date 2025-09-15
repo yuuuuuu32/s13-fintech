@@ -296,6 +296,7 @@ public class EventService {
                 .userName(useDiceRequest.getUserName())
                 .diceNum1(diceNum1)
                 .diceNum2(diceNum2)
+                .curTurn(gameState.getGameTurn())
                 .diceNumSum(diceNumSum)
                 .currentPosition(newPosition)
                 .salaryBonus(salaryBonus)
