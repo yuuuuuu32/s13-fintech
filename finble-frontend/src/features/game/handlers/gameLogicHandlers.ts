@@ -146,16 +146,22 @@ export const createGameLogicHandlers = (
     switch (currentTile?.type) {
       case "city":
       case "company":
-        console.log("🏢 Handling city/company tile");
+      case "NORMAL":
+        console.log("🏢 Handling city/company/normal tile");
         handleCityCompanyTile(set, get, currentTile, currentPlayer, players);
         break;
 
       case "chance":
+      case "CHANCE":
         console.log("🎲 Handling chance tile");
         handleChanceTile(set, get, currentTile, currentPlayer, chanceCards);
         break;
 
       case "special":
+      case "SPECIAL":
+      case "JAIL":
+      case "START":
+      case "AIRPLANE":
         console.log("⭐ Handling special tile");
         handleSpecialTile(set, get, currentTile, currentPlayer, board);
         break;

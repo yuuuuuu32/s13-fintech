@@ -41,7 +41,7 @@ const AcquirePropertyModalContent = ({ modal, acquireProperty, payToll, currentP
     <Typography sx={{ mt: 2 }}>통행료: {modal.toll?.toLocaleString()}원</Typography>
     <Typography sx={{ mt: 1 }}>인수 비용: {modal.acquireCost?.toLocaleString()}원</Typography>
     <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-      <Button variant="contained" onClick={() => { acquireProperty(); endTurn(); }} disabled={currentPlayer.money < (modal.acquireCost || 0)}>인수</Button>
+      <Button variant="contained" onClick={() => { acquireProperty(); endTurn(); }} disabled={(currentPlayer?.money || 0) < (modal.acquireCost || 0)}>인수</Button>
       <Button variant="outlined" onClick={() => { payToll(); endTurn(); }}>통행료만 지불</Button>
     </Box>
   </>
@@ -108,14 +108,14 @@ const ManagePropertyModalContent = ({ modal, buildBuilding, endTurn, currentPlay
       <Button 
         variant="contained" 
         onClick={() => buildBuilding(board.findIndex(t => t.name === modal.tile?.name))}
-        disabled={currentPlayer.lapCount <= (modal.tile?.buildings?.level ?? 0) || (modal.tile?.buildings?.level ?? 0) >= 3}
+        disabled={(currentPlayer?.lapCount || 0) <= (modal.tile?.buildings?.level ?? 0) || (modal.tile?.buildings?.level ?? 0) >= 3}
       >
         건설
       </Button>
       <Button variant="outlined" onClick={endTurn}>다음에</Button>
     </Box>
     <Typography sx={{ mt: 2, fontSize: '0.8rem', color: 'gray' }}>
-      (필요 랩 수: {(modal.tile?.buildings?.level ?? 0) + 1} / 현재 랩 수: {currentPlayer.lapCount})
+      (필요 랩 수: {(modal.tile?.buildings?.level ?? 0) + 1} / 현재 랩 수: {currentPlayer?.lapCount || 0})
     </Typography>
   </>
 );
@@ -264,7 +264,7 @@ export function GameUI() {
           disabled={gamePhase !== 'WAITING_FOR_ROLL' || !isMyTurn}
           sx={{ width: 250, height: 60, fontSize: '1.2rem' }}
         >
-          {currentPlayer.isInJail ? '무인도...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
+          {currentPlayer?.isInJail ? '무인도...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
         </Button>
       </Box>
       

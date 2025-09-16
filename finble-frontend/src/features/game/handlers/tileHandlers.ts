@@ -13,25 +13,29 @@ export const handleCityCompanyTile = (
     p.properties.includes(currentPlayer.position)
   );
   if (!owner) {
-    if (currentPlayer.money >= (currentTile.price ?? 0)) {
+    // 서버 데이터 구조 사용: landPrice
+    const landPrice = (currentTile as any).landPrice ?? currentTile.price ?? 0;
+    if (currentPlayer.money >= landPrice) {
       set({ modal: { type: "BUY_PROPERTY", tile: currentTile } });
     } else {
       set({ modal: { type: "NONE" as const } });
     }
   } else if (owner.id !== currentPlayer.id) {
-    let toll = currentTile.tolls?.[currentTile.buildings?.level || 0] || 50000;
+    // 서버 데이터에서 toll 직접 사용
+    let toll = (currentTile as any).toll || currentTile.tolls?.[currentTile.buildings?.level || 0] || 50000;
 
     if (get().expoLocation === currentPlayer.position) {
       toll *= 2;
     }
 
-    const acquireCost = (currentTile.price || 0) * 2;
+    const landPrice = (currentTile as any).landPrice ?? currentTile.price ?? 0;
+    const acquireCost = landPrice * 2;
     set({
       modal: { type: "ACQUIRE_PROPERTY", tile: currentTile, acquireCost, toll },
     });
   } else {
     if (
-      currentTile.type === "city" &&
+      (currentTile.type === "city" || (currentTile as any).type === "NORMAL") &&
       currentPlayer.lapCount > 0 &&
       (currentTile.buildings?.level ?? 0) < 3
     ) {
