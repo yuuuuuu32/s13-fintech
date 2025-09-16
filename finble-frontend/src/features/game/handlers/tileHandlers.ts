@@ -1,6 +1,7 @@
 import type { GameState, Player } from "../types/gameTypes.ts";
 import type { TileData } from "../data/boardData.ts";
 import { chanceCards } from "../constants/gameConstants.ts";
+import { useUserStore } from "../../../stores/useUserStore.ts";
 
 export const handleCityCompanyTile = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
@@ -12,39 +13,47 @@ export const handleCityCompanyTile = (
   const owner = players.find((p) =>
     p.properties.includes(currentPlayer.position)
   );
+  const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
+
   if (!owner) {
-    // 서버 데이터 구조 사용: landPrice
     const landPrice = (currentTile as any).landPrice ?? currentTile.price ?? 0;
     if (currentPlayer.money >= landPrice) {
-      set({ modal: { type: "BUY_PROPERTY", tile: currentTile } });
+      if (isMyTurn) {
+        set({ modal: { type: "BUY_PROPERTY", tile: currentTile } });
+      }
     } else {
-      set({ modal: { type: "NONE" as const } });
+      if (isMyTurn) {
+        set({ modal: { type: "NONE" as const } }); // Or show not enough money modal
+      }
     }
   } else if (owner.id !== currentPlayer.id) {
-    // 서버 데이터에서 toll 직접 사용
     let toll = (currentTile as any).toll || currentTile.tolls?.[currentTile.buildings?.level || 0] || 50000;
 
     if (get().expoLocation === currentPlayer.position) {
       toll *= 2;
     }
 
-    const landPrice = (currentTile as any).landPrice ?? currentTile.price ?? 0;
-    const acquireCost = landPrice * 2;
-    set({
-      modal: { type: "ACQUIRE_PROPERTY", tile: currentTile, acquireCost, toll },
-    });
-  } else {
-    if (
-      (currentTile.type === "city" || (currentTile as any).type === "NORMAL") &&
-      currentPlayer.lapCount > 0 &&
-      (currentTile.buildings?.level ?? 0) < 3
-    ) {
+    if (isMyTurn) {
+      const landPrice = (currentTile as any).landPrice ?? currentTile.price ?? 0;
+      const acquireCost = landPrice * 2;
       set({
-        gamePhase: "MANAGE_PROPERTY",
-        modal: { type: "MANAGE_PROPERTY", tile: currentTile },
+        modal: { type: "ACQUIRE_PROPERTY", tile: currentTile, acquireCost, toll },
       });
-    } else {
-      set({ modal: { type: "NONE" as const } });
+    }
+  } else {
+    if (isMyTurn) {
+      if (
+        (currentTile.type === "city" || (currentTile as any).type === "NORMAL") &&
+        currentPlayer.lapCount > 0 &&
+        (currentTile.buildings?.level ?? 0) < 3
+      ) {
+        set({
+          gamePhase: "MANAGE_PROPERTY",
+          modal: { type: "MANAGE_PROPERTY", tile: currentTile },
+        });
+      } else {
+        set({ modal: { type: "NONE" as const } });
+      }
     }
   }
 };
@@ -92,6 +101,8 @@ export const handleSpecialTile = (
   currentPlayer: Player,
   board: TileData[]
 ) => {
+  const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
+
   switch (currentTile.name) {
     case "무인도":
       set((state) => {
@@ -112,20 +123,22 @@ export const handleSpecialTile = (
       });
       break;
     case "박람회": {
-      const ownedProperties = currentPlayer.properties.map((index) => ({
-        name: board[index].name,
-        index,
-      }));
-      if (ownedProperties.length > 0) {
-        set({ modal: { type: "EXPO", properties: ownedProperties } });
-      } else {
-        set({
-          modal: {
-            type: "INFO",
-            text: "소유한 땅이 없어 박람회 효과를 받을 수 없습니다.",
-            onConfirm: () => set({ modal: { type: "NONE" as const } }),
-          },
-        });
+      if (isMyTurn) {
+        const ownedProperties = currentPlayer.properties.map((index) => ({
+          name: board[index].name,
+          index,
+        }));
+        if (ownedProperties.length > 0) {
+          set({ modal: { type: "EXPO", properties: ownedProperties } });
+        } else {
+          set({
+            modal: {
+              type: "INFO",
+              text: "소유한 땅이 없어 박람회 효과를 받을 수 없습니다.",
+              onConfirm: () => set({ modal: { type: "NONE" as const } }),
+            },
+          });
+        }
       }
       break;
     }

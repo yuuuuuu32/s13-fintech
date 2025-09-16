@@ -180,6 +180,8 @@ export const createGameLogicHandlers = (
   endTurn: () => {
     set({
       modal: { type: "NONE" as const },
+      gamePhase: "WAITING_FOR_ROLL",
+      isDiceRolled: false,
     });
   },
 
