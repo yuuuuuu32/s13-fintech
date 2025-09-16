@@ -100,7 +100,7 @@ public class EventService {
 
         // 5. 게임 상태 업데이트
         if (gameState != null && gameState.getPlayers() != null) {
-            gameState.getPlayers().put(userId, user);
+            gameState.getPlayers().put(jailRequest.getNickname(), user);
             gameRedisService.saveGameMapState(roomId, gameState);
         }
 
@@ -108,7 +108,7 @@ public class EventService {
         JailPayload payload = JailPayload.builder()
                 .result(escapeSuccess)
                 .userName(jailRequest.getNickname())
-                .updatedAsset(
+                .updatedAsset( 
                         ConstructPayload.Asset.builder()
                                 .money(user.getMoney())
                                 .lands(user.getOwnedProperties() != null ? user.getOwnedProperties() : new ArrayList<>())
