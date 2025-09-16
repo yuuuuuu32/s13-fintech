@@ -1,7 +1,7 @@
 /* finble-frontend/src/features/auth/pages/LoginPage.css */
 
-/* Note: For fonts to work, ensure Google Fonts (Orbitron, Noto Sans KR) 
-  are imported in your main index.html file or a global CSS file.
+/* Note: For fonts to work, ensure Google Fonts (Orbitron, Noto Sans KR, Roboto) 
+   are imported in your main index.html file or a global CSS file.
 */
 
 .login-container {
@@ -36,7 +36,8 @@
   position: relative;
   z-index: 2;
   margin-bottom: 60px;
-  filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.7)) drop-shadow(0 0 20px rgba(0, 255, 255, 0.5));
+  filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.7)) 
+          drop-shadow(0 0 20px rgba(0, 255, 255, 0.5));
 }
 
 .logo-image {
@@ -52,83 +53,54 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  max-width: 300px;
+  max-width: 320px; /* 버튼 폭 기준 */
   align-items: center;
 }
 
 .error-message {
-  color: #ff4d4d; /* Red color for error messages */
+  color: #ff4d4d;
   margin-bottom: 10px;
   font-size: 14px;
-  font-family: "Noto Sans KR", sans-serif; /* Consistent font */
+  font-family: "Noto Sans KR", sans-serif;
 }
 
-.google-login-button {
+/* ---------------- Google 버튼 래퍼 ---------------- */
+.google-login-wrapper {
+  width: 320px;              /* GoogleLogin width와 동일 */
   display: flex;
-  align-items: center;
   justify-content: center;
-  padding: 16px 24px;
-  font-size: 18px;
-  font-weight: 500;
-  font-family: "Roboto", "Noto Sans KR", sans-serif; /* Google uses Roboto */
-  cursor: pointer;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-  background-color: #ffffff;
-  color: #3c4043;
-  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
-  transition: all 0.2s ease-in-out;
-  z-index: 2;
-  width: 100%;
-  max-width: 300px;
-  box-sizing: border-box;
+  align-items: center;
 }
 
-.google-login-button:hover:not(:disabled) {
-  box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15);
-  border-color: #cce0fc;
-}
-
-.google-login-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.google-icon {
-  width: 24px;
-  height: 24px;
-  margin-right: 16px;
-}
-
-.google-text {
-  font-weight: 500;
-}
-
-/* --- 추가된 카카오 버튼 스타일 --- */
+/* ---------------- Kakao 버튼 ---------------- */
 .kakao-login-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px 24px;
-  font-size: 18px;
-  font-weight: 500;
-  font-family: "Noto Sans KR", sans-serif; /* Kakao uses Noto Sans */
-  cursor: pointer;
-  border: none; /* Kakao button often has no border */
+  gap: 10px;
+
+  width: 320px;              /* Google 버튼과 동일 폭 */
+  height: 40px;              /* Google size="large" 높이에 맞춤 */
+  padding: 0 16px;           /* 수평 패딩만 */
   border-radius: 8px;
-  background-color: #FEE500; /* Kakao's brand color */
-  color: #000000; /* Text color for yellow background */
-  box-shadow: 0 1px 2px 0 rgba(0,0,0,0.1), 0 1px 3px 1px rgba(0,0,0,0.08);
-  transition: all 0.2s ease-in-out;
-  z-index: 2;
-  width: 100%;
-  max-width: 300px;
-  box-sizing: border-box;
+
+  background-color: #FEE500;
+  border: 1px solid #E6CF00;
+  color: #000;
+  font-size: 14px;           /* Google large와 시각적 밸런스 */
+  font-weight: 600;
+  font-family: "Noto Sans KR", sans-serif;
+  cursor: pointer;
+
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08), 
+              0 3px 8px rgba(0,0,0,0.12);
+  transition: box-shadow 0.2s ease-in-out, filter 0.2s ease-in-out;
 }
 
 .kakao-login-button:hover:not(:disabled) {
-  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.15), 0 4px 8px 3px rgba(0,0,0,0.1);
-  filter: brightness(0.95);
+  filter: brightness(0.98);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.10), 
+              0 6px 14px rgba(0,0,0,0.18);
 }
 
 .kakao-login-button:disabled {
@@ -137,11 +109,11 @@
 }
 
 .kakao-icon {
-  width: 24px;
-  height: 24px;
-  margin-right: 16px;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
 }
 
 .kakao-text {
-  font-weight: 500;
+  line-height: 1;
 }
