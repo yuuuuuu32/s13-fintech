@@ -170,18 +170,26 @@ export const createGameLogicHandlers = (
       default:
         console.log("❓ Unknown tile type or no tile, ending turn");
         // 직접 endTurn 로직 실행
-        set({
-          modal: { type: "NONE" as const },
-        });
+        get().endTurn();
         break;
     }
   },
 
   endTurn: () => {
+    const { gameId, send } = get();
+
+    if (gameId) {
+      send(`/app/game/${gameId}/end-turn`, {
+        type: "TURN_SKIP",
+        payload: {},
+      });
+    }
+
+    // The client will wait for a TURN_CHANGE message from the server
+    // to actually change the turn. We can set a phase to prevent further actions.
     set({
       modal: { type: "NONE" as const },
-      gamePhase: "WAITING_FOR_ROLL",
-      isDiceRolled: false,
+      gamePhase: "WAITING_FOR_TURN_END",
     });
   },
 

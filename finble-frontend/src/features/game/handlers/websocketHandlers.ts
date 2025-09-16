@@ -81,7 +81,7 @@ export const createWebSocketHandlers = (
                 ...clientPlayer,
                 money: serverPlayerState.money,
                 properties: serverPlayerState.ownedProperties || [],
-                position: serverPlayerState.position,
+                // position: serverPlayerState.position, // DO NOT UPDATE POSITION - This prevents snap-back bug
                 isInJail: serverPlayerState.inJail,
                 jailTurns: serverPlayerState.jailTurns,
               };
