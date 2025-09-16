@@ -100,7 +100,7 @@ public class EventService {
 
         // 5. 게임 상태 업데이트
         if (gameState != null && gameState.getPlayers() != null) {
-            gameState.getPlayers().put(jailRequest.getNickname(), user);
+            gameState.getPlayers().put(userId, user);
             gameRedisService.saveGameMapState(roomId, gameState);
         }
 
@@ -307,6 +307,7 @@ public class EventService {
                 .diceNum1(diceNum1)
                 .diceNum2(diceNum2)
                 .curTurn(gameState.getGameTurn())
+                .currentPlayerIndex(gameState.getCurrentPlayerIndex())
                 .diceNumSum(diceNumSum)
                 .currentPosition(newPosition)
                 .salaryBonus(salaryBonus)
