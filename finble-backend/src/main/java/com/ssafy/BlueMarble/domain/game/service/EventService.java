@@ -250,32 +250,47 @@ public class EventService {
         // 6. 새로운 위치로 이동
         player.setPosition(newPosition);
         
-        // 7. 도착한 땅 정보 확인
+        // 7. 도착한 땅 정보 확인 (찬스칸이 아닌 경우에만)
         String landOwner = null;
         int tollAmount = 0;
         boolean canBuyLand = false;
-        
-        if (gameState.getCurrentMap().getCells().get(newPosition).getOwnerName() != null) {
-            
-            landOwner = gameState.getCurrentMap().getCells().get(newPosition).getOwnerName();
-            tollAmount = gameState.getCurrentMap().getCells().get(newPosition).getToll();
-            
-            // 8. 통행료 지불
-            if (player.getMoney() >= tollAmount) {
-                player.setMoney(player.getMoney() - tollAmount);
-                
-                // 소유자에게 통행료 지급 (landOwner는 nickname이므로 userId로 변환 필요)
-                String ownerUserId = userRedisService.getUserIdByNickname(landOwner);
-                if (ownerUserId != null) {
-                    CreateMapPayload.PlayerState owner = gameState.getPlayers().get(ownerUserId);
-                    if (owner != null) {
-                        owner.setMoney(owner.getMoney() + tollAmount);
+
+        // 찬스칸은 특별칸이므로 통행료 없음 - 찬스칸이 아닌 경우에만 통행료 처리
+        if (!isChancePosition(newPosition)) {
+            var targetCell = gameState.getCurrentMap().getCells().get(newPosition);
+
+            // 일반땅인 경우에만 통행료 처리
+            if (targetCell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NORMAL) {
+                if (targetCell.getOwnerName() != null && !targetCell.getOwnerName().equals(useDiceRequest.getUserName())) {
+                    // 다른 플레이어의 땅 - 통행료 지불
+                    landOwner = targetCell.getOwnerName();
+                    tollAmount = targetCell.getToll();
+
+                    // 8. 통행료 지불
+                    if (player.getMoney() >= tollAmount) {
+                        player.setMoney(player.getMoney() - tollAmount);
+
+                        // 소유자에게 통행료 지급
+                        String ownerUserId = userRedisService.getUserIdByNickname(landOwner);
+                        if (ownerUserId != null) {
+                            CreateMapPayload.PlayerState owner = gameState.getPlayers().get(ownerUserId);
+                            if (owner != null) {
+                                owner.setMoney(owner.getMoney() + tollAmount);
+                                log.info("통행료 지불: player={}, owner={}, amount={}",
+                                       useDiceRequest.getUserName(), landOwner, tollAmount);
+                            }
+                        }
+                    } else {
+                        log.warn("통행료 부족: player={}, required={}, available={}",
+                               useDiceRequest.getUserName(), tollAmount, player.getMoney());
                     }
+                } else if (targetCell.getOwnerName() == null) {
+                    // 비어있는 일반땅 - 구매 가능
+                    canBuyLand = true;
+                    log.info("구매 가능한 땅 도착: player={}, position={}, price={}",
+                           useDiceRequest.getUserName(), newPosition, targetCell.getToll());
                 }
             }
-        } else {
-            // 땅이 비어있으면 구매 가능
-            canBuyLand = true;
         }
 
         // 9. 찬스 칸 확인 및 자동 카드 뽑기 (턴 종료 전에 먼저 처리)
@@ -301,7 +316,7 @@ public class EventService {
         // 턴 변경이 완료된 최종 상태 저장
         gameRedisService.saveGameMapState(roomId, gameState);
         
-        // 10. 결과 메시지 전송
+        // 10. 결과 메시지 전송 (찬스카드로 이동했을 수 있으므로 실제 플레이어 위치 사용)
         String nextTurnUserName = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
         UseDicePayload payload = UseDicePayload.builder()
                 .userName(useDiceRequest.getUserName())
@@ -310,7 +325,7 @@ public class EventService {
                 .curTurn(gameState.getGameTurn())
                 .nextTurnUserName(nextTurnUserName)
                 .diceNumSum(diceNumSum)
-                .currentPosition(newPosition)
+                .currentPosition(player.getPosition()) // 실제 플레이어 위치 사용 (찬스카드 이동 반영)
                 .salaryBonus(salaryBonus)
                 .canBuyLand(canBuyLand)
                 .tollAmount(tollAmount)
