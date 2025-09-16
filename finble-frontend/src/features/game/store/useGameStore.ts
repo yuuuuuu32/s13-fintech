@@ -434,21 +434,51 @@ export const useGameStore = create<GameState>()((set, get) => ({
       get().updateGameState(message.payload);
     });
 
+    // 턴 변경 메시지 구독 추가
+    subscribeToTopic("TURN_CHANGE", (message) => {
+      console.log("Received TURN_CHANGE message:", message);
+      const { payload } = message;
+      if (payload.currentPlayerIndex !== undefined) {
+        set({
+          currentPlayerIndex: payload.currentPlayerIndex,
+          currentTurn: payload.currentTurn || get().currentTurn,
+          gamePhase: "WAITING_FOR_ROLL"
+        });
+      }
+    });
+
     // USE_DICE 메시지 구독 추가
     subscribeToTopic("USE_DICE", (message) => {
       console.log("Received USE_DICE message:", message);
       const { payload } = message;
-      
 
-      const { diceNum1, diceNum2, diceNumSum, currentPosition } = payload;
+      const { diceNum1, diceNum2, diceNumSum, currentPosition, userName, curTurn, currentPlayerIndex, updatedAsset } = payload;
 
       get().setIsDiceRolled(false); // Reset flag before rolling
 
-      set({
-        dice: [diceNum1, diceNum2],
-        serverDiceNum: diceNumSum,
-        serverCurrentPosition: currentPosition, 
-        gamePhase: "DICE_ROLLING",
+      // 주사위를 굴린 플레이어의 정보를 업데이트
+      set((state) => {
+        const updatedPlayers = state.players.map(player => {
+          if (player.name === userName) {
+            return {
+              ...player,
+              position: currentPosition,
+              money: updatedAsset?.money || player.money,
+              properties: updatedAsset?.lands || player.properties
+            };
+          }
+          return player;
+        });
+
+        return {
+          players: updatedPlayers,
+          dice: [diceNum1, diceNum2],
+          serverDiceNum: diceNumSum,
+          serverCurrentPosition: currentPosition,
+          currentTurn: curTurn,
+          currentPlayerIndex: currentPlayerIndex,
+          gamePhase: "DICE_ROLLING",
+        };
       });
     });
   },
@@ -683,37 +713,10 @@ export const useGameStore = create<GameState>()((set, get) => ({
   },
 
   endTurn: () => {
-    const { players, currentPlayerIndex, gamePhase, currentTurn, totalTurns } =
-      get();
-    if (gamePhase === "GAME_OVER") return;
-
-    let nextPlayerIndex = (currentPlayerIndex + 1) % players.length;
-    let nextTurn = currentTurn;
-    if (nextPlayerIndex === 0) {
-      nextTurn = currentTurn + 1;
-    }
-
-    if (nextTurn > totalTurns) {
-      get().checkGameOver();
-      return;
-    }
-
-    while (players[nextPlayerIndex].money < 0) {
-      nextPlayerIndex = (nextPlayerIndex + 1) % players.length;
-      if (nextPlayerIndex === 0 && currentTurn !== nextTurn) {
-        nextTurn = currentTurn + 1;
-      }
-      if (nextTurn > totalTurns) {
-        get().checkGameOver();
-        return;
-      }
-    }
     set({
       modal: { type: "NONE" },
-      currentPlayerIndex: nextPlayerIndex,
-      gamePhase: "WAITING_FOR_ROLL",
-      currentTurn: nextTurn,
     });
+    // 턴 관리는 백엔드에서만 하도록 제거
   },
 
   checkGameOver: () => {
@@ -746,9 +749,8 @@ export const useGameStore = create<GameState>()((set, get) => ({
         winnerId: winner?.id ?? null,
         modal: { type: "NONE" },
       });
-    } else {
-      get().endTurn();
     }
+    // 클라이언트에서 턴 관리하지 않도록 endTurn() 호출 제거
   },
 
   handleJail: () => {
