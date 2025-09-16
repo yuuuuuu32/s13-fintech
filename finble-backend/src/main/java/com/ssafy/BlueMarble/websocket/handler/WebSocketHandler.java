@@ -166,7 +166,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 break;
             case TURN_SKIP:
                 log.debug("사용자가 턴을 스킵하기로 요청보냈음.");
-                timerService.cancelTurnTimer(roomId);
+                timerService.endTurnManually(roomId);
                 break;
         }
 

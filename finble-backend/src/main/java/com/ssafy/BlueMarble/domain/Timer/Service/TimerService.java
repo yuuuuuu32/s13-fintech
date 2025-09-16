@@ -77,7 +77,10 @@ public class TimerService {
             }
         }
     }
-
+    public void endTurnManually(String roomId){
+        cancelTurnTimer(roomId);
+        endTurnByTimer(roomId);
+    }
 
     private void endTurnByTimer(String roomId) {
             // 턴 종료 로직 실행
