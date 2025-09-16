@@ -1,6 +1,7 @@
 package com.ssafy.BlueMarble.websocket.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.BlueMarble.domain.Timer.Service.TimerService;
 import com.ssafy.BlueMarble.domain.game.service.MapService;
 import com.ssafy.BlueMarble.domain.game.dto.request.ConstructRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
@@ -51,6 +52,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private final EventService eventService;
     private final WebSocketCardService webSocketCardService;
     private final SessionMessageService sessionMessageService;
+    private final TimerService timerService;
 
     /**
      * [연결 성공] WebSocket 협상이 성공적으로 완료되고 WebSocket 연결이 열려 사용할 준비가 된 후 호출됩니다.
@@ -161,6 +163,10 @@ public class WebSocketHandler extends TextWebSocketHandler {
             case ANGEL_DEFENSE:
                 log.info("[WebSocket] 천사카드 방어 요청 (비활성화됨): sessionId={}", session.getId());
                 webSocketCardService.handleAngelDefense(session); // 비활성화 응답 전송
+                break;
+            case TURN_SKIP:
+                log.debug("사용자가 턴을 스킵하기로 요청보냈음.");
+                timerService.cancelTurnTimer(roomId);
                 break;
         }
 

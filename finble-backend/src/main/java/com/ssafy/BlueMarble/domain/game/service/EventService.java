@@ -6,6 +6,7 @@ import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
+import com.ssafy.BlueMarble.domain.Timer.Service.TimerService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
@@ -37,6 +38,7 @@ public class EventService {
     private final SessionMessageService sessionMessageService;
     private final CardService cardService;
     private final UserRedisService userRedisService;
+    private final TimerService timerService;
     private final Random random = new Random();
 
     // 찬스 칸 위치 정의 (data.sql 참고)
@@ -290,16 +292,8 @@ public class EventService {
             gameRedisService.saveGameMapState(roomId, gameState);
         }
 
-        // 10. 턴 종료 - 다음 플레이어로 턴 변경
-        if(gameState.getCurrentPlayerIndex() == gameState.getPlayerOrder().size()-1){
-            gameState.setCurrentPlayerIndex(0);
-            gameState.setGameTurn(gameState.getGameTurn() + 1);
-        }else{
-            gameState.setCurrentPlayerIndex(gameState.getCurrentPlayerIndex() + 1);
-        }
-
-        // 턴 변경이 완료된 최종 상태 저장
-        gameRedisService.saveGameMapState(roomId, gameState);
+        // 10. 타이머 시작 (턴을 즉시 종료하지 않음)
+        timerService.startTurnTimer(roomId, userId);
         
         // 10. 결과 메시지 전송
         String nextTurnUserName = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
