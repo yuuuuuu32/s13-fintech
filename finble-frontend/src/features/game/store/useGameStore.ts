@@ -48,6 +48,7 @@ export const useGameStore = create<GameState>()((set, get) => {
 
     // 플레이어 액션 메서드
     buyProperty: playerActions.buyProperty,
+    buyPropertyWithItems: playerActions.buyPropertyWithItems,
     acquireProperty: playerActions.acquireProperty,
     payToll: playerActions.payToll,
     handleJail: playerActions.handleJail,

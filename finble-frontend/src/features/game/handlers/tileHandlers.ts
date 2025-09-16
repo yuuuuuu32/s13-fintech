@@ -13,25 +13,29 @@ export const handleCityCompanyTile = (
     p.properties.includes(currentPlayer.position)
   );
   if (!owner) {
-    if (currentPlayer.money >= (currentTile.price ?? 0)) {
+    // 서버 데이터 구조 사용: landPrice
+    const landPrice = (currentTile as any).landPrice ?? currentTile.price ?? 0;
+    if (currentPlayer.money >= landPrice) {
       set({ modal: { type: "BUY_PROPERTY", tile: currentTile } });
     } else {
-      get().endTurn();
+      set({ modal: { type: "NONE" as const } });
     }
   } else if (owner.id !== currentPlayer.id) {
-    let toll = currentTile.tolls?.[currentTile.buildings?.level || 0] || 50000;
+    // 서버 데이터에서 toll 직접 사용
+    let toll = (currentTile as any).toll || currentTile.tolls?.[currentTile.buildings?.level || 0] || 50000;
 
     if (get().expoLocation === currentPlayer.position) {
       toll *= 2;
     }
 
-    const acquireCost = (currentTile.price || 0) * 2;
+    const landPrice = (currentTile as any).landPrice ?? currentTile.price ?? 0;
+    const acquireCost = landPrice * 2;
     set({
       modal: { type: "ACQUIRE_PROPERTY", tile: currentTile, acquireCost, toll },
     });
   } else {
     if (
-      currentTile.type === "city" &&
+      (currentTile.type === "city" || (currentTile as any).type === "NORMAL") &&
       currentPlayer.lapCount > 0 &&
       (currentTile.buildings?.level ?? 0) < 3
     ) {
@@ -40,7 +44,7 @@ export const handleCityCompanyTile = (
         modal: { type: "MANAGE_PROPERTY", tile: currentTile },
       });
     } else {
-      get().endTurn();
+      set({ modal: { type: "NONE" as const } });
     }
   }
 };
@@ -73,7 +77,7 @@ export const handleChanceTile = (
           if (moved) {
             get().handleTileAction();
           } else {
-            get().endTurn();
+            set({ modal: { type: "NONE" as const } });
           }
         },
       },
@@ -102,7 +106,7 @@ export const handleSpecialTile = (
           modal: {
             type: "INFO",
             text: "무인도에 갇혔습니다! 다음 턴부터 3턴 동안 머물게 됩니다.",
-            onConfirm: get().endTurn,
+            onConfirm: () => set({ modal: { type: "NONE" as const } }),
           },
         };
       });
@@ -119,7 +123,7 @@ export const handleSpecialTile = (
           modal: {
             type: "INFO",
             text: "소유한 땅이 없어 박람회 효과를 받을 수 없습니다.",
-            onConfirm: get().endTurn,
+            onConfirm: () => set({ modal: { type: "NONE" as const } }),
           },
         });
       }
@@ -137,13 +141,13 @@ export const handleSpecialTile = (
           modal: {
             type: "INFO",
             text: "세계여행! 다음 턴에 원하는 곳으로 이동할 수 있습니다.",
-            onConfirm: get().endTurn,
+            onConfirm: () => set({ modal: { type: "NONE" as const } }),
           },
         };
       });
       break;
     default:
-      get().endTurn();
+      set({ modal: { type: "NONE" as const } });
       break;
   }
 };
