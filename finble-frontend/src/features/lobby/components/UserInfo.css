@@ -1,129 +1,176 @@
-.user-info-panel {
-  width: 280px;
-  flex-shrink: 0;
-  background: #101223;
-  border: 1px solid rgba(0, 255, 255, 0.4);
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.1);
-  position: sticky;
-  top: 2rem;
+/* ===== Cyberpunk User Panel (drop-in) ===== */
+:root{
+  --c-bg: #101223;
+  --c-cyan: #47d8ff;     /* 시안 네온 */
+  --c-cyan-dim: rgba(71,216,255,.35);
+  --c-mag: #d24bff;      /* 마젠타 보조 */
+  --c-text: #ffffff;
+  --c-mute: #aab0c0;
+  --radius: 12px;
 }
 
-.panel-title {
-  text-align: left;
-  margin: 0 0 1.5rem 0;
+/* 패널 베이스 */
+.user-info-panel{
+  width: 280px; flex-shrink: 0;
+  background: linear-gradient(180deg, rgba(16,18,35,.92), rgba(16,18,35,.86));
+  border: 1px solid var(--c-cyan-dim);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.25rem 1.5rem;
+  position: sticky; top: 2rem; z-index: 1;
+  box-shadow:
+    0 12px 28px rgba(0,0,0,.45),
+    inset 0 0 10px rgba(71,216,255,.08);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  /* HUD 스캔라인 질감 */
+  background-image:
+    repeating-linear-gradient(to bottom,
+      rgba(255,255,255,.05) 0px,
+      rgba(255,255,255,.05) 1px,
+      transparent 2px,
+      transparent 4px);
+  background-size: 100% 8px;
+  isolation: isolate;
+}
+
+/* 네온 코너 브라켓 */
+.user-info-panel::before{
+  content:"";
+  position:absolute; inset: 8px; pointer-events:none;
+  border-radius: calc(var(--radius) - 6px);
+  mask:
+    linear-gradient(#000 0 0) top left,
+    linear-gradient(#000 0 0) top right,
+    linear-gradient(#000 0 0) bottom left,
+    linear-gradient(#000 0 0) bottom right;
+  -webkit-mask:
+    linear-gradient(#000 0 0) top left,
+    linear-gradient(#000 0 0) top right,
+    linear-gradient(#000 0 0) bottom left,
+    linear-gradient(#000 0 0) bottom right;
+  background:
+    linear-gradient(90deg, var(--c-cyan), transparent) top left/28px 2px no-repeat,
+    linear-gradient(180deg, var(--c-cyan), transparent) top left/2px 28px no-repeat,
+    linear-gradient(270deg, var(--c-cyan), transparent) top right/28px 2px no-repeat,
+    linear-gradient(180deg, var(--c-cyan), transparent) top right/2px 28px no-repeat,
+    linear-gradient(90deg, var(--c-cyan), transparent) bottom left/28px 2px no-repeat,
+    linear-gradient(0deg, var(--c-cyan), transparent) bottom left/2px 28px no-repeat,
+    linear-gradient(270deg, var(--c-cyan), transparent) bottom right/28px 2px no-repeat,
+    linear-gradient(0deg, var(--c-cyan), transparent) bottom right/2px 28px no-repeat;
+  opacity:.35;
+}
+
+/* 타이틀 바 */
+.panel-title{
+  margin: 0 0 1rem 0;
   font-family: 'Orbitron', sans-serif;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #00ffff;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  font-size: .95rem; font-weight: 800;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--c-cyan);
+  position: relative; padding-top: .25rem;
+}
+.panel-title::after{
+  content:"";
+  display:block; margin-top:.5rem;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(71,216,255,.9), rgba(210,75,255,.7));
+  box-shadow: 0 0 6px rgba(71,216,255,.6);
 }
 
-.profile-summary {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 1.5rem;
+/* 프로필 영역 */
+.profile-summary{
+  display:flex; flex-direction:column; align-items:center;
+  gap:.75rem; margin-bottom: .75rem;
 }
 
-.avatar-container {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  border: 2px solid #00ffff;
-  padding: 4px;
-  background-color: #0A0B17;
-  margin-bottom: 1rem;
+/* 아바타 링 + 글로우 */
+.avatar-container{
+  width:120px; height:120px; border-radius:50%;
+  padding:4px; background:#0A0B17;
+  border:1px solid var(--c-cyan-dim);
+  box-shadow:
+    0 0 10px rgba(71,216,255,.25),
+    inset 0 0 12px rgba(71,216,255,.12);
+  position:relative;
+}
+.avatar-container::after{
+  /* 얇은 진행 링 느낌(장식) */
+  content:"";
+  position:absolute; inset: -2px; border-radius:50%;
+  border:2px dashed rgba(210,75,255,.35);
+  animation: spin 8s linear infinite;
+  pointer-events:none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.avatar-image{
+  width:100%; height:100%; border-radius:50%;
+  object-fit:cover; background-color:#282a36;
+  display:block;
 }
 
-.avatar-image {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  background-color: #333;
+/* 닉네임 + 온라인 점 */
+.user-name-container{ display:flex; align-items:center; gap:.5rem; }
+.user-name{
+  font-family:'Orbitron', sans-serif;
+  font-size:1.05rem; font-weight:800; color: var(--c-text);
+  text-shadow: 0 0 6px rgba(71,216,255,.2);
+}
+.online-indicator{
+  width:9px; height:9px; border-radius:50%;
+  background:#21ff66; box-shadow: 0 0 6px #21ff66, 0 0 12px rgba(33,255,102,.4);
+  margin-bottom:2px;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse{
+  0%,100%{ transform: scale(1); opacity: .85; }
+  50%{ transform: scale(1.25); opacity: 1; }
 }
 
-.user-name-container {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+/* (선택) 스탯/XP 바가 이후 들어올 때의 기본 토큰만 유지 */
+.stats-container{
+  display:flex; justify-content:center; gap:2rem;
+  margin:1rem 0 1.25rem; text-align:center;
+}
+.stat-item{ display:flex; align-items:baseline; gap:.5rem; }
+.stat-value{
+  font-family:'Orbitron', sans-serif;
+  font-size:1.9rem; font-weight:900; color:var(--c-text); line-height:1;
+}
+.stat-label{
+  font-family:'Orbitron', sans-serif; font-size:.8rem; color: var(--c-mute);
 }
 
-.user-name {
+/* XP bar */
+.xp-bar-container{ width:100%; }
+.xp-bar{
+  width:100%; height:8px; border-radius: 6px;
+  background: rgba(0,0,0,.4);
+  border:1px solid var(--c-cyan-dim); overflow:hidden;
+  box-shadow: inset 0 0 6px rgba(0,0,0,.5);
+}
+.xp-bar-progress{
+  height:100%;
+  background: linear-gradient(90deg, var(--c-cyan), var(--c-mag));
+  box-shadow: 0 0 10px rgba(71,216,255,.45);
+}
+
+/* 로딩 상태 */
+.loading-user-info{
+  color: var(--c-mute);
   font-family: 'Orbitron', sans-serif;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #fff;
+  letter-spacing: 2px; text-transform: uppercase;
+  position: relative; padding-left: 22px;
+}
+.loading-user-info::before{
+  content:""; position:absolute; left:0; top:50%; transform:translateY(-50%);
+  width:14px; height:14px; border-radius:50%;
+  border:2px solid var(--c-cyan);
+  border-right-color: transparent;
+  animation: spin .9s linear infinite;
 }
 
-.user-name-suffix {
-  color: #ff00ff;
-}
-
-.online-indicator {
-  width: 8px;
-  height: 8px;
-  background-color: #00ff00;
-  border-radius: 50%;
-  box-shadow: 0 0 6px #00ff00;
-  margin-bottom: 2px;
-}
-
-.stats-container {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  margin-bottom: 1.5rem;
-  text-align: center;
-}
-
-.stat-item {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-
-.stat-value {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 2rem;
-  font-weight: 900;
-  color: #fff;
-  line-height: 1;
-}
-
-.stat-label {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 0.8rem;
-  color: #aaa;
-  font-weight: 400;
-}
-
-.xp-bar-container {
-  width: 100%;
-}
-
-.xp-bar {
-  width: 100%;
-  height: 8px;
-  background-color: rgba(0,0,0,0.4);
-  border-radius: 4px;
-  overflow: hidden;
-  border: 1px solid rgba(0, 255, 255, 0.2);
-}
-
-.xp-bar-progress {
-  height: 100%;
-  background: linear-gradient(90deg, #00ffff, #ff00ff);
-  border-radius: 4px;
-  box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
-}
-
-@media (max-width: 992px) {
-  .user-info-panel {
-    width: 100%;
-    position: static;
-  }
+/* 반응형 */
+@media (max-width: 992px){
+  .user-info-panel{ width:100%; position: static; margin-bottom: 1rem; }
 }

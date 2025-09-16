@@ -8,6 +8,7 @@ import { useLobbyStore } from '../store/useLobbyStore';
 import { useUserStore } from '../../../stores/useUserStore'; // useUserStore를 import 합니다.
 // import { connectWebSocket, disconnectWebSocket } from '../../../utils/websocket'; // Import WebSocket functions
 
+// 0. 로비 css 디자인
 export default function LobbyPage() {
   const fetchRooms = useLobbyStore((state) => state.fetchRooms);
   const isLoading = useLobbyStore((state) => state.isLoading);
@@ -37,11 +38,14 @@ export default function LobbyPage() {
 
   return (
     <>
+    {/* 1. 헤더 디자인 */}
       <LobbyHeader />
       <main className="app-container">
         <div className="lobby-page-wrapper">
           <div className="lobby-page-content">
+            {/* 2. 유저 정보 디자인 */}
             <UserInfo />
+            {/* 3. 방정보 디자인 */}
             <RoomList isLoading={isLoading} error={error} />
           </div>
         </div>
