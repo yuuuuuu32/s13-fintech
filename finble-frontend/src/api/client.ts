@@ -4,6 +4,19 @@ const apiClient = axios.create({
   baseURL: '/api',
 });
 
-// 향후 토큰, 에러 처리 등 공통 로직을 위한 인터셉터를 추가할 수 있습니다.
+// 요청 인터셉터 추가
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('jwt');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    console.log('Request Headers:', config.headers);
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export default apiClient;
