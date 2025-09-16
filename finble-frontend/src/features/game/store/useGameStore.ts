@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { boardData as initialBoardData } from "../data/boardData.ts";
+
 import type { GameState, Player } from "../types/gameTypes.ts";
 import { createWebSocketHandlers } from "../handlers/websocketHandlers.ts";
 import { createGameLogicHandlers } from "../handlers/gameLogicHandlers.ts";
@@ -56,6 +56,8 @@ export const useGameStore = create<GameState>()((set, get) => {
     startWorldTravelSelection: playerActions.startWorldTravelSelection,
     selectTravelDestination: playerActions.selectTravelDestination,
     buildBuilding: playerActions.buildBuilding,
+
+    
 
     // 기타 유틸리티 메서드
     handleInsufficientFundsForToll: (
