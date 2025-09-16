@@ -285,6 +285,7 @@ export const createPlayerActions = (
   },
 
   buildBuilding: (tileIndex: number) => {
+    // Optimistic update
     set((state) => {
       const { players, currentPlayerIndex, board } = state;
       const currentPlayer = players[currentPlayerIndex];
@@ -350,5 +351,18 @@ export const createPlayerActions = (
         },
       };
     });
+
+    // Send message to server to confirm the action
+    const { gameId, send, players, currentPlayerIndex } = get();
+    const currentPlayer = players[currentPlayerIndex];
+    if (gameId) {
+      send(`/app/game/${gameId}/construct-building`, {
+        type: "CONSTRUCT_BUILDING",
+        payload: {
+          userName: currentPlayer.name,
+          landNum: tileIndex,
+        },
+      });
+    }
   },
 });

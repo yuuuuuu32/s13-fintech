@@ -460,6 +460,18 @@ export function GameUI() {
         >
           {currentPlayer?.isInJail ? '무인도...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
         </Button>
+
+        {isMyTurn && gamePhase === 'TILE_ACTION' && modal.type === 'NONE' && (
+          <Button
+            variant="contained"
+            color="primary"
+            size="large"
+            onClick={endTurn}
+            sx={{ width: 250, height: 60, fontSize: '1.2rem' }}
+          >
+            턴 종료
+          </Button>
+        )}
       </Box>
       
       {gamePhase === 'WORLD_TRAVEL_MOVE' && (
