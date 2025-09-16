@@ -36,20 +36,13 @@ export const createWebSocketHandlers = (
       console.log("Received USE_DICE message:", message);
       const { payload } = message;
 
-<<<<<<< HEAD
-      const { diceNum1, diceNum2, diceNumSum, currentPosition, userName, curTurn, updatedAsset } = payload;
-=======
       const { diceNum1, diceNum2, diceNumSum, currentPosition, userName, curTurn, nextTurnUserName, updatedAsset } = payload;
->>>>>>> 7a567e5c88143d8522cf21a90ab837dbc8c56590
-
-      get().setIsDiceRolled(false);
 
       set((state) => {
         const updatedPlayers = state.players.map(player => {
           if (player.name === userName) {
             return {
               ...player,
-              position: currentPosition,
               money: updatedAsset?.money ?? player.money,
               properties: updatedAsset?.lands ?? player.properties
             };
@@ -66,12 +59,7 @@ export const createWebSocketHandlers = (
           serverDiceNum: diceNumSum,
           serverCurrentPosition: currentPosition,
           currentTurn: curTurn,
-<<<<<<< HEAD
-          gamePhase: "DICE_ROLLING",
-=======
           currentPlayerIndex: nextPlayerIndex >= 0 ? nextPlayerIndex : state.currentPlayerIndex,
-          gamePhase: "PLAYER_MOVING",
->>>>>>> 7a567e5c88143d8522cf21a90ab837dbc8c56590
         };
       });
     });
