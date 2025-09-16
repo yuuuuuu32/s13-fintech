@@ -48,7 +48,7 @@ export const createGameLogicHandlers = (
         modal: {
           type: "INFO",
           text: "세계여행! 이동할 칸을 보드에서 직접 클릭하세요.",
-          onConfirm: get().startWorldTravelSelection,
+          onConfirm: () => set({ gamePhase: "WORLD_TRAVEL_MOVE", modal: { type: "NONE" as const } }),
         },
       });
       return;
@@ -98,33 +98,80 @@ export const createGameLogicHandlers = (
   },
 
   handleTileAction: () => {
+    console.log("🎯 handleTileAction called!");
     set({ gamePhase: "TILE_ACTION" });
     const { players, currentPlayerIndex, board } = get();
     const currentPlayer = players[currentPlayerIndex];
+    console.log("🎯 Current player:", currentPlayer);
+    console.log("🎯 Current board position:", currentPlayer.position);
+    const currentTile = board[currentPlayer.position];
+    console.log("🎯 Current tile:", currentTile);
 
     if (currentPlayer.money < 0) {
-      get().checkGameOver();
+      // 직접 checkGameOver 로직 실행
+      const { players, currentTurn, totalTurns, board } = get();
+      const alivePlayers = players.filter((p) => p.money >= 0);
+
+      let winner = null;
+      if (alivePlayers.length <= 1) {
+        winner = alivePlayers[0] ?? null;
+      } else if (currentTurn > totalTurns) {
+        winner = players
+          .filter((p) => p.money >= 0)
+          .reduce((prev, current) => {
+            const prevAssets =
+              prev.money +
+              prev.properties.reduce((sum, i) => sum + (board[i].price || 0), 0);
+            const currentAssets =
+              current.money +
+              current.properties.reduce(
+                (sum, i) => sum + (board[i].price || 0),
+                0
+              );
+            return prevAssets > currentAssets ? prev : current;
+          });
+      }
+
+      if (winner || alivePlayers.length === 0 || currentTurn > totalTurns) {
+        set({
+          gamePhase: "GAME_OVER",
+          winnerId: winner?.id ?? null,
+          modal: { type: "NONE" as const },
+        });
+      }
       return;
     }
 
-    const currentTile = board[currentPlayer.position];
-
-    switch (currentTile.type) {
+    console.log("🎯 Tile type:", currentTile?.type);
+    switch (currentTile?.type) {
       case "city":
       case "company":
+      case "NORMAL":
+        console.log("🏢 Handling city/company/normal tile");
         handleCityCompanyTile(set, get, currentTile, currentPlayer, players);
         break;
 
       case "chance":
+      case "CHANCE":
+        console.log("🎲 Handling chance tile");
         handleChanceTile(set, get, currentTile, currentPlayer, chanceCards);
         break;
 
       case "special":
+      case "SPECIAL":
+      case "JAIL":
+      case "START":
+      case "AIRPLANE":
+        console.log("⭐ Handling special tile");
         handleSpecialTile(set, get, currentTile, currentPlayer, board);
         break;
 
       default:
-        get().endTurn();
+        console.log("❓ Unknown tile type or no tile, ending turn");
+        // 직접 endTurn 로직 실행
+        set({
+          modal: { type: "NONE" as const },
+        });
         break;
     }
   },

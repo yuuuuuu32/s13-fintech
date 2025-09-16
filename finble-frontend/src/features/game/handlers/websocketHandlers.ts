@@ -36,7 +36,11 @@ export const createWebSocketHandlers = (
       console.log("Received USE_DICE message:", message);
       const { payload } = message;
 
+<<<<<<< HEAD
       const { diceNum1, diceNum2, diceNumSum, currentPosition, userName, curTurn, updatedAsset } = payload;
+=======
+      const { diceNum1, diceNum2, diceNumSum, currentPosition, userName, curTurn, nextTurnUserName, updatedAsset } = payload;
+>>>>>>> 7a567e5c88143d8522cf21a90ab837dbc8c56590
 
       get().setIsDiceRolled(false);
 
@@ -53,13 +57,21 @@ export const createWebSocketHandlers = (
           return player;
         });
 
+        // nextTurnUserName으로 currentPlayerIndex 찾기
+        const nextPlayerIndex = state.players.findIndex(player => player.name === nextTurnUserName);
+
         return {
           players: updatedPlayers,
           dice: [diceNum1, diceNum2],
           serverDiceNum: diceNumSum,
           serverCurrentPosition: currentPosition,
           currentTurn: curTurn,
+<<<<<<< HEAD
           gamePhase: "DICE_ROLLING",
+=======
+          currentPlayerIndex: nextPlayerIndex >= 0 ? nextPlayerIndex : state.currentPlayerIndex,
+          gamePhase: "PLAYER_MOVING",
+>>>>>>> 7a567e5c88143d8522cf21a90ab837dbc8c56590
         };
       });
     });
