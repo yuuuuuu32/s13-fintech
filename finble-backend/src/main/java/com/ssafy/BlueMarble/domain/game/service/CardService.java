@@ -21,6 +21,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -152,7 +155,8 @@ public class CardService {
             // 즉발형 카드만 처리
             if (card.isImmediate()) {
                 String userName = player.getNickname();
-                applyInstantCardEffectFromDB(roomId, userName, card, player, gameMapState);
+                LandingResultHolder resultHolder = new LandingResultHolder();
+                applyInstantCardEffectFromDB(roomId, userName, card, player, gameMapState, resultHolder);
 
                 // 금융정책 카드가 아닌 경우만 상태 저장
                 if (!isFinancialPolicyCard(card)) {
@@ -203,22 +207,33 @@ public class CardService {
 
             Card drawnCard = availableCards.get(random.nextInt(availableCards.size()));
             CreateMapPayload.PlayerState player = gameMapState.getPlayers().get(userId);
-            
+
+            if (player == null) {
+                log.error("플레이어 상태를 찾을 수 없음: userId={}", userId);
+                return null;
+            }
+
             // 효과 적용 전 상태 저장
             int beforeMoney = player.getMoney();
             int beforePosition = player.getPosition();
             boolean beforeJail = player.isInJail();
             
+            // 이동 효과 결과를 저장할 홀더
+            LandingResultHolder resultHolder = new LandingResultHolder();
+
             // 천사카드는 DB에 없으므로 모든 카드가 즉발형 처리
-            applyInstantCardEffectFromDB(roomId, userName, drawnCard, player, gameMapState);
-            // 모든 카드 효과는 Redis에만 저장 (WebSocket으로 상태 push 안 함)
-            gameRedisService.saveGameMapState(roomId, gameMapState);
-            
+            applyInstantCardEffectFromDB(roomId, userName, drawnCard, player, gameMapState, resultHolder);
+
+            // 금융정책 카드가 아닌 경우에만 상태 저장 (금융정책 카드는 내부에서 이미 저장함)
+            if (!isFinancialPolicyCard(drawnCard)) {
+                gameRedisService.saveGameMapState(roomId, gameMapState);
+            }
+
             // 효과 적용 후 상태 확인
             int afterMoney = player.getMoney();
             int afterPosition = player.getPosition();
             boolean afterJail = player.isInJail();
-            
+
             // 변화량 계산 (금융정책 카드는 개인 변화만 추적)
             Integer moneyChange = (afterMoney != beforeMoney) ? (afterMoney - beforeMoney) : null;
             Integer newPosition = (afterPosition != beforePosition) ? afterPosition : null;
@@ -229,11 +244,22 @@ public class CardService {
             if (isFinancialPolicyCard(drawnCard)) {
                 effectDescription += " (모든 플레이어에게 적용됨)";
             }
-            
+
             log.info("카드 뽑기 성공: roomId={}, userName={}, cardName={}", roomId, userName, drawnCard.getName());
 
             // 천사카드는 DB에 없으므로 항상 false
             boolean hasAngelCard = false;
+
+            // 이동 카드로 인한 통행료 정보 설정
+            Integer tollAmount = null;
+            String landOwner = null;
+            Boolean canBuyLand = null;
+
+            if (resultHolder.result != null) {
+                tollAmount = resultHolder.result.getTollAmount() > 0 ? resultHolder.result.getTollAmount() : null;
+                landOwner = resultHolder.result.getLandOwner();
+                canBuyLand = resultHolder.result.isCanBuyLand() ? true : null;
+            }
 
             DrawCardPayload.DrawCardResult result = DrawCardPayload.DrawCardResult.builder()
                     .userName(userName)
@@ -244,6 +270,9 @@ public class CardService {
                     .jailStatus(jailStatus)
                     .effectDescription(effectDescription)
                     .isFinancialPolicy(isFinancialPolicyCard(drawnCard))
+                    .tollAmount(tollAmount)
+                    .landOwner(landOwner)
+                    .canBuyLand(canBuyLand)
                     .build();
 
             // 찬스 카드 결과 메시지 전송
@@ -278,17 +307,17 @@ public class CardService {
     }
 
     
-    private void applyInstantCardEffectFromDB(String roomId, String userName, Card card, CreateMapPayload.PlayerState player, CreateMapPayload gameMapState) {
+    private void applyInstantCardEffectFromDB(String roomId, String userName, Card card, CreateMapPayload.PlayerState player, CreateMapPayload gameMapState, LandingResultHolder resultHolder) {
         try {
             String effectType = card.getEffectType();
             Integer effectValue = card.getEffectValue();
             String description = card.getDescription();
-            
+
             if (effectType == null) {
                 log.warn("효과 타입이 없는 카드: cardName={}", card.getName());
                 return;
             }
-            
+
             switch (effectType) {
                 case "MONEY":
                     applyMoneyEffect(player, effectValue != null ? effectValue : 0);
@@ -303,11 +332,11 @@ public class CardService {
                     log.info("즉발카드 효과 적용 - 감옥: cardName={}, description={}", card.getName(), description);
                     break;
                 case "MOVE":
-                    applyPositionEffect(player, effectValue != null ? effectValue : 0);
+                    resultHolder.result = applyPositionEffect(player, effectValue != null ? effectValue : 0, gameMapState);
                     log.info("즉발카드 효과 적용 - 이동: cardName={}, steps={}, description={}", card.getName(), effectValue, description);
                     break;
                 case "POSITION":
-                    applyAbsolutePositionEffect(player, effectValue != null ? effectValue : 0);
+                    resultHolder.result = applyAbsolutePositionEffect(player, effectValue != null ? effectValue : 0, gameMapState);
                     log.info("즉발카드 효과 적용 - 위치: cardName={}, position={}, description={}", card.getName(), effectValue, description);
                     break;
                 case "ALL_MONEY_PERCENT":
@@ -321,7 +350,7 @@ public class CardService {
                 default:
                     log.warn("지원되지 않는 효과 타입: cardName={}, effectType={}", card.getName(), effectType);
             }
-            
+
         } catch (Exception e) {
             log.error("즉발카드 효과 적용 실패: cardName={}", card.getName(), e);
         }
@@ -342,7 +371,8 @@ public class CardService {
             }
 
             String userName = player.getNickname(); // PlayerState에서 nickname 추출
-            applyInstantCardEffectFromDB(roomId, userName, card, player, gameMapState);
+            LandingResultHolder resultHolder = new LandingResultHolder();
+            applyInstantCardEffectFromDB(roomId, userName, card, player, gameMapState, resultHolder);
 
             // 금융정책 카드의 경우 이미 내부에서 saveGameMapState와 WebSocket 전송 처리됨
             if (!isFinancialPolicyCard(card)) {
@@ -363,13 +393,24 @@ public class CardService {
         player.setMoney(newMoney);
     }
     
-    private void applyPositionEffect(CreateMapPayload.PlayerState player, int move) {
+    private LandingResult applyPositionEffect(CreateMapPayload.PlayerState player, int move, CreateMapPayload gameMapState) {
         int currentPosition = player.getPosition();
         int newPosition = (currentPosition + move) % 32; // 게임 보드는 32칸
         if (newPosition < 0) {
             newPosition += 32;
         }
+
+        // 시작점 통과 여부 확인 및 월급 지급
+        if (newPosition < currentPosition && move > 0) { // 시작점을 통과했는지 확인
+            player.setMoney(player.getMoney() + 1000); // 월급 지급
+            log.info("시작점 통과로 월급 지급: player={}, 월급=1000", player.getNickname());
+        }
+
+        // 위치 업데이트
         player.setPosition(newPosition);
+
+        // 도착한 땅 처리 (통행료/구매 가능 여부)
+        return handleLandingOnTile(player, newPosition, gameMapState);
     }
     
     private void applyJailEffect(String roomId, String userName) {
@@ -390,7 +431,7 @@ public class CardService {
             if (player != null) {
                 player.setInJail(true);
                 player.setJailTurns(3);
-                player.setPosition(8); // 감옥 위치 (무인도)
+                player.setPosition(8); // 감옥 위치 (MapService의 EVENT_CELLS와 일치)
                 gameRedisService.saveGameMapState(roomId, gameMapState);
                 log.info("플레이어 감옥 송치: roomId={}, userName={}", roomId, userName);
             }
@@ -407,13 +448,19 @@ public class CardService {
         player.setMoney(newMoney);
     }
     
-    private void applyAbsolutePositionEffect(CreateMapPayload.PlayerState player, int position) {
+    private LandingResult applyAbsolutePositionEffect(CreateMapPayload.PlayerState player, int position, CreateMapPayload gameMapState) {
+        // 위치 업데이트
         player.setPosition(position);
+
         // 시작점(0번)으로 이동하면 월급 지급 (EventService와 통일)
         if (position == 0) {
             int currentMoney = player.getMoney();
             player.setMoney(currentMoney + 1000); // 월급 1,000원 (EventService와 동일)
+            log.info("시작점 도착으로 월급 지급: player={}, 월급=1000", player.getNickname());
         }
+
+        // 도착한 땅 처리 (통행료/구매 가능 여부)
+        return handleLandingOnTile(player, position, gameMapState);
     }
     
     private void applyMoneyEffectFromData(CreateMapPayload.PlayerState player, String effectData) {
@@ -467,9 +514,9 @@ public class CardService {
             int steps = data.get("steps").asInt();
             
             int currentPosition = player.getPosition();
-            int newPosition = (currentPosition + steps) % 40;
+            int newPosition = (currentPosition + steps) % 32; // 32칸 맵으로 수정
             if (newPosition < 0) {
-                newPosition += 40;
+                newPosition += 32;
             }
             player.setPosition(newPosition);
         } catch (Exception e) {
@@ -585,6 +632,94 @@ public class CardService {
         return card.getCardType() == Card.CardType.FINANCIAL_POLICY;
     }
 
+    /**
+     * 도착한 땅 처리 (통행료/구매 가능 여부) - EventService 로직 참고
+     * @return LandingResult 도착 결과 정보
+     */
+    private LandingResult handleLandingOnTile(CreateMapPayload.PlayerState player, int position, CreateMapPayload gameMapState) {
+        LandingResult result = new LandingResult(0, null, false);
 
+        try {
+            if (gameMapState == null || gameMapState.getCurrentMap() == null ||
+                gameMapState.getCurrentMap().getCells() == null ||
+                position < 0 || position >= gameMapState.getCurrentMap().getCells().size()) {
+                log.warn("도착한 땅 처리 불가: 잘못된 맵 상태 또는 위치 - position={}", position);
+                return result;
+            }
+
+            var targetCell = gameMapState.getCurrentMap().getCells().get(position);
+            if (targetCell == null) {
+                log.warn("도착한 땅 정보가 없음: position={}", position);
+                return result;
+            }
+
+            String landOwner = targetCell.getOwnerName();
+
+            // 특별칸 (시작점, 찬스, 감옥, 세계여행, 싸피 특별땅)은 통행료 없음
+            if (targetCell.getType() != com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NORMAL) {
+                log.info("특별칸 도착: player={}, position={}, type={}", player.getNickname(), position, targetCell.getType());
+                return result;
+            }
+
+            if (landOwner != null && !landOwner.equals(player.getNickname())) {
+                // 다른 플레이어의 땅에 도착 - 통행료 지불
+                int tollAmount = targetCell.getToll();
+
+                if (player.getMoney() >= tollAmount) {
+                    // 통행료 지불
+                    player.setMoney(player.getMoney() - tollAmount);
+
+                    // 소유자에게 통행료 지급
+                    String ownerUserId = userRedisService.getUserIdByNickname(landOwner);
+                    if (ownerUserId != null) {
+                        CreateMapPayload.PlayerState owner = gameMapState.getPlayers().get(ownerUserId);
+                        if (owner != null) {
+                            owner.setMoney(owner.getMoney() + tollAmount);
+                            log.info("통행료 지불: player={}, owner={}, amount={}",
+                                   player.getNickname(), landOwner, tollAmount);
+                        }
+                    }
+                    result = new LandingResult(tollAmount, landOwner, false);
+                } else {
+                    // 통행료 부족 - 파산 처리 필요 (향후 구현)
+                    log.warn("통행료 부족: player={}, required={}, available={}",
+                           player.getNickname(), tollAmount, player.getMoney());
+                    result = new LandingResult(tollAmount, landOwner, false);
+                }
+            } else if (landOwner == null) {
+                // 구매 가능한 땅에 도착
+                log.info("구매 가능한 땅 도착: player={}, position={}, price={}",
+                       player.getNickname(), position, targetCell.getToll());
+                result = new LandingResult(0, null, true);
+            } else {
+                // 자신의 땅에 도착
+                log.info("자신의 땅 도착: player={}, position={}", player.getNickname(), position);
+                result = new LandingResult(0, landOwner, false);
+            }
+
+        } catch (Exception e) {
+            log.error("도착한 땅 처리 중 오류: player={}, position={}", player.getNickname(), position, e);
+        }
+
+        return result;
+    }
+
+    /**
+     * 땅 도착 결과 정보
+     */
+    @Data
+    @AllArgsConstructor
+    private static class LandingResult {
+        private int tollAmount;      // 지불한 통행료
+        private String landOwner;    // 땅 주인
+        private boolean canBuyLand;  // 구매 가능 여부
+    }
+
+    /**
+     * 이동 효과 결과를 전달하기 위한 홀더 클래스 (Thread-safe)
+     */
+    private static class LandingResultHolder {
+        LandingResult result;
+    }
 
 }

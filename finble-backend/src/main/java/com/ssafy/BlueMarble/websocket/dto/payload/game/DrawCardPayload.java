@@ -8,7 +8,7 @@ import lombok.Data;
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DrawCardPayload {
-    
+
     private String userName;
     private DrawCardResult result;
     
@@ -24,5 +24,10 @@ public class DrawCardPayload {
         private Boolean jailStatus;
         private String effectDescription;
         private Boolean isFinancialPolicy; // 금융정책 카드 여부
+
+        // 이동 카드로 인한 통행료 정보
+        private Integer tollAmount; // 지불한 통행료
+        private String landOwner; // 땅 주인
+        private Boolean canBuyLand; // 구매 가능한 땅 여부
     }
 }
