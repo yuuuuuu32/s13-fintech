@@ -3,6 +3,7 @@ INSERT
 IGNORE INTO tiles
 (name, type, land_price, house_price, building_price, hotel_price, description) VALUES
 
+('신안', 'NORMAL', 40, 10, 25, 40, '일반 도시');
 ('익산', 'NORMAL', 50, 20, 35, 50, '일반 도시'),
 ('순천', 'NORMAL', 60, 25, 40, 60, '일반 도시'),
 ('아산', 'NORMAL', 70, 28, 48, 70, '일반 도시'),
