@@ -19,9 +19,9 @@ public enum MessageType {
     START_GAME,
     START_GAME_OBSERVE,
     GAME_STATE_CHANGE,
-    ROLE_ASSIGNMENT,
     GAME_RETIRED,
     GAME_END,
+    TURN_SKIP,
 
     // 게임 로직 관련
     TRADE_LAND,
