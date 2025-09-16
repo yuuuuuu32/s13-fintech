@@ -36,7 +36,7 @@ export const createWebSocketHandlers = (
       console.log("Received USE_DICE message:", message);
       const { payload } = message;
 
-      const { diceNum1, diceNum2, diceNumSum, currentPosition, userName, curTurn, currentPlayerIndex, updatedAsset } = payload;
+      const { diceNum1, diceNum2, diceNumSum, currentPosition, userName, curTurn, updatedAsset } = payload;
 
       get().setIsDiceRolled(false);
 
@@ -46,8 +46,8 @@ export const createWebSocketHandlers = (
             return {
               ...player,
               position: currentPosition,
-              money: updatedAsset?.money || player.money,
-              properties: updatedAsset?.lands || player.properties
+              money: updatedAsset?.money ?? player.money,
+              properties: updatedAsset?.lands ?? player.properties
             };
           }
           return player;
@@ -59,7 +59,6 @@ export const createWebSocketHandlers = (
           serverDiceNum: diceNumSum,
           serverCurrentPosition: currentPosition,
           currentTurn: curTurn,
-          currentPlayerIndex: currentPlayerIndex,
           gamePhase: "DICE_ROLLING",
         };
       });
@@ -94,7 +93,7 @@ export const createWebSocketHandlers = (
           id: serverPlayer.userId,
           name: serverPlayer.nickname,
           money: serverPlayer.money,
-          position: serverPlayer.position,
+          position: 0, // 모든 플레이어를 시작 위치로 설정
           properties: serverPlayer.ownedProperties || [],
           isInJail: serverPlayer.inJail,
           jailTurns: serverPlayer.jailTurns,
@@ -113,7 +112,7 @@ export const createWebSocketHandlers = (
 
     const mappedState = {
       gameId: initialState.roomId,
-      board: initialState.currentMap.cells.map(
+                  board: initialState.currentMap.cells.map(
         (cell) => cell || { name: "빈칸", type: "special" as const }
       ),
       players: playersArray,

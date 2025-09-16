@@ -264,7 +264,7 @@ export function GameUI() {
           disabled={gamePhase !== 'WAITING_FOR_ROLL' || !isMyTurn}
           sx={{ width: 250, height: 60, fontSize: '1.2rem' }}
         >
-          {currentPlayer.isInJail ? '무인도...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
+          {currentPlayer ? (currentPlayer.isInJail ? '무인도...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')) : '로딩...'}
         </Button>
       </Box>
       

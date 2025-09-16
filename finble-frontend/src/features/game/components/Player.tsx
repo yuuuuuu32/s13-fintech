@@ -7,34 +7,29 @@ import { useFrame } from '@react-three/fiber'
 
 
 const getTilePosition = (index: number): [number, number, number] => {
-  const TILES_PER_SIDE = 8;
-  const TILE_WIDTH = 4;
-  const HALF_BOARD_WIDTH = (TILES_PER_SIDE * TILE_WIDTH) / 2 - TILE_WIDTH / 2;
+  const TILE_WIDTH = 3;
+  const TILES_PER_SIDE = 8; // Corner to corner
+  const HALF_BOARD_WIDTH = TILES_PER_SIDE * TILE_WIDTH / 2; // 12
 
   const position: [number, number, number] = [0, 0, 0];
-  const side = Math.floor(index / TILES_PER_SIDE);
-  const indexOnSide = index % TILES_PER_SIDE;
 
-  switch (side) {
-    case 0:
-      position[0] = HALF_BOARD_WIDTH - indexOnSide * TILE_WIDTH;
-      position[2] = HALF_BOARD_WIDTH;
-      break
-    case 1:
-      position[0] = -HALF_BOARD_WIDTH;
-      position[2] = HALF_BOARD_WIDTH - indexOnSide * TILE_WIDTH;
-      break
-    case 2:
-      position[0] = -HALF_BOARD_WIDTH + indexOnSide * TILE_WIDTH;
-      position[2] = -HALF_BOARD_WIDTH;
-      break
-    case 3:
-      position[0] = HALF_BOARD_WIDTH;
-      position[2] = -HALF_BOARD_WIDTH + indexOnSide * TILE_WIDTH;
-      break
+  if (index >= 0 && index <= 8) { // Bottom row (moves left)
+    position[0] = HALF_BOARD_WIDTH - index * TILE_WIDTH;
+    position[2] = -HALF_BOARD_WIDTH;
+  } else if (index > 8 && index <= 16) { // Left column (moves up)
+    position[0] = -HALF_BOARD_WIDTH;
+    position[2] = -HALF_BOARD_WIDTH + (index - 8) * TILE_WIDTH;
+  } else if (index > 16 && index <= 24) { // Top row (moves right)
+    position[0] = -HALF_BOARD_WIDTH + (index - 16) * TILE_WIDTH;
+    position[2] = HALF_BOARD_WIDTH;
+  } else if (index > 24 && index <= 31) { // Right column (moves down)
+    position[0] = HALF_BOARD_WIDTH;
+    position[2] = HALF_BOARD_WIDTH - (index - 24) * TILE_WIDTH;
   }
-  return [position[0], 0.5, position[2]];
-}
+
+  position[1] = 0.5; // Set Y position to be above the board
+  return position;
+};
 
 const calculatePath = (start: number, end: number, diceSum: number, boardLength: number): [number, number, number][] => {
   const path: [number, number, number][] = [];
@@ -86,7 +81,9 @@ export function Player({ player }: PlayerProps) {
 
     // Only animate if the player's position has actually changed in the state
     if (player.position !== prevPositionRef.current) {
+      console.log(`Player ${player.id}: Position changed from ${prevPositionRef.current} to ${player.position}. Game Phase: ${gamePhase}`);
       if (isMyTurn && gamePhase === 'PLAYER_MOVING') {
+        console.log(`Player ${player.id}: Triggering step-by-step animation.`);
         // This is a dice roll move, animate step-by-step
         const diceSum = dice[0] + dice[1];
         const path = calculatePath(prevPositionRef.current, player.position, diceSum, boardLength);
@@ -109,6 +106,7 @@ export function Player({ player }: PlayerProps) {
           }
         });
       } else {
+        console.log(`Player ${player.id}: Teleporting to ${targetPosition} because gamePhase is ${gamePhase} and player.position changed.`);
         // This is a non-animated position change (e.g., teleport from chance card, world travel, or other player's move)
         // Directly set the spring's value to the new position.
         api.set({ position: targetPosition });
