@@ -302,12 +302,13 @@ public class EventService {
         gameRedisService.saveGameMapState(roomId, gameState);
         
         // 10. 결과 메시지 전송
+        String nextTurnUserName = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
         UseDicePayload payload = UseDicePayload.builder()
                 .userName(useDiceRequest.getUserName())
                 .diceNum1(diceNum1)
                 .diceNum2(diceNum2)
                 .curTurn(gameState.getGameTurn())
-                .currentPlayerIndex(gameState.getCurrentPlayerIndex())
+                .nextTurnUserName(nextTurnUserName)
                 .diceNumSum(diceNumSum)
                 .currentPosition(newPosition)
                 .salaryBonus(salaryBonus)
