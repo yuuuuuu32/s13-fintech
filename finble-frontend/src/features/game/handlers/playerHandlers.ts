@@ -143,7 +143,7 @@ export const createPlayerActions = (
           modal: {
             type: "INFO" as const,
             text: "무인도에서 탈출했습니다! 다음 턴부터 정상 진행됩니다.",
-            onConfirm: get().endTurn,
+            onConfirm: () => set({ modal: { type: "NONE" as const } }),
           },
         };
       } else {
@@ -156,7 +156,7 @@ export const createPlayerActions = (
           modal: {
             type: "INFO" as const,
             text: `무인도 탈출까지 ${newJailTurns}턴 남았습니다.`,
-            onConfirm: get().endTurn,
+            onConfirm: () => set({ modal: { type: "NONE" as const } }),
           },
         };
       }
@@ -193,7 +193,7 @@ export const createPlayerActions = (
         text: `${
           get().board[propertyIndex].name
         }에서 박람회가 개최되어 통행료가 2배가 됩니다!`,
-        onConfirm: get().endTurn,
+        onConfirm: () => set({ modal: { type: "NONE" as const } }),
       },
     });
   },
@@ -231,7 +231,7 @@ export const createPlayerActions = (
           modal: {
             type: "INFO" as const,
             text: "더 이상 건물을 지을 수 없습니다.",
-            onConfirm: get().endTurn,
+            onConfirm: () => set({ modal: { type: "NONE" as const } }),
           },
         };
       }
@@ -241,7 +241,7 @@ export const createPlayerActions = (
           modal: {
             type: "INFO" as const,
             text: "건설 비용이 부족합니다.",
-            onConfirm: get().endTurn,
+            onConfirm: () => set({ modal: { type: "NONE" as const } }),
           },
         };
       }
@@ -253,7 +253,7 @@ export const createPlayerActions = (
             text: `건설에 필요한 바퀴 수(${
               tile.buildings.level + 1
             }바퀴)가 부족합니다.`,
-            onConfirm: get().endTurn,
+            onConfirm: () => set({ modal: { type: "NONE" as const } }),
           },
         };
       }
@@ -282,7 +282,7 @@ export const createPlayerActions = (
           text: `${tile.name}에 ${
             BuildingType[newBoard[tileIndex].buildings!.level]
           }을(를) 건설했습니다!`,
-          onConfirm: get().endTurn,
+          onConfirm: () => set({ modal: { type: "NONE" as const } }),
         },
       };
     });
