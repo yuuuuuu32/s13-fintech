@@ -20,15 +20,15 @@ public class kakaoAuthService {
     private final KakaoRepository kakaoRepository;
 
 //    @Value("${KAKAO_AUTHORIZE_URL}")
-    private String kakaoAuthorUrl = "http://localhost:8081/auth/kakao/callback";
+    private String kakaoAuthorUrl = "https://kauth.kakao.com/oauth/authorize";
 
 //    @Value("${KAKAO_TOKEN_URL}")
-    private String kakaoTokenUrl = "http://localhost:8081/auth/kakao/token";
+    private String kakaoTokenUrl = "https://kauth.kakao.com/oauth/token";
 
     private final RestTemplate restTemplate;
 
 //    @Value("${KAKAO_REDIRECT_URI}")
-    private String kakaoRedirectUri = "http://localhost:8081/auth/kakao/oauth/authorize";
+    private String kakaoRedirectUri = "http://localhost:8081/auth/kakao/callback";
 
 
 //    @Value("${KAKAO_REST_API_KEY}")

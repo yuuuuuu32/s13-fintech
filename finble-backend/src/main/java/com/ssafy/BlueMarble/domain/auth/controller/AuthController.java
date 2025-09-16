@@ -42,7 +42,7 @@ public class AuthController {
         return new KakaoAuthCodeResponse(authorizationUrl);
     }
 
-    @GetMapping("/callback")
+    @GetMapping("/kakao/callback")
     public String kakaoCallback(
             @RequestParam("code") String code,
             @RequestParam(value = "state", required = false) String state) {
