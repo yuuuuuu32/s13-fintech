@@ -1,25 +1,25 @@
-/* ===== LobbyPage.css — Cyberpunk Layout (JSX 변경 없음) ===== */
+/* ===== LobbyPage.css — Cyberpunk Layout (final) ===== */
 
 /* ---- Theme tokens ---- */
 :root{
-  --page-max: 1400px;        /* 헤더와 동일한 중앙 폭 */
-  --gap: 2rem;               /* 그리드 간격 */
-  --left-col: 320px;         /* UserInfo 패널 예상 폭(280 + 여백) */
+  --page-max: 1400px;
+  --gap: 2rem;
+  --left-col: 320px;                    /* 좌측 UserInfo 폭 */
   --panel-bg: rgba(16,18,35,.86);
-  --panel-border: rgba(71,216,255,.35);   /* 시안 네온 외곽 */
+  --panel-border: rgba(71,216,255,.35);
   --panel-cyan: #47d8ff;
   --panel-mag:  #d24bff;
   --vignette: rgba(0,0,0,.65);
 }
 
-/* --- 다른 페이지에 영향을 주던 app-container 스타일 덮어쓰기 --- */
+/* 다른 페이지 영향 제거 */
 .app-container{
   max-width: none;
   padding: 0;
   margin: 0;
 }
 
-/* --- 페이지 전체 래퍼 + 배경 --- */
+/* --- 페이지 배경 --- */
 .lobby-page-wrapper {
   width: 100%;
   min-height: 100vh;
@@ -33,7 +33,7 @@
   overflow: hidden;
 }
 
-/* 레트로 HUD 스캔라인 질감 */
+/* 스캔라인 오버레이 */
 .lobby-page-wrapper::after{
   content:"";
   position:absolute; inset:0;
@@ -50,10 +50,10 @@
   z-index: 0;
 }
 
-/* --- 메인 컨테이너: 중앙 정렬 + 그리드 --- */
+/* --- 중앙 그리드 --- */
 .lobby-page-content{
   position: relative;
-  z-index: 1;                /* 배경 오버레이 위 */
+  z-index: 1;
   width: 100%;
   max-width: var(--page-max);
   margin: 0 auto;
@@ -61,73 +61,30 @@
   box-sizing: border-box;
 
   display: grid;
-  grid-template-columns: var(--left-col) 1fr; /* 고정 좌측 + 가변 우측 */
+  grid-template-columns: var(--left-col) 1fr;  /* 좌: UserInfo / 우: Rooms */
   grid-template-rows: minmax(0,1fr);
   gap: var(--gap);
+  align-items: stretch;                        /* 같은 높이 */
 }
 
-/* 오른쪽 “네온 보드” 패널(RoomList 뒤에 깔리는 프레임) */
-.lobby-page-content::after{
-  content:"";
-  position:absolute;
-  top: calc(2rem - 8px);                 /* 상단 여백 살짝 */
-  left: calc(2rem + var(--left-col) + var(--gap));
-  right: 2rem;
-  bottom: 2rem;
-  border-radius: 12px;
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  box-shadow:
-    0 16px 40px rgba(0,0,0,.45),
-    inset 0 0 10px rgba(71,216,255,.08);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  z-index: 0;                             /* 콘텐츠 뒤쪽 */
-  pointer-events: none;
-}
-
-/* 네온 보드 상단 라인(시안→마젠타 그라데이션) */
-.lobby-page-content::before{
-  content:"";
-  position:absolute;
-  height: 2px;
-  left: calc(2rem + var(--left-col) + var(--gap) + 16px);
-  right: calc(2rem + 16px);
-  top: calc(2rem + 14px);
-  background: linear-gradient(90deg,
-    rgba(71,216,255,.95),
-    rgba(210,75,255,.85));
-  box-shadow: 0 0 8px rgba(71,216,255,.6);
-  z-index: 0;
-  pointer-events:none;
-}
-
-/* 그리드 안의 실제 컴포넌트들이 보드 위로 올라오게 */
+/* 자식 스택 안전 */
 .lobby-page-content > *{
   position: relative;
   z-index: 1;
 }
 
-
 /* ---- 반응형 ---- */
 @media (max-width: 1200px){
   :root{ --left-col: 300px; }
 }
-
 @media (max-width: 992px){
   .lobby-page-content{
-    grid-template-columns: 1fr;   /* 세로 스택 */
+    grid-template-columns: 1fr;
     grid-template-rows: auto auto;
     gap: 1.25rem;
     padding: 1rem;
   }
-  /* 모바일에서는 보드 프레임 제거 (공간 절약) */
-  .lobby-page-content::after,
-  .lobby-page-content::before{ content:none; }
 }
-
 @media (max-width: 640px){
-  .lobby-page-wrapper{
-    background-attachment: scroll; /* 모바일 성능 최적화 */
-  }
+  .lobby-page-wrapper{ background-attachment: scroll; }
 }

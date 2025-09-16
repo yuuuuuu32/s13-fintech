@@ -44,7 +44,6 @@
 .player-card {
   padding: 2rem;
   background-color: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
   text-align: center;
   font-size: 1.2rem;
   border: 1px solid rgba(0, 255, 255, 0.2);
@@ -61,7 +60,6 @@
   font-size: 1.5rem;
   font-weight: bold;
   border: none;
-  border-radius: 5px;
   cursor: pointer;
   transition: background-color 0.3s ease;
 }

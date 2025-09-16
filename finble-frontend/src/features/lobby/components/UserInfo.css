@@ -8,7 +8,6 @@
   --retro-mag: #d24bff;            /* 마젠타 보조 */
   --retro-text: #eaf6ff;
   --retro-mute: #a8b2bf;
-  --radius: 8px;
 }
 
 /* 패널: 두꺼운 베젤 + 내부 네온 라인 */
@@ -18,7 +17,6 @@
   padding: 1rem 1.25rem 1.25rem;
   background: var(--retro-bg);
   color: var(--retro-text);
-  border-radius: 0;
   border: 2px solid var(--retro-border);                 /* 바깥 밝은 보더 */
   box-shadow:
     0 10px 24px rgba(0,0,0,.45),                         /* 외부 그림자 */
@@ -36,32 +34,27 @@
   isolation: isolate;
 }
 
-/* 내부 시안 라인 프레임(얇은 테두리) */
-.user-info-panel::after{
-  content:"";
-  position:absolute; inset: 10px; border-radius: 4px;
-  border: 1px solid var(--retro-cyan-dim);
-  pointer-events:none;
-}
-
 /* 타이틀 바: 레트로 창 헤더 */
 .panel-title{
-  display:block;
+  display:flex; 
+  align-items: center;  
+  min-height: 40px; 
   margin: -1rem -1.25rem 1rem;                 /* 패널 패딩을 넘어 맞붙게 */
   padding: .6rem 1rem;
   background: linear-gradient(#2b3641, #222b36);
   color: var(--retro-cyan);
   font-family: 'VT323','Press Start 2P','Orbitron', monospace;
-  font-size: 0.95rem;
+  font-size: 1rem;
   letter-spacing: 2px;
   text-transform: uppercase;
   font-weight: 800;
   border-top-left-radius: calc(var(--radius) - 2px);
   border-top-right-radius: calc(var(--radius) - 2px);
-  border-bottom: 2px solid rgba(127,231,255,.5);        /* 시안 하단 라인 */
+  border-bottom: 2px solid rgba(127,231,255,.55);        /* 시안 하단 라인 */
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.15),
     0 2px 0 rgba(0,0,0,.5);
+    
 }
 
 /* 아바타 + 텍스트를 좌측 정렬 그리드로 (레퍼런스처럼) */
