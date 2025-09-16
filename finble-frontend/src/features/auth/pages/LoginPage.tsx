@@ -84,14 +84,9 @@ export default function LoginPage() {
       console.error('Backend login error:', error);
       setIsLoggingIn(false);
       setLoginProvider(null);
-
-      // Check if it's a 500 error, likely due to nickname constraint
-      if (error.response && error.response.status === 500) {
-        setErrorMessage('닉네임 설정이 필요합니다. 닉네임을 입력해주세요.');
-        setIsModalOpen(true); // Show nickname modal
-      } else {
-        setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
-      }
+      
+      // 500 에러를 닉네임 문제로 단정하지 않고, 일반적인 로그인 실패로 처리합니다.
+      setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
     }
   };
 

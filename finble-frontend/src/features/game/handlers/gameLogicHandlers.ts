@@ -54,6 +54,8 @@ export const createGameLogicHandlers = (
       return;
     }
 
+    set({ gamePhase: "DICE_ROLLING" });
+
     if (gameId) {
       send(`/app/game/${gameId}/roll-dice`, {
         type: "USE_DICE",
@@ -63,7 +65,6 @@ export const createGameLogicHandlers = (
       });
     } else {
       console.warn("Game ID not set. Cannot send roll dice message.");
-      set({ gamePhase: "DICE_ROLLING" });
     }
   },
 
@@ -179,6 +180,8 @@ export const createGameLogicHandlers = (
   endTurn: () => {
     set({
       modal: { type: "NONE" as const },
+      gamePhase: "WAITING_FOR_ROLL",
+      isDiceRolled: false,
     });
   },
 

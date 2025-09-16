@@ -8,37 +8,37 @@ import { SpecialTile } from './tiles/SpecialTile';
 
 const getPosition = (index: number): [number, number, number] => {
   const TILE_WIDTH = 3;
-  const TILES_PER_SIDE = 9;
-  const HALF_BOARD_WIDTH = (TILES_PER_SIDE - 1) * TILE_WIDTH / 2;
+  const TILES_PER_SIDE = 8; // Corner to corner
+  const HALF_BOARD_WIDTH = TILES_PER_SIDE * TILE_WIDTH / 2; // 12
 
   const position: [number, number, number] = [0, 0, 0];
 
-  if (index >= 0 && index <= 8) { // Top row
-    position[0] = -HALF_BOARD_WIDTH + index * TILE_WIDTH;
-    position[2] = HALF_BOARD_WIDTH;
-  } else if (index >= 9 && index <= 15) { // Right column
-    position[0] = HALF_BOARD_WIDTH;
-    position[2] = HALF_BOARD_WIDTH - (index - 8) * TILE_WIDTH;
-  } else if (index >= 16 && index <= 24) { // Bottom row
-    position[0] = HALF_BOARD_WIDTH - (index - 16) * TILE_WIDTH;
+  if (index >= 0 && index <= 8) { // Bottom row (moves left)
+    position[0] = HALF_BOARD_WIDTH - index * TILE_WIDTH;
     position[2] = -HALF_BOARD_WIDTH;
-  } else if (index >= 25 && index <= 31) { // Left column
+  } else if (index > 8 && index <= 16) { // Left column (moves up)
     position[0] = -HALF_BOARD_WIDTH;
-    position[2] = -HALF_BOARD_WIDTH + (index - 24) * TILE_WIDTH;
+    position[2] = -HALF_BOARD_WIDTH + (index - 8) * TILE_WIDTH;
+  } else if (index > 16 && index <= 24) { // Top row (moves right)
+    position[0] = -HALF_BOARD_WIDTH + (index - 16) * TILE_WIDTH;
+    position[2] = HALF_BOARD_WIDTH;
+  } else if (index > 24 && index <= 31) { // Right column (moves down)
+    position[0] = HALF_BOARD_WIDTH;
+    position[2] = HALF_BOARD_WIDTH - (index - 24) * TILE_WIDTH;
   }
 
   return position;
 };
 
 const getTextRotationY = (index: number): number => {
-  if (index >= 0 && index <= 8) { // Top row
-    return Math.PI;
-  } else if (index >= 9 && index <= 15) { // Right column
-    return -Math.PI / 2;
-  } else if (index >= 16 && index <= 24) { // Bottom row
+  if (index >= 0 && index <= 8) { // Bottom row
     return 0;
-  } else if (index >= 25 && index <= 31) { // Left column
+  } else if (index > 8 && index <= 16) { // Left column
     return Math.PI / 2;
+  } else if (index > 16 && index <= 24) { // Top row
+    return Math.PI;
+  } else if (index > 24 && index <= 31) { // Right column
+    return -Math.PI / 2;
   }
   return 0;
 };

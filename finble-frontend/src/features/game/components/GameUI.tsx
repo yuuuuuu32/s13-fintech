@@ -332,8 +332,30 @@ export function GameUI() {
   const [gauge, setGauge] = useState(0);
   const gaugeRef = useRef<number | null>(null);
   const [isCharging, setIsCharging] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(30);
 
-  
+  const winner = winnerId ? players.find(p => p.id === winnerId) : null;
+  const isGameOver = gamePhase === 'GAME_OVER';
+  const currentPlayer = players[currentPlayerIndex];
+  const isMyTurn = currentPlayer?.id === userInfo?.userId;
+
+  useEffect(() => {
+    if (isMyTurn) {
+      setTimeLeft(30);
+      const timer = setInterval(() => {
+        setTimeLeft(prevTime => {
+          if (prevTime <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prevTime - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    } else {
+      setTimeLeft(30); // Reset for others as well
+    }
+  }, [isMyTurn, currentPlayerIndex]); // Depend on isMyTurn and currentPlayerIndex
 
   useEffect(() => {
     return () => {
@@ -372,11 +394,6 @@ export function GameUI() {
     navigate('/lobby');
   };
   
-  const winner = winnerId ? players.find(p => p.id === winnerId) : null;
-  const isGameOver = gamePhase === 'GAME_OVER';
-  const currentPlayer = players[currentPlayerIndex];
-  const isMyTurn = currentPlayer?.id === userInfo?.userId;
-
   const modalStyle = {
     position: 'absolute' as const,
     top: '50%',
@@ -396,6 +413,7 @@ export function GameUI() {
     <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', color: 'white', fontFamily: 'Arial, sans-serif', zIndex: 999 }}>
       <Box sx={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', p: '10px 20px', bgcolor: 'rgba(0,0,0,0.7)', borderRadius: '10px' }}>
         <Typography variant="h5" fontWeight="bold">{currentTurn} / {totalTurns} 턴</Typography>
+        {isMyTurn && timeLeft > 5 && <Typography variant="h6">남은 시간: {timeLeft}초</Typography>}
       </Box>
 
       <Grid container spacing={2} sx={{ p: 2, pointerEvents: 'all' }}>

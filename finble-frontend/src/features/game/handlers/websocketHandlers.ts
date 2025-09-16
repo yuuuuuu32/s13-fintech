@@ -12,7 +12,25 @@ export const createWebSocketHandlers = (
 
     subscribeToTopic("GAME_STATE_CHANGE", (message) => {
       console.log("Received game update (GAME_STATE_CHANGE):", message);
-      get().updateGameState(message.payload);
+      const { payload } = message;
+
+      // If the payload has curPlayer, it's likely a turn change from the timer
+      if (payload.curPlayer) {
+        set((state) => {
+          const nextPlayerIndex = state.players.findIndex(p => p.name === payload.curPlayer);
+          if (nextPlayerIndex !== -1) {
+            return {
+              currentPlayerIndex: nextPlayerIndex,
+              currentTurn: payload.gameTurn ?? state.currentTurn,
+              gamePhase: "WAITING_FOR_ROLL",
+            };
+          }
+          return {}; // No change if player not found
+        });
+      } else {
+        // Handle other generic game state updates
+        get().updateGameState(payload);
+      }
     });
 
     subscribeToTopic("START_GAME_OBSERVE", (message) => {
@@ -27,7 +45,8 @@ export const createWebSocketHandlers = (
         set({
           currentPlayerIndex: payload.currentPlayerIndex,
           currentTurn: payload.currentTurn || get().currentTurn,
-          gamePhase: "WAITING_FOR_ROLL"
+          gamePhase: "WAITING_FOR_ROLL",
+          isDiceRolled: false, // Reset for the next turn
         });
       }
     });
@@ -36,36 +55,42 @@ export const createWebSocketHandlers = (
       console.log("Received USE_DICE message:", message);
       const { payload } = message;
 
-      const { diceNum1, diceNum2, diceNumSum, currentPosition, userName, curTurn, nextTurnUserName, updatedAsset } = payload;
+      const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn } = payload;
 
-      get().setIsDiceRolled(false);
-
-      set((state) => {
-        const updatedPlayers = state.players.map(player => {
-          if (player.name === userName) {
-            return {
-              ...player,
-              position: currentPosition,
-              money: updatedAsset?.money || player.money,
-              properties: updatedAsset?.lands || player.properties
-            };
-          }
-          return player;
-        });
-
-        // nextTurnUserName으로 currentPlayerIndex 찾기
-        const nextPlayerIndex = state.players.findIndex(player => player.name === nextTurnUserName);
-
+      set(() => {
         return {
-          players: updatedPlayers,
           dice: [diceNum1, diceNum2],
           serverDiceNum: diceNumSum,
           serverCurrentPosition: currentPosition,
           currentTurn: curTurn,
-          currentPlayerIndex: nextPlayerIndex >= 0 ? nextPlayerIndex : state.currentPlayerIndex,
-          gamePhase: "PLAYER_MOVING",
+          gamePhase: "DICE_ROLLING", // Trigger animation for all clients
         };
       });
+    });
+
+    subscribeToTopic("TRADE_LAND", (message) => {
+      console.log("Received TRADE_LAND message:", message);
+      const { payload } = message;
+      if (payload.players) {
+        const serverPlayersMap = payload.players;
+        set((state) => {
+          const updatedPlayers = state.players.map(clientPlayer => {
+            const serverPlayerState = serverPlayersMap[clientPlayer.id];
+            if (serverPlayerState) {
+              return {
+                ...clientPlayer,
+                money: serverPlayerState.money,
+                properties: serverPlayerState.ownedProperties || [],
+                position: serverPlayerState.position,
+                isInJail: serverPlayerState.inJail,
+                jailTurns: serverPlayerState.jailTurns,
+              };
+            }
+            return clientPlayer;
+          });
+          return { players: updatedPlayers };
+        });
+      }
     });
   },
 
@@ -97,7 +122,7 @@ export const createWebSocketHandlers = (
           id: serverPlayer.userId,
           name: serverPlayer.nickname,
           money: serverPlayer.money,
-          position: serverPlayer.position,
+          position: serverPlayer.position, // 서버에서 받은 위치 값 사용
           properties: serverPlayer.ownedProperties || [],
           isInJail: serverPlayer.inJail,
           jailTurns: serverPlayer.jailTurns,
@@ -116,7 +141,7 @@ export const createWebSocketHandlers = (
 
     const mappedState = {
       gameId: initialState.roomId,
-      board: initialState.currentMap.cells.map(
+                  board: initialState.currentMap.cells.map(
         (cell) => cell || { name: "빈칸", type: "special" as const }
       ),
       players: playersArray,

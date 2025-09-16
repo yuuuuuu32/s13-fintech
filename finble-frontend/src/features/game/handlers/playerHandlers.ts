@@ -31,54 +31,67 @@ export const createPlayerActions = (
   },
 
   buyPropertyWithItems: (purchaseData: { selectedItems: any; totalCost: number; tile: any }) => {
+    const { gameId, send, players, currentPlayerIndex, board } = get();
+    const currentPlayer = players[currentPlayerIndex];
+
+    // 1. Check for funds (client-side check)
+    if (currentPlayer.money < purchaseData.totalCost) {
+      set({ modal: { type: "INFO" as const, text: "자산이 부족하여 구매할 수 없습니다." } });
+      return;
+    }
+
+    const tileIndex = board.findIndex((t) => t.name === purchaseData.tile?.name);
+    if (tileIndex === -1) {
+      console.error("Could not find tile to buy:", purchaseData.tile?.name);
+      return;
+    }
+
+    // 2. Perform optimistic update on the client
     set((state) => {
-      const { players, currentPlayerIndex, board } = state;
-      const tileIndex = board.findIndex((t) => t.name === purchaseData.tile?.name);
-      if (tileIndex === -1) return {};
+      const updatedPlayers = [...state.players];
+      const playerToUpdate = updatedPlayers[state.currentPlayerIndex];
 
-      const currentPlayer = players[currentPlayerIndex];
-      if (currentPlayer.money >= purchaseData.totalCost) {
-        const updatedPlayers = [...players];
+      updatedPlayers[state.currentPlayerIndex] = {
+        ...playerToUpdate,
+        money: playerToUpdate.money - purchaseData.totalCost,
+        properties: [...playerToUpdate.properties, tileIndex],
+      };
 
-        // 구매한 건물 레벨 계산 (땅 + 선택된 건물들)
-        let buildingLevel = 0;
-        if (purchaseData.selectedItems.house) buildingLevel = 1;
-        if (purchaseData.selectedItems.building) buildingLevel = 2;
-        if (purchaseData.selectedItems.hotel) buildingLevel = 3;
+      // Also update building level on the board optimistically if needed
+      const updatedBoard = [...state.board];
+      let buildingLevel = 0;
+      if (purchaseData.selectedItems.house) buildingLevel = 1;
+      if (purchaseData.selectedItems.building) buildingLevel = 2;
+      if (purchaseData.selectedItems.hotel) buildingLevel = 3;
 
-        // 땅을 구매했을 때만 properties에 추가하고 건물도 지을 수 있음
-        if (purchaseData.selectedItems.land) {
-          updatedPlayers[currentPlayerIndex] = {
-            ...currentPlayer,
-            money: currentPlayer.money - purchaseData.totalCost,
-            properties: [...currentPlayer.properties, tileIndex],
-          };
-
-          // 땅을 구매했을 때만 보드의 해당 타일에 건물 정보 업데이트
-          const updatedBoard = [...board];
-          if (updatedBoard[tileIndex]) {
-            updatedBoard[tileIndex] = {
-              ...updatedBoard[tileIndex],
-              buildings: { level: buildingLevel as 0 | 1 | 2 | 3 }
-            };
-          }
-
-          return {
-            players: updatedPlayers,
-            board: updatedBoard,
-            modal: { type: "NONE" as const }
-          };
-        } else {
-          // 땅을 구매하지 않았다면 아무 것도 하지 않음 (건물만 구매는 불가)
-          return {
-            modal: { type: "NONE" as const }
-          };
-        }
+      if (updatedBoard[tileIndex] && buildingLevel > 0) {
+        updatedBoard[tileIndex] = {
+          ...updatedBoard[tileIndex],
+          buildings: { level: buildingLevel as 0 | 1 | 2 | 3 },
+        };
       }
+
       return {
-        modal: { type: "INFO" as const, text: "자산이 부족하여 구매할 수 없습니다." },
+        players: updatedPlayers,
+        board: updatedBoard,
+        modal: { type: "NONE" as const },
       };
     });
+
+    // 3. Send message to the server to make the change permanent
+    if (gameId) {
+      send(`/app/game/${gameId}/trade-land`, { // Destination is ignored but good for logging
+        type: "TRADE_LAND",
+        payload: {
+          buyerName: currentPlayer.name,
+          landNum: tileIndex,
+          // Sending building info might be necessary, but API spec is unclear
+          // buildingLevel: buildingLevel, 
+        },
+      });
+    } else {
+      console.error("Cannot sync property purchase, gameId is not set");
+    }
   },
 
   acquireProperty: () => {
