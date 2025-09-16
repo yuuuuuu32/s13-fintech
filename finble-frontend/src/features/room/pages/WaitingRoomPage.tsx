@@ -1,18 +1,11 @@
-// src/pages/room/WaitingRoomPage.tsx
-
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLobbyStore } from '../../lobby/store/useLobbyStore';
 import { useUserStore } from '../../../stores/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
 import { LobbyHeader } from '../../lobby/components/LobbyHeader';
-import { sendMessage } from '../../../utils/websocket';
-import PlayerGrid from '../components/PlayerGrid';
-import RoomActions from '../components/RoomActions';
+import { sendMessage } from '../../../utils/websocket'; // Import sendMessage
 import './WaitingRoomPage.css';
-
-import bgImage from '../../../assets/waitingroom-background.png';
-
 
 export default function WaitingRoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -20,9 +13,9 @@ export default function WaitingRoomPage() {
 
   const exitRoom = useLobbyStore((state) => state.exitRoom);
   const { userInfo } = useUserStore();
+  
   const { room, enterRoomAndSubscribe, cleanup } = useRoomStore();
 
-  
   useEffect(() => {
     if (roomId) {
       enterRoomAndSubscribe(roomId).catch(error => {
@@ -34,7 +27,6 @@ export default function WaitingRoomPage() {
     return () => {
       cleanup();
     };
-    // 👇 2. 의존성 배열을 수정하여 무한 루프 및 타임아웃 오류를 해결합니다.
   }, [roomId, navigate]);
 
   useEffect(() => {
@@ -58,16 +50,7 @@ export default function WaitingRoomPage() {
       sendMessage('/app/game/start', { type: "START_GAME", payload: {} });
     }
   };
-  
-  // 3. 배경 관련 모든 스타일을 인라인 스타일 객체로 통합합니다.
-  const pageStyle: React.CSSProperties = {
-    backgroundImage: `url(${bgImage})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
-    backgroundAttachment: 'fixed',
-  };
-  
+
   if (!room) {
     return (
       <div className="waiting-room-loading">
@@ -76,29 +59,35 @@ export default function WaitingRoomPage() {
       </div>
     );
   }
-  
-  return (
-    <div className="waiting-room-wrapper" style={pageStyle}>
-      <div className="page-header">
-        <LobbyHeader />
-      </div>
 
+  return (
+    <div className="waiting-room-wrapper">
+      <LobbyHeader />
       <main className="app-container">
         <div className="waiting-room-content">
           <div className="room-header">
             <h1>{room.name}</h1>
             <p>({room.players.length}/{room.maxPlayers})</p>
           </div>
-          
-          <PlayerGrid 
-            players={room.players} 
-            currentUserId={userInfo?.userId}
-          />
-          <RoomActions 
-            isHost={isHost}
-            onExit={handleExit}
-            onStartGame={handleStartGame}
-          />
+          <div className="player-grid">
+            {room.players.map((player) => (
+              <div key={player.id} className="player-card">
+                {player.name}
+                {player.id === userInfo?.userId && ' (나)'}
+                {player.isOwner && ' (방장)'}
+              </div>
+            ))}
+          </div>
+          <div className="room-actions">
+            <button onClick={handleExit} className="exit-button">
+              로비로 가기
+            </button>
+            {isHost && (
+              <button onClick={handleStartGame} className="start-button">
+                게임 시작
+              </button>
+            )}
+          </div>
         </div>
       </main>
     </div>
