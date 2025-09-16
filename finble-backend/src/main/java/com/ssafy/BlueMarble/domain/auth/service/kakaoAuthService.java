@@ -5,6 +5,7 @@ import com.ssafy.BlueMarble.domain.auth.dto.request.OAuthTokenRequest;
 import com.ssafy.BlueMarble.domain.auth.dto.response.KakoAuthTokenResponse;
 import com.ssafy.BlueMarble.domain.auth.repository.KakaoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -15,6 +16,7 @@ import org.springframework.web.client.RestTemplate;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class kakaoAuthService {
 
     private final KakaoRepository kakaoRepository;
@@ -77,7 +79,7 @@ public class kakaoAuthService {
         // Redis에 토큰 저장 (만료시간 적용)
         kakaoRepository.saveAccessToken(kakaoClientId, response.getBody().getAccess_token(), Long.parseLong(response.getBody().getExpires_in()));
 
-        //log.info(response.getBody().getAccess_token());
+        log.info(response.getBody().getAccess_token());
 
         return response.getBody();
     }
