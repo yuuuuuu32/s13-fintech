@@ -24,8 +24,8 @@ export function BaseTile({ tile, tileIndex, position, textRotationY, children }:
 
   const owner = players.find(p => p.properties.includes(tileIndex));
 
-  const TILE_WIDTH = 4;
-  const TILE_DEPTH = 6;
+  const TILE_WIDTH = 3;
+  const TILE_DEPTH = 5;
   const TILE_HEIGHT = 0.2;
 
   const handleTileClick = () => {
@@ -47,7 +47,7 @@ export function BaseTile({ tile, tileIndex, position, textRotationY, children }:
       <Text
         position={[0, TILE_HEIGHT / 2 + 0.02, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={0.4}
+        fontSize={0.5}
         color="black"
         anchorX="center"
         anchorY="middle"

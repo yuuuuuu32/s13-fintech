@@ -110,7 +110,7 @@ public class EventService {
         JailPayload payload = JailPayload.builder()
                 .result(escapeSuccess)
                 .userName(jailRequest.getNickname())
-                .updatedAsset(
+                .updatedAsset( 
                         ConstructPayload.Asset.builder()
                                 .money(user.getMoney())
                                 .lands(user.getOwnedProperties() != null ? user.getOwnedProperties() : new ArrayList<>())
@@ -296,11 +296,13 @@ public class EventService {
         timerService.startTurnTimer(roomId, userId);
         
         // 10. 결과 메시지 전송
+        String nextTurnUserName = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
         UseDicePayload payload = UseDicePayload.builder()
                 .userName(useDiceRequest.getUserName())
                 .diceNum1(diceNum1)
                 .diceNum2(diceNum2)
                 .curTurn(gameState.getGameTurn())
+                .nextTurnUserName(nextTurnUserName)
                 .diceNumSum(diceNumSum)
                 .currentPosition(newPosition)
                 .salaryBonus(salaryBonus)

@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import jakarta.annotation.PostConstruct;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,9 +25,9 @@ import java.util.Random;
 @RequiredArgsConstructor
 @Slf4j
 public class CardService {
-    
+
     private static final String PLAYER_CARDS_PREFIX = "player:cards:";
-    
+
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
     private final GameRedisService gameRedisService;
@@ -34,6 +35,20 @@ public class CardService {
     private final SessionMessageService sessionMessageService;
     private final UserRedisService userRedisService;
     private final Random random = new Random();
+
+    // 메모리에 로딩된 카드 리스트
+    private List<Card> chanceCards;
+
+    @PostConstruct
+    public void loadCardsFromDB() {
+        try {
+            this.chanceCards = cardRepository.findAll();
+            log.info("DB에서 찬스카드 {}개 로딩 완료", chanceCards.size());
+        } catch (Exception e) {
+            log.error("DB에서 카드 로딩 실패", e);
+            this.chanceCards = new ArrayList<>();
+        }
+    }
     
     /**
      * 카드 사용
@@ -180,12 +195,12 @@ public class CardService {
                 return null;
             }
             
-            List<Card> availableCards = getAvailableCardsFromDB(gameMapState);
+            List<Card> availableCards = getAvailableCardsFromMemory();
             if (availableCards.isEmpty()) {
                 log.error("뽑을 수 있는 카드가 없음: roomId={}", roomId);
                 return null;
             }
-            
+
             Card drawnCard = availableCards.get(random.nextInt(availableCards.size()));
             CreateMapPayload.PlayerState player = gameMapState.getPlayers().get(userId);
             
@@ -251,18 +266,17 @@ public class CardService {
         }
     }
     
-    private List<Card> getAvailableCardsFromDB(CreateMapPayload gameMapState) {
-        try {
-            List<Card> allCards = cardRepository.findAll();
-
-            // 천사카드는 DB에 없으므로 필터링 불필요
-            // 모든 카드 반환
-            return allCards;
-        } catch (Exception e) {
-            log.error("DB에서 카드 목록 조회 실패", e);
-            return new ArrayList<>();
+    /**
+     * 메모리에서 카드 가져오기 (DB 조회 없음)
+     */
+    private List<Card> getAvailableCardsFromMemory() {
+        if (chanceCards == null || chanceCards.isEmpty()) {
+            log.warn("메모리에 로딩된 카드가 없음. DB에서 다시 로딩 시도.");
+            loadCardsFromDB();
         }
+        return new ArrayList<>(chanceCards); // 복사본 반환 (Thread-safe)
     }
+
     
     private void applyInstantCardEffectFromDB(String roomId, String userName, Card card, CreateMapPayload.PlayerState player, CreateMapPayload gameMapState) {
         try {

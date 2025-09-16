@@ -1,9 +1,10 @@
 import { Cone, Sphere } from '@react-three/drei'
 import { useEffect, useRef } from 'react'
 import { useSpring, animated } from '@react-spring/three'
-import type { Player as PlayerData } from '../store/useGameStore'
+import type { Player as PlayerData } from '../types/gameTypes'
 import { useGameStore } from '../store/useGameStore'
 import { useFrame } from '@react-three/fiber'
+import { useUserStore } from '../../../stores/useUserStore'
 
 
 const getTilePosition = (index: number): [number, number, number] => {
@@ -59,11 +60,22 @@ interface PlayerProps {
 }
 
 export function Player({ player }: PlayerProps) {
+  const { userInfo } = useUserStore();
   const handleTileAction = useGameStore(state => state.handleTileAction);
   const gamePhase = useGameStore(state => state.gamePhase);
-  const isMyTurn = useGameStore(state => state.players[state.currentPlayerIndex]?.id === player.id);
+  const currentPlayerIndex = useGameStore(state => state.currentPlayerIndex);
+  const players = useGameStore(state => state.players);
+
+  // 현재 턴인 플레이어가 실제 사용자인지 확인하고, 이 Player 컴포넌트가 그 플레이어인지 확인
+  const currentPlayer = players[currentPlayerIndex];
+  const isCurrentPlayerMe = currentPlayer?.id === userInfo?.userId;
+  const isThisPlayerMe = player.id === userInfo?.userId;
+  const isMyTurn = isCurrentPlayerMe && isThisPlayerMe;
+
   const dice = useGameStore(state => state.dice);
   const boardLength = useGameStore(state => state.board.length);
+
+  console.log(`Player ${player.id}: isCurrentPlayerMe=${isCurrentPlayerMe}, isThisPlayerMe=${isThisPlayerMe}, isMyTurn=${isMyTurn}`);
 
   const prevPositionRef = useRef(player.position);
   const meshRef = useRef<THREE.Mesh>(null!); // Ref for the animated mesh
@@ -113,6 +125,12 @@ export function Player({ player }: PlayerProps) {
         // Directly set the spring's value to the new position.
         api.set({ position: targetPosition });
         console.log(`Player ${player.id}: Directly setting mesh position to:`, targetPosition);
+
+        // 서버에서 받은 위치 업데이트인 경우에도 handleTileAction 호출
+        if (isMyTurn && gamePhase === 'PLAYER_MOVING') {
+          console.log(`Player ${player.id}: Calling handleTileAction after server position update`);
+          handleTileAction();
+        }
       }
     }
     

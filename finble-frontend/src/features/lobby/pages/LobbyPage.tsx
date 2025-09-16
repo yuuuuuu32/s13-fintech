@@ -6,8 +6,10 @@ import { RoomList } from '../components/RoomList';
 import '../../../App.css'; // Import for .app-container
 import { useLobbyStore } from '../store/useLobbyStore';
 import { useUserStore } from '../../../stores/useUserStore'; // useUserStore를 import 합니다.
+import bgImage from '../../../assets/lobby_background.png';
 // import { connectWebSocket, disconnectWebSocket } from '../../../utils/websocket'; // Import WebSocket functions
 
+// 0. 로비 css 디자인
 export default function LobbyPage() {
   const fetchRooms = useLobbyStore((state) => state.fetchRooms);
   const isLoading = useLobbyStore((state) => state.isLoading);
@@ -37,11 +39,26 @@ export default function LobbyPage() {
 
   return (
     <>
+    {/* 1. 헤더 디자인 */}
       <LobbyHeader />
       <main className="app-container">
-        <div className="lobby-page-wrapper">
+        <div 
+        className="lobby-page-wrapper"
+          style={
+            {
+              // CSS 변수에 이미지 URL 주입
+              // 타입스크립트일 때 캐스팅 필요
+              ['--bg-url' as any]: `url(${bgImage})`,
+            } as React.CSSProperties
+          }
+        >
           <div className="lobby-page-content">
+
+
+
+            {/* 2. 유저 정보 디자인 */}
             <UserInfo />
+            {/* 3. 방정보 디자인 */}
             <RoomList isLoading={isLoading} error={error} />
           </div>
         </div>

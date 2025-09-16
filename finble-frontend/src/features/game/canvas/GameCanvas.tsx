@@ -52,7 +52,7 @@ export default function GameCanvas() {
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
       <TurnOrderSelection />
       <GameUI />
-      <Canvas camera={{ position: [0, 40, 40], fov: 50 }} shadows>
+      <Canvas camera={{ position: [0, 40, 50], fov: 50 }} shadows>
         <Sky sunPosition={[100, 20, 100]} />
         <ambientLight intensity={1.5} />
         <directionalLight 
@@ -64,7 +64,7 @@ export default function GameCanvas() {
         />
         
         <Physics>
-          <group rotation={[0, -Math.PI / 4, 0]} scale={1.2}>
+          <group scale={1.2}>
               <Board />
               {players.map((player) => (
                 <Player key={player.id} player={player} />
@@ -74,9 +74,6 @@ export default function GameCanvas() {
         </Physics>
 
         <OrbitControls 
-          enableZoom={false}
-          enablePan={false}
-          enableRotate={false}
           target={[0, 0, 0]}
           makeDefault
         />
