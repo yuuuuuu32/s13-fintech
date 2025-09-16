@@ -1,0 +1,24 @@
+/* src/pages/room/components/PlayerCard.css */
+
+.player-card {
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 500;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.player-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* 현재 유저 카드를 강조하는 스타일 */
+.player-card.is-me {
+  background-color: rgba(76, 175, 80, 0.4); /* 초록색 계열 */
+  border: 1px solid rgba(76, 175, 80, 0.8);
+  font-weight: bold;
+}

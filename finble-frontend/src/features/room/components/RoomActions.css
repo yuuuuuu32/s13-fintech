@@ -1,0 +1,44 @@
+/* src/pages/room/components/RoomActions.css */
+
+.room-actions {
+  display: flex;
+  justify-content: space-between; /* 버튼들을 양 끝으로 배치 */
+  align-items: center;
+  margin-top: 20px;
+}
+
+.room-actions button {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.room-actions button:hover {
+  transform: scale(1.05);
+}
+
+.room-actions button:active {
+  transform: scale(1);
+}
+
+.exit-button {
+  background-color: #f44336; /* 빨간색 계열 */
+  color: white;
+}
+
+.exit-button:hover {
+  background-color: #d32f2f;
+}
+
+.start-button {
+  background-color: #4CAF50; /* 초록색 계열 */
+  color: white;
+}
+
+.start-button:hover {
+  background-color: #45a049;
+}

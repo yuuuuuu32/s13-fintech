@@ -1,89 +1,58 @@
+/* src/pages/room/WaitingRoomPage.css */
 .waiting-room-wrapper {
-  width: 100%;
   min-height: 100vh;
-  background-color: #0A0B17;
-  color: white;
-}
-
-.waiting-room-wrapper .app-container {
-  max-width: none;
-  margin: 0;
-  padding: 0;
-}
-
-.waiting-room-content {
+  width: 100%;
+  padding-top: 80px;
+  position: relative;
+  z-index: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
-  padding: 2rem;
+  overflow-y: auto;
 }
 
-.room-header {
-  text-align: center;
-}
-
-.room-header h1 {
-  margin-bottom: 0.5rem;
-}
-
-.room-header p {
-  font-size: 1.2rem;
-  color: #ccc;
-  margin: 0;
-}
-
-.player-grid {
+/* WaitingRoomPage 내부의 header만 z-index를 갖도록 한정 */
+.waiting-room-wrapper .page-header {
+  position: fixed;   /* relative → fixed */
+  top: 0;
+  left: 0;
   width: 100%;
-  max-width: 800px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
+  z-index: 1000;     /* 충분히 높여서 콘텐츠 위에 뜨도록 */
 }
 
-.player-card {
-  padding: 2rem;
-  background-color: rgba(255, 255, 255, 0.05);
+/* WaitingRoomPage 내부의 app-container에만 적용될 스타일 */
+.waiting-room-wrapper .app-container {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1200px;
+  padding: 20px;
+}
+
+/* WaitingRoomPage 내부의 waiting-room-content에만 적용될 스타일 */
+.waiting-room-wrapper .waiting-room-content {
+  background-color: rgba(23, 23, 39, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* WaitingRoomPage 내부의 room-header에만 적용될 스타일 */
+.waiting-room-wrapper .room-header {
   text-align: center;
+  margin-bottom: 24px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.waiting-room-wrapper .room-header h1 {
+  margin: 0;
+  font-size: 2.5rem;
+}
+
+.waiting-room-wrapper .room-header p {
+  margin: 5px 0 0;
   font-size: 1.2rem;
-  border: 1px solid rgba(0, 255, 255, 0.2);
-}
-
-.room-actions {
-  display: flex;
-  gap: 1.5rem;
-}
-
-.exit-button,
-.start-button {
-  padding: 1rem 2rem;
-  font-size: 1.5rem;
-  font-weight: bold;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.exit-button {
-  background-color: #555;
-  color: white;
-}
-
-.exit-button:hover {
-  background-color: #777;
-}
-
-.start-button {
-  background-color: #00ffff;
-  color: #0A0B17;
-}
-
-.start-button:hover {
-  background-color: #00dddd;
-}
-
-.waiting-room-loading {
-  color: white;
-  text-align: center;
-  padding-top: 4rem;
+  opacity: 0.9;
 }
