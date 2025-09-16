@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { BuildingType } from '../data/boardData.ts';
 import type { TileData } from '../data/boardData.ts';
 import { useUserStore } from '../../../stores/useUserStore';
-import { Modal, Box, Typography, Button, Card, CardContent, Grid, LinearProgress, List, ListItem, ListItemButton, ListItemText } from '@mui/material';
+import { Modal, Box, Typography, Button, Card, CardContent, Grid, LinearProgress, List, ListItem, ListItemButton, ListItemText, Checkbox, FormControlLabel, FormGroup } from '@mui/material';
 
 const BAIL_AMOUNT = 500000; 
 
@@ -12,27 +12,202 @@ const calculateTotalAssets = (player, board: TileData[]) => {
   const propertyValue = player.properties.reduce((sum, index) => {
     const tile = board[index];
     if (!tile) return sum;
-    let value = tile.price || 0;
-    if (tile.type === 'city' && tile.buildings && tile.buildingPrice) {
-      value += tile.buildings.level * tile.buildingPrice;
+
+    // 서버 데이터 구조에 맞게 landPrice 사용
+    let value = (tile as any)?.landPrice || tile.price || 0;
+
+    // 건물 가치 추가
+    if (tile.buildings && tile.buildings.level > 0) {
+      const housePrice = (tile as any)?.housePrice || 0;
+      const buildingPrice = (tile as any)?.buildingPrice || 0;
+      const hotelPrice = (tile as any)?.hotelPrice || 0;
+
+      switch (tile.buildings.level) {
+        case 1: // 주택
+          value += housePrice;
+          break;
+        case 2: // 빌딩
+          value += housePrice + buildingPrice;
+          break;
+        case 3: // 호텔
+          value += housePrice + buildingPrice + hotelPrice;
+          break;
+      }
     }
+
     return sum + value;
   }, 0);
   return player.money + propertyValue;
 };
 
 // BuyPropertyModalContent
-const BuyPropertyModalContent = ({ modal, buyProperty, endTurn }) => (
-  <>
-    <Typography variant="h5" component="h2" fontWeight="bold">{modal.tile?.name}</Typography>
-    <Typography sx={{ mt: 2 }}>가격: {modal.tile?.price?.toLocaleString()}원</Typography>
-    <Typography sx={{ mt: 1 }}>구매하시겠습니까?</Typography>
-    <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-      <Button variant="contained" onClick={() => { buyProperty(); endTurn(); }}>구매</Button>
-      <Button variant="outlined" onClick={endTurn}>패스</Button>
-    </Box>
-  </>
-);
+const BuyPropertyModalContent = ({ modal, buyProperty, buyPropertyWithItems, endTurn, currentPlayer }) => {
+  const [selectedItems, setSelectedItems] = useState({
+    land: false, // 땅도 선택사항
+    house: false,
+    building: false,
+    hotel: false
+  });
+
+  const tile = modal.tile;
+  // 서버 데이터 구조에 맞게 가격 추출
+  const landPrice = (tile as any)?.landPrice || tile?.price || 0;
+  const housePrice = (tile as any)?.housePrice || 0;
+  const buildingPrice = (tile as any)?.buildingPrice || 0;
+  const hotelPrice = (tile as any)?.hotelPrice || 0;
+
+  const handleItemChange = (item: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (item === 'land' && !event.target.checked) {
+      // 땅을 체크 해제하면 모든 건물도 해제
+      setSelectedItems({
+        land: false,
+        house: false,
+        building: false,
+        hotel: false
+      });
+    } else {
+      setSelectedItems(prev => ({ ...prev, [item]: event.target.checked }));
+    }
+  };
+
+  const calculateTotal = () => {
+    let total = 0;
+    if (selectedItems.land) total += landPrice;
+    if (selectedItems.house) total += housePrice;
+    if (selectedItems.building) total += buildingPrice;
+    if (selectedItems.hotel) total += hotelPrice;
+    return total;
+  };
+
+  const totalCost = calculateTotal();
+  const canAfford = currentPlayer?.money >= totalCost;
+  const hasSelectedItems = Object.values(selectedItems).some(item => item);
+
+  const handlePurchase = () => {
+    // GameStore의 buyProperty를 사용하지 않고 직접 구매 로직 구현
+    // 선택된 항목들과 총 비용으로 구매 처리
+    const purchaseData = {
+      selectedItems,
+      totalCost,
+      tile
+    };
+
+    // 커스텀 구매 함수 호출
+    buyPropertyWithItems(purchaseData);
+    endTurn();
+  };
+
+  return (
+    <>
+      <Typography variant="h5" component="h2" fontWeight="bold">{tile?.name}</Typography>
+      <Typography sx={{ mt: 2, mb: 3 }}>구매할 항목을 선택하세요:</Typography>
+
+      <FormGroup sx={{ alignItems: 'flex-start' }}>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={selectedItems.land}
+              onChange={handleItemChange('land')}
+            />
+          }
+          label={
+            <Box>
+              <Typography>땅 증서</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {landPrice.toLocaleString()}원
+              </Typography>
+            </Box>
+          }
+        />
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={selectedItems.house}
+              onChange={handleItemChange('house')}
+              disabled={!selectedItems.land}
+            />
+          }
+          label={
+            <Box>
+              <Typography color={!selectedItems.land ? 'text.disabled' : 'text.primary'}>
+                주택 {!selectedItems.land && '(땅 구매 필요)'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {housePrice.toLocaleString()}원
+              </Typography>
+            </Box>
+          }
+        />
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={selectedItems.building}
+              onChange={handleItemChange('building')}
+              disabled={!selectedItems.land}
+            />
+          }
+          label={
+            <Box>
+              <Typography color={!selectedItems.land ? 'text.disabled' : 'text.primary'}>
+                빌딩 {!selectedItems.land && '(땅 구매 필요)'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {buildingPrice.toLocaleString()}원
+              </Typography>
+            </Box>
+          }
+        />
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={selectedItems.hotel}
+              onChange={handleItemChange('hotel')}
+              disabled={!selectedItems.land}
+            />
+          }
+          label={
+            <Box>
+              <Typography color={!selectedItems.land ? 'text.disabled' : 'text.primary'}>
+                호텔 {!selectedItems.land && '(땅 구매 필요)'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {hotelPrice.toLocaleString()}원
+              </Typography>
+            </Box>
+          }
+        />
+      </FormGroup>
+
+      <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+        <Typography variant="h6">
+          {hasSelectedItems ? `총 비용: ${totalCost.toLocaleString()}원` : '선택된 항목이 없습니다'}
+        </Typography>
+        <Typography variant="body2" color={hasSelectedItems ? (canAfford ? 'success.main' : 'error.main') : 'text.secondary'}>
+          보유 현금: {currentPlayer?.money.toLocaleString()}원
+          {hasSelectedItems && !canAfford && ' (현금 부족)'}
+        </Typography>
+      </Box>
+
+      <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+        {hasSelectedItems && (
+          <Button
+            variant="contained"
+            onClick={handlePurchase}
+            disabled={!canAfford}
+          >
+            구매 ({totalCost.toLocaleString()}원)
+          </Button>
+        )}
+        <Button variant="outlined" onClick={endTurn}>
+          {hasSelectedItems ? '패스' : '구매하지 않음'}
+        </Button>
+      </Box>
+    </>
+  );
+};
 
 // AcquirePropertyModalContent
 const AcquirePropertyModalContent = ({ modal, acquireProperty, payToll, currentPlayer, endTurn }) => (
@@ -143,6 +318,7 @@ export function GameUI() {
   const board = useGameStore(state => state.board);
   const setDicePower = useGameStore(state => state.setDicePower);
   const buyProperty = useGameStore(state => state.buyProperty);
+  const buyPropertyWithItems = useGameStore(state => state.buyPropertyWithItems);
   const endTurn = useGameStore(state => state.endTurn);
   const acquireProperty = useGameStore(state => state.acquireProperty);
   const payToll = useGameStore(state => state.payToll);
@@ -278,7 +454,7 @@ export function GameUI() {
       <Modal open={modal.type !== 'NONE' || isGameOver} sx={{ pointerEvents: 'all' }}>
         <Box sx={modalStyle}>
           {modal.type === 'BUY_PROPERTY' && (
-            <BuyPropertyModalContent modal={modal} buyProperty={buyProperty} endTurn={endTurn} />
+            <BuyPropertyModalContent modal={modal} buyProperty={buyProperty} buyPropertyWithItems={buyPropertyWithItems} endTurn={endTurn} currentPlayer={currentPlayer} />
           )}
           {modal.type === 'ACQUIRE_PROPERTY' && (
             <AcquirePropertyModalContent modal={modal} acquireProperty={acquireProperty} payToll={payToll} currentPlayer={currentPlayer} endTurn={endTurn} />
