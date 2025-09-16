@@ -41,19 +41,23 @@ public class MapService {
     private static final Random random = new Random(System.nanoTime());
 
     // 이벤트 칸 위치와 타입을 매핑하는 Map (위치 -> 타일 정보)
-    private static final Map<Integer, Tile> EVENT_CELLS = Map.of(
-            0, Tile.builder().id(0L).name("시작").type(Tile.TileType.START).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("지나가거나 도착하면 월급 받음").build(),
-            3, Tile.builder().id(3L).name("찬스").type(Tile.TileType.CHANCE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("찬스카드 뽑기").build(),
-            5, Tile.builder().id(5L).name("부산").type(Tile.TileType.SPECIAL).landPrice(200).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build(),
-            8, Tile.builder().id(8L).name("감옥").type(Tile.TileType.JAIL).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("3턴간 이동 불가, 보석금으로 탈출 가능").build(),
-            11, Tile.builder().id(11L).name("찬스").type(Tile.TileType.CHANCE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("찬스카드 뽑기").build(),
-            13, Tile.builder().id(13L).name("대전").type(Tile.TileType.SPECIAL).landPrice(200).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build(),
-            16, Tile.builder().id(16L).name("세계여행").type(Tile.TileType.AIRPLANE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("일정 금액 지불하고 원하는 땅으로 이동").build(),
-            19, Tile.builder().id(19L).name("찬스").type(Tile.TileType.CHANCE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("찬스카드 뽑기").build(),
-            21, Tile.builder().id(21L).name("구미").type(Tile.TileType.SPECIAL).landPrice(160).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build(),
-            27, Tile.builder().id(27L).name("찬스").type(Tile.TileType.CHANCE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("찬스카드 뽑기").build(),
-            29, Tile.builder().id(29L).name("서울").type(Tile.TileType.SPECIAL).landPrice(220).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build()
-    );
+    private static final Map<Integer, Tile> EVENT_CELLS;
+
+    static {
+        Map<Integer, Tile> cells = new HashMap<>();
+        cells.put(0, Tile.builder().id(0L).name("시작").type(Tile.TileType.START).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("지나가거나 도착하면 월급 받음").build());
+        cells.put(3, Tile.builder().id(3L).name("찬스").type(Tile.TileType.CHANCE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("찬스카드 뽑기").build());
+        cells.put(5, Tile.builder().id(5L).name("부산").type(Tile.TileType.SPECIAL).landPrice(200).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build());
+        cells.put(8, Tile.builder().id(8L).name("감옥").type(Tile.TileType.JAIL).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("3턴간 이동 불가, 보석금으로 탈출 가능").build());
+        cells.put(11, Tile.builder().id(11L).name("찬스").type(Tile.TileType.CHANCE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("찬스카드 뽑기").build());
+        cells.put(13, Tile.builder().id(13L).name("대전").type(Tile.TileType.SPECIAL).landPrice(200).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build());
+        cells.put(16, Tile.builder().id(16L).name("세계여행").type(Tile.TileType.AIRPLANE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("일정 금액 지불하고 원하는 땅으로 이동").build());
+        cells.put(19, Tile.builder().id(19L).name("찬스").type(Tile.TileType.CHANCE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("찬스카드 뽑기").build());
+        cells.put(21, Tile.builder().id(21L).name("구미").type(Tile.TileType.SPECIAL).landPrice(160).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build());
+        cells.put(27, Tile.builder().id(27L).name("찬스").type(Tile.TileType.CHANCE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("찬스카드 뽑기").build());
+        cells.put(29, Tile.builder().id(29L).name("서울").type(Tile.TileType.SPECIAL).landPrice(220).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build());
+        EVENT_CELLS = Collections.unmodifiableMap(cells);
+    }
     /**
      * 새로운 게임 맵 상태 생성 (방에서 게임 시작할 때 호출)
      */
