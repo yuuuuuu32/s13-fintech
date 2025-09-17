@@ -63,6 +63,11 @@ export const initializeWebSocket = () => {
 
       console.log(`Received message of type: ${messageType}`);
 
+      // 찬스카드 관련 메시지 특별 로깅
+      if (messageType.includes('CARD') || messageType.includes('CHANCE') || messageType.includes('DRAW')) {
+        console.log('🎲 CHANCE/CARD related message detected:', parsedMessage);
+      }
+
       if (subscriptions[messageType]) {
         subscriptions[messageType].forEach(callback => callback(parsedMessage));
       } else {
