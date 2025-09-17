@@ -16,19 +16,25 @@ export const createWebSocketHandlers = (
 
       // If the payload has curPlayer, it's likely a turn change from the timer
       if (payload.curPlayer) {
+        console.log("🔄 GAME_STATE_CHANGE with curPlayer:", payload.curPlayer);
         set((state) => {
           const nextPlayerIndex = state.players.findIndex(p => p.name === payload.curPlayer);
           if (nextPlayerIndex !== -1) {
+            console.log("✅ Player found, changing turn to index:", nextPlayerIndex);
             return {
               currentPlayerIndex: nextPlayerIndex,
               currentTurn: payload.gameTurn ?? state.currentTurn,
               gamePhase: "WAITING_FOR_ROLL",
+              isDiceRolled: false, // Ensure dice state is reset
+              modal: { type: "NONE" }, // Clear any modals
             };
           }
+          console.warn("❌ Player not found:", payload.curPlayer);
           return {}; // No change if player not found
         });
       } else {
         // Handle other generic game state updates
+        console.log("📝 Updating game state with payload:", payload);
         get().updateGameState(payload);
       }
     });
@@ -42,12 +48,16 @@ export const createWebSocketHandlers = (
       console.log("Received TURN_CHANGE message:", message);
       const { payload } = message;
       if (payload.currentPlayerIndex !== undefined) {
+        console.log("🔄 Turn changing to player index:", payload.currentPlayerIndex);
+        console.log("🎮 Setting gamePhase to WAITING_FOR_ROLL");
         set({
           currentPlayerIndex: payload.currentPlayerIndex,
           currentTurn: payload.currentTurn || get().currentTurn,
           gamePhase: "WAITING_FOR_ROLL",
           isDiceRolled: false, // Reset for the next turn
+          modal: { type: "NONE" }, // Clear any modals from previous turn
         });
+        console.log("✅ Turn change completed. New player index:", payload.currentPlayerIndex);
       }
     });
 

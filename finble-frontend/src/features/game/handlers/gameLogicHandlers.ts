@@ -103,7 +103,10 @@ export const createGameLogicHandlers = (
     set({ gamePhase: "TILE_ACTION" });
     const { players, currentPlayerIndex, board } = get();
     const currentPlayer = players[currentPlayerIndex];
+    const isMyTurn = currentPlayer.id === (window as any).__userStore?.getState?.()?.userInfo?.userId;
+
     console.log("🎯 Current player:", currentPlayer);
+    console.log("🎯 Is my turn:", isMyTurn);
     console.log("🎯 Current board position:", currentPlayer.position);
     const currentTile = board[currentPlayer.position];
     console.log("🎯 Current tile:", currentTile);
@@ -176,17 +179,25 @@ export const createGameLogicHandlers = (
   },
 
   endTurn: () => {
-    const { gameId, send } = get();
+    const { gameId, send, currentPlayerIndex, players } = get();
+    const currentPlayer = players[currentPlayerIndex];
+
+    console.log("🏁 EndTurn called by player:", currentPlayer?.name);
+    console.log("🎮 Current gamePhase before endTurn:", get().gamePhase);
 
     if (gameId) {
+      console.log("📤 Sending end-turn message to server");
       send(`/app/game/${gameId}/end-turn`, {
         type: "TURN_SKIP",
         payload: {},
       });
+    } else {
+      console.warn("❌ Game ID not set. Cannot send end-turn message.");
     }
 
     // The client will wait for a TURN_CHANGE message from the server
     // to actually change the turn. We can set a phase to prevent further actions.
+    console.log("⏳ Setting gamePhase to WAITING_FOR_TURN_END, waiting for server response");
     set({
       modal: { type: "NONE" as const },
       gamePhase: "WAITING_FOR_TURN_END",
