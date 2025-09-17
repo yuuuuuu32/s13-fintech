@@ -47,7 +47,8 @@ public class AuthController {
     @Operation(summary = "Kakao 로그인 콜백", description = "카카오 OAuth 인증 후 콜백 처리 및 토큰 발급")
     public ResponseEntity<TokenResponse> kakaoCallback(
             @RequestParam("code") String code,
-            @RequestParam(value = "state", required = false) String state) {
+            @RequestParam(value = "state", required = false) String state,
+            @RequestHeader(value = "Authorization", required = false) String existingToken) {
 
         try {
             // 1. state 검증 
@@ -63,8 +64,8 @@ public class AuthController {
             // 3.AccessToken을 받아와서 유저정보 요청
             KakaoUserInfoResponse kakaoUserInfoResponse = kakaoAuthService.getKakaoUserInfo(kakoAuthTokenResponse.getAccess_token());
             
-            // 4. 카카오 로그인 처리 (사용자 생성/조회 및 JWT 토큰 발급)
-            TokenResponse tokenResponse = authService.kakaoLogin(kakaoUserInfoResponse);
+            // 4. 기존 토큰이 있는 경우 검증 후 재사용, 없으면 새로 발급
+            TokenResponse tokenResponse = authService.kakaoLoginWithTokenReuse(kakaoUserInfoResponse, existingToken);
             
             // 5. 토큰 응답 반환
             return ResponseEntity.ok(tokenResponse);

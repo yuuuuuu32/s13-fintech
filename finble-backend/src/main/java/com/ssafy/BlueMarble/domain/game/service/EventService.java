@@ -139,6 +139,7 @@ public class EventService {
         if (traveler == null) {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
+        //2.1 TODO : 현재 여행 하려는 사람이 세계여행 칸에 있는지 체크해야함
 
         //3. 출발지 도착지 정보
         int startPosition = traveler.getPosition();

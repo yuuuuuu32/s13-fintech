@@ -55,7 +55,7 @@ public class AuthService {
     }
 
     @Transactional
-    public TokenResponse kakaoLogin(KakaoUserInfoResponse kakaoUserInfo) {
+    public TokenResponse kakaoLoginWithTokenReuse(KakaoUserInfoResponse kakaoUserInfo, String existingToken) {
         // 디버깅을 위한 로그 추가
         log.info("카카오 사용자 정보: {}", kakaoUserInfo);
         
@@ -87,6 +87,25 @@ public class AuthService {
         User user = userRepository.findByEmail(finalEmail)
                 .orElseGet(() -> createKakaoUserFromKakaoInfo(finalEmail, finalNickname));
 
+        // 기존 토큰이 있고 유효한 경우 재사용
+        if (existingToken != null && existingToken.startsWith("Bearer ")) {
+            String token = existingToken.substring(7);
+            if (jwtTokenProvider.validateToken(token)) {
+                String tokenEmail = jwtTokenProvider.getEmail(token);
+                if (finalEmail.equals(tokenEmail)) {
+                    log.info("기존 유효한 토큰 재사용: {}", tokenEmail);
+                    
+                    // 기존 토큰의 refreshToken도 함께 반환
+                    String savedRefreshToken = redisTemplate.opsForValue().get("RT:" + finalEmail);
+                    if (savedRefreshToken != null) {
+                        return new TokenResponse(token, savedRefreshToken, finalEmail);
+                    }
+                }
+            }
+        }
+
+        // 기존 토큰이 없거나 유효하지 않은 경우 새로 발급
+        log.info("새로운 토큰 발급: {}", finalEmail);
         String sessionId = UUID.randomUUID().toString();
         String accessToken = jwtTokenProvider.generateToken(user, sessionId);
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getRole(), sessionId);
@@ -99,6 +118,12 @@ public class AuthService {
         );
 
         return new TokenResponse(accessToken, refreshToken, jwtTokenProvider.getEmail(accessToken));
+    }
+
+    @Transactional
+    public TokenResponse kakaoLogin(KakaoUserInfoResponse kakaoUserInfo) {
+        // 기존 메서드 유지 (하위 호환성)
+        return kakaoLoginWithTokenReuse(kakaoUserInfo, null);
     }
 
     private User createGoogleUser(OAuthUserInfo userInfo) {
