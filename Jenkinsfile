@@ -120,7 +120,8 @@ pipeline {
                             ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
                                 cd /home/ubuntu/bluemarble &&
 
-                                # Clean up and build new version
+                                # Clean up and build new version (볼륨도 삭제)
+                                sudo docker-compose down -v --remove-orphans || true &&
                                 sudo docker system prune -f &&
                                 sudo docker-compose build --no-cache backend &&
 
@@ -160,13 +161,26 @@ pipeline {
 
                                 if [ "\$health_check_passed" = true ]; then
                                     echo "🔄 Switching to new version..."
-                                    # Stop old version (Blue - 8081)
-                                    sudo docker-compose down --remove-orphans || true
-                                    # Start new version on 8081 (promote Green to Blue)
-                                    sudo docker-compose up -d
-                                    # Stop temporary 8082 version
-                                    sudo docker-compose -f docker-compose.green.yml down || true
-                                    echo "✅ Successfully deployed new version!"
+                                    # Stop old version (Blue - 8081) with volumes
+                                    sudo docker-compose down -v --remove-orphans || true
+
+                                    # Start new version on 8081 using the same image that passed health check
+                                    sudo docker-compose up -d --no-build
+
+                                    # Wait for new Blue to start
+                                    sleep 15
+
+                                    # Verify Blue is running on 8081
+                                    if curl -f http://localhost:8081/actuator/health; then
+                                        echo "✅ Blue version running successfully on 8081"
+                                        # Stop temporary Green version (8082)
+                                        sudo docker-compose -f docker-compose.green.yml down || true
+                                        echo "✅ Successfully deployed new version!"
+                                    else
+                                        echo "❌ Blue version failed to start on 8081"
+                                        # Keep Green running as fallback
+                                        echo "⚠️ Green version still running on 8082 as backup"
+                                    fi
                                 else
                                     echo "🔄 Rolling back - keeping old version..."
                                     # Remove failed new version
