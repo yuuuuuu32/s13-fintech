@@ -153,7 +153,7 @@ export const handleSpecialTile = (
   const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
 
   switch (currentTile.name) {
-    case "무인도":
+    case "감옥":
       set((state) => {
         const updatedPlayers = [...state.players];
         updatedPlayers[state.currentPlayerIndex] = {
@@ -165,7 +165,7 @@ export const handleSpecialTile = (
           players: updatedPlayers,
           modal: isMyTurn ? {
             type: "INFO",
-            text: "무인도에 갇혔습니다! 다음 턴부터 3턴 동안 머물게 됩니다.",
+            text: "감옥에 갇혔습니다! 다음 턴부터 3턴 동안 머물게 됩니다.",
             onConfirm: () => set({ modal: { type: "NONE" as const } }),
           } : { type: "NONE" as const },
         };
