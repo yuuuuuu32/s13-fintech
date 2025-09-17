@@ -20,10 +20,16 @@ export const handleCityCompanyTile = (
     if (currentPlayer.money >= landPrice) {
       if (isMyTurn) {
         set({ modal: { type: "BUY_PROPERTY", tile: currentTile } });
+      } else {
+        // 다른 플레이어의 턴: 모달 표시하지 않음
+        set({ modal: { type: "NONE" as const } });
       }
     } else {
       if (isMyTurn) {
         set({ modal: { type: "NONE" as const } }); // Or show not enough money modal
+      } else {
+        // 다른 플레이어의 턴: 모달 표시하지 않음
+        set({ modal: { type: "NONE" as const } });
       }
     }
   } else if (owner.id !== currentPlayer.id) {
@@ -38,6 +44,30 @@ export const handleCityCompanyTile = (
       const acquireCost = landPrice * 2;
       set({
         modal: { type: "ACQUIRE_PROPERTY", tile: currentTile, acquireCost, toll },
+      });
+    } else {
+      // 다른 플레이어의 턴: 통행료 자동 지불
+      set((state) => {
+        const updatedPlayers = [...state.players];
+        const currentPlayerIndex = state.currentPlayerIndex;
+        const ownerIndex = updatedPlayers.findIndex(p => p.id === owner.id);
+
+        // 통행료 지불
+        updatedPlayers[currentPlayerIndex] = {
+          ...updatedPlayers[currentPlayerIndex],
+          money: updatedPlayers[currentPlayerIndex].money - toll
+        };
+
+        // 소유자에게 통행료 지급
+        updatedPlayers[ownerIndex] = {
+          ...updatedPlayers[ownerIndex],
+          money: updatedPlayers[ownerIndex].money + toll
+        };
+
+        return {
+          players: updatedPlayers,
+          modal: { type: "NONE" as const }
+        };
       });
     }
   } else {
@@ -54,6 +84,9 @@ export const handleCityCompanyTile = (
       } else {
         set({ modal: { type: "NONE" as const } });
       }
+    } else {
+      // 다른 플레이어의 턴: 모달 표시하지 않음
+      set({ modal: { type: "NONE" as const } });
     }
   }
 };
@@ -65,8 +98,10 @@ export const handleChanceTile = (
   currentPlayer: Player,
   chanceCards: { text: string; action: (player: Player) => Player }[]
 ) => {
+  const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
   const randomCard =
     chanceCards[Math.floor(Math.random() * chanceCards.length)];
+
   set((state) => {
     const currentPlayer = state.players[state.currentPlayerIndex];
     const originalPosition = currentPlayer.position;
@@ -78,7 +113,7 @@ export const handleChanceTile = (
 
     return {
       players: updatedPlayers,
-      modal: {
+      modal: isMyTurn ? {
         type: "CHANCE_CARD",
         text: randomCard.text,
         onConfirm: () => {
@@ -89,9 +124,23 @@ export const handleChanceTile = (
             set({ modal: { type: "NONE" as const } });
           }
         },
-      },
+      } : { type: "NONE" as const },
     };
   });
+
+  // 다른 플레이어의 턴이면 이동 후 추가 처리가 필요한지 확인
+  if (!isMyTurn) {
+    const state = get();
+    const currentPlayer = state.players[state.currentPlayerIndex];
+    const originalPosition = currentPlayer.position;
+    const playerAfterAction = randomCard.action(currentPlayer);
+    const moved = playerAfterAction.position !== originalPosition;
+
+    if (moved) {
+      // 이동했다면 새 타일에서 추가 처리 필요
+      setTimeout(() => get().handleTileAction(), 100);
+    }
+  }
 };
 
 export const handleSpecialTile = (
@@ -114,11 +163,11 @@ export const handleSpecialTile = (
         };
         return {
           players: updatedPlayers,
-          modal: {
+          modal: isMyTurn ? {
             type: "INFO",
             text: "무인도에 갇혔습니다! 다음 턴부터 3턴 동안 머물게 됩니다.",
             onConfirm: () => set({ modal: { type: "NONE" as const } }),
-          },
+          } : { type: "NONE" as const },
         };
       });
       break;
@@ -139,6 +188,8 @@ export const handleSpecialTile = (
             },
           });
         }
+      } else {
+        set({ modal: { type: "NONE" as const } });
       }
       break;
     }
@@ -151,11 +202,11 @@ export const handleSpecialTile = (
         };
         return {
           players: updatedPlayers,
-          modal: {
+          modal: isMyTurn ? {
             type: "INFO",
             text: "세계여행! 다음 턴에 원하는 곳으로 이동할 수 있습니다.",
             onConfirm: () => set({ modal: { type: "NONE" as const } }),
-          },
+          } : { type: "NONE" as const },
         };
       });
       break;

@@ -340,7 +340,9 @@ export function GameUI() {
   const isMyTurn = currentPlayer?.id === userInfo?.userId;
 
   useEffect(() => {
+    console.log("🎮 GameUI useEffect triggered - isMyTurn:", isMyTurn, "currentPlayerIndex:", currentPlayerIndex, "gamePhase:", gamePhase);
     if (isMyTurn) {
+      console.log("⏰ Starting timer for my turn");
       setTimeLeft(30);
       const timer = setInterval(() => {
         setTimeLeft(prevTime => {
@@ -355,7 +357,7 @@ export function GameUI() {
     } else {
       setTimeLeft(30); // Reset for others as well
     }
-  }, [isMyTurn, currentPlayerIndex]); // Depend on isMyTurn and currentPlayerIndex
+  }, [isMyTurn, currentPlayerIndex, gamePhase]); // Also depend on gamePhase
 
   useEffect(() => {
     return () => {
