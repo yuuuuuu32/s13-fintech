@@ -4,11 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.ssafy.BlueMarble.domain.game.entity.GameState;
-import com.ssafy.BlueMarble.domain.game.service.MapService;
 import com.ssafy.BlueMarble.domain.room.dto.FastStartResponse;
 import com.ssafy.BlueMarble.domain.room.dto.RoomListDTO;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
-import com.ssafy.BlueMarble.domain.Timer.Service.TimerService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.ssafy.BlueMarble.global.common.event.RoomDeletedEvent;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
@@ -45,8 +45,7 @@ public class RoomService {
     private final UserRedisService userRedisService;
     private final ObjectMapper objectMapper;
     private final WebSocketSessionService webSocketSessionService;
-    private final MapService mapService;
-    private final TimerService timerService;
+    private final ApplicationEventPublisher eventPublisher;
     private final int MAX_USER_LIMIT = 4;
 
     //대기방 만들기₩
@@ -277,10 +276,6 @@ public class RoomService {
     }
 
     public void deleteRoom(String roomId) {
-        // 게임 관련 데이터 정리
-        mapService.deleteGameMapState(roomId);
-        timerService.clearGameTimer(roomId);
-        
         // 방 관련 데이터 정리
         String usersKey = "room:" + roomId + ":users";
         redisTemplate.delete(usersKey);
@@ -296,6 +291,9 @@ public class RoomService {
         String missionKey = "room:" + roomId + ":mission";
         redisTemplate.delete(missionKey);
         redisTemplate.delete("room:" + roomId + ":channel");
+        
+        // 게임 관련 데이터 정리를 위한 이벤트 발행
+        eventPublisher.publishEvent(new RoomDeletedEvent(this, roomId));
         
         log.info("방 삭제 완료: roomId={}", roomId);
     }
