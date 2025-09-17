@@ -266,6 +266,13 @@ export const createPlayerActions = (
     set({ gamePhase: "WORLD_TRAVEL_MOVE", modal: { type: "NONE" as const } });
   },
 
+  cancelWorldTravel: () => {
+    set({
+      gamePhase: "WAITING_FOR_ROLL",
+      modal: { type: "NONE" as const }
+    });
+  },
+
   selectTravelDestination: (tileIndex: number) => {
     set((state) => {
       const { players, currentPlayerIndex } = state;
