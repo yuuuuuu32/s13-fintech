@@ -54,7 +54,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 String email = jwtTokenProvider.getEmail(token);
                 String sessionIdFromToken = jwtTokenProvider.getSessionId(token);
-                String savedRefreshToken = redisTemplate.opsForValue().get(email);
+                String savedRefreshToken = redisTemplate.opsForValue().get("RT:" + email);
 
                 if (savedRefreshToken != null) {
                     String sessionIdFromRedis = jwtTokenProvider.getSessionId(savedRefreshToken);

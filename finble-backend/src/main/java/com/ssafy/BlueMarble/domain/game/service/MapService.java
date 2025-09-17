@@ -6,8 +6,10 @@ import com.ssafy.BlueMarble.domain.game.dto.GameMap;
 import com.ssafy.BlueMarble.domain.game.entity.GameState;
 import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.game.repository.TileRepository;
-import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
+import com.ssafy.BlueMarble.domain.Timer.Service.TimerService;
+import com.ssafy.BlueMarble.global.common.event.RoomDeletedEvent;
+import org.springframework.context.event.EventListener;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
@@ -18,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.socket.WebSocketSession;
 
 
 import java.util.*;
@@ -35,7 +36,7 @@ public class MapService {
     private final ObjectMapper objectMapper;
     private final UserRedisService userRedisService;
     private final RedisTemplate<String, String> redisTemplate;
-    private final RoomService roomService;
+    private final TimerService timerService;
 
     private static final int MAP_SIZE = 32;
     private static final Random random = new Random(System.nanoTime());
@@ -62,8 +63,7 @@ public class MapService {
     /**
      * 새로운 게임 맵 상태 생성 (방에서 게임 시작할 때 호출)
      */
-    public void createNewGameMapState(WebSocketSession session) {
-        String roomId = roomService.getRoom(session.getId());
+    public void createNewGameMapState(String roomId) {
         if (roomId == null) {
             throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
         }
@@ -176,8 +176,10 @@ public class MapService {
         gameState.setGameState(GameState.FINISHED);
         gameRedisService.saveGameMapState(roomId, gameState);
 
-        log.info("게임 종료: roomId={}", roomId);
+        // 게임 종료 시 타이머 정리
+        timerService.clearGameTimer(roomId);
 
+        log.info("게임 종료: roomId={}", roomId);
     }
 
     /**
@@ -186,6 +188,19 @@ public class MapService {
     public void deleteGameMapState(String roomId) {
         gameRedisService.deleteGameMapState(roomId);
         log.info("게임 맵 상태 삭제: roomId={}", roomId);
+    }
+
+    /**
+     * 방 삭제 이벤트 리스너
+     */
+    @EventListener
+    public void handleRoomDeletedEvent(RoomDeletedEvent event) {
+        String roomId = event.getRoomId();
+        log.info("방 삭제 이벤트 수신: roomId={}", roomId);
+        
+        // 게임 관련 데이터 정리
+        deleteGameMapState(roomId);
+        timerService.clearGameTimer(roomId);
     }
 
     /**

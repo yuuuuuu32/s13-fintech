@@ -282,6 +282,10 @@ public class EventService {
         if (player == null) {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
+        // 감옥에 있다면 던질 수 없음.
+        if(player.isInJail()){
+            throw new  BusinessException(BusinessError.INVALID_TURN);
+        }
 
         // 3. 주사위 던지기
         int diceNum1 = random.nextInt(6) + 1;
