@@ -173,8 +173,9 @@ pipeline {
                                     # Verify Blue is running on 8081
                                     if curl -f http://localhost:8081/actuator/health; then
                                         echo "✅ Blue version running successfully on 8081"
-                                        # Stop temporary Green version (8082)
-                                        sudo docker-compose -f docker-compose.green.yml down || true
+                                        # Stop only Green backend container (8082)
+                                        sudo docker stop bluemarble-backend-green || true
+                                        sudo docker rm bluemarble-backend-green || true
                                         echo "✅ Successfully deployed new version!"
                                     else
                                         echo "❌ Blue version failed to start on 8081"
@@ -183,8 +184,9 @@ pipeline {
                                     fi
                                 else
                                     echo "🔄 Rolling back - keeping old version..."
-                                    # Remove failed new version
-                                    sudo docker-compose -f docker-compose.green.yml down || true
+                                    # Remove failed Green version only
+                                    sudo docker stop bluemarble-backend-green || true
+                                    sudo docker rm bluemarble-backend-green || true
                                     echo "✅ Old version continues running on port 8081"
                                 fi
                             '
