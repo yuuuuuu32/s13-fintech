@@ -49,7 +49,8 @@ public enum BusinessError {
     INSUFFICIENT_MONEY(HttpStatus.BAD_REQUEST, "잔액이 부족합니다."),
     USER_NOT_FOUND(HttpStatus.BAD_REQUEST, "사용자를 찾을 수 없습니다."),
     INVALID_JAIL_STATE(HttpStatus.BAD_REQUEST, "감옥 상태가 올바르지 않습니다."),
-    INVALID_TURN(HttpStatus.BAD_REQUEST, "현재 사용자의 턴이 아닙니다")
+    INVALID_TURN(HttpStatus.BAD_REQUEST, "현재 사용자의 턴이 아닙니다"),
+    SPECIAL_CANNOT_BUILD(HttpStatus.BAD_REQUEST, "특별땅에는 건물을 지을 수 없습니다.")
     ;
 
 
