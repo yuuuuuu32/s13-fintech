@@ -79,7 +79,6 @@ public class TimerService {
     }
     public void endTurnManually(String roomId){
         cancelTurnTimer(roomId);
-        endTurnByTimer(roomId);
     }
 
     private void endTurnByTimer(String roomId) {

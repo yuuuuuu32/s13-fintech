@@ -3,6 +3,8 @@ package com.ssafy.BlueMarble.domain.auth.controller;
 import com.ssafy.BlueMarble.domain.auth.dto.request.GoogleLoginRequest;
 import com.ssafy.BlueMarble.domain.auth.dto.request.TokenRequest;
 import com.ssafy.BlueMarble.domain.auth.dto.response.KakaoAuthCodeResponse;
+import com.ssafy.BlueMarble.domain.auth.dto.response.KakaoUserInfoResponse;
+import com.ssafy.BlueMarble.domain.auth.dto.response.KakoAuthTokenResponse;
 import com.ssafy.BlueMarble.domain.auth.dto.response.TokenResponse;
 import com.ssafy.BlueMarble.domain.auth.service.AuthService;
 import com.ssafy.BlueMarble.domain.auth.service.kakaoAuthService;
@@ -47,15 +49,19 @@ public class AuthController {
             @RequestParam("code") String code,
             @RequestParam(value = "state", required = false) String state) {
 
-        // 1. state 검증
+        // 1. state 검증 
+        // TODO : 현재 검증 안하고 있음
         boolean isValidState = kakaoAuthService.validateState(state);
         if (!isValidState) {
             return "Invalid state parameter";
         }
 
         // 2. 받은 인가 코드(code)를 이용해 토큰 요청을 진행할 수 있도록 다음 처리 호출
-        kakaoAuthService.requestAccessToken(code);
-        return "Authorization code received: " + code + "state : " + state;
+        KakoAuthTokenResponse kakoAuthTokenResponse = kakaoAuthService.requestAccessToken(code);
+
+        // 3.AccessToken을 받아와서 유저정보 요청
+        KakaoUserInfoResponse kakaoUserInfoResponse = kakaoAuthService.getKakaoUserInfo(kakoAuthTokenResponse.getAccess_token());
+        return "유저정보 : "+ kakaoUserInfoResponse.getKakaoAccount().getEmail();
     }
 
     @PostMapping("/reissue")
