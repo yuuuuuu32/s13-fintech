@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     triggers {
-        pollSCM('H/5 * * * *')
+        pollSCM('H/1 * * * *')
     }
     
     environment {
@@ -112,50 +112,67 @@ pipeline {
                         """
                         
                         sh """
-                            scp -o StrictHostKeyChecking=no -r ./docker-compose.yml ./finble-backend ./finble-frontend ./init.sql ./Jenkinsfile ${env.EC2_USER}@${env.EC2_HOST}:/home/ubuntu/bluemarble/
+                            scp -o StrictHostKeyChecking=no -r ./docker-compose.yml ./docker-compose.green.yml ./finble-backend ./finble-frontend ./init.sql ./Jenkinsfile ${env.EC2_USER}@${env.EC2_HOST}:/home/ubuntu/bluemarble/
                         """
                         
-                        // Deploy on EC2
+                        // Blue-Green Deploy on EC2
                         sh """
                             ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
                                 cd /home/ubuntu/bluemarble &&
-                                sudo docker-compose down --remove-orphans &&
+
+                                # Clean up and build new version
                                 sudo docker system prune -f &&
                                 sudo docker-compose build --no-cache backend &&
-                                sudo docker-compose up -d
+
+                                # Start new version on port 8082 (Green)
+                                export BACKEND_PORT=8082 &&
+                                sudo -E docker-compose -f docker-compose.green.yml up -d &&
+
+                                echo "Waiting for new version to start..." &&
+                                sleep 30
                             '
                         """
                         
-                        // Health check on EC2
+                        // Blue-Green Health check and switch
                         sh """
                             ssh -o StrictHostKeyChecking=no ${env.EC2_USER}@${env.EC2_HOST} '
-                                echo "Waiting for services to start..."
-                                sleep 30
-                                
-                                # Health check
-                                max_attempts=30
+                                cd /home/ubuntu/bluemarble &&
+
+                                # Health check new version (Green - 8082)
+                                echo "Testing new version on port 8082..."
+                                max_attempts=15
                                 attempt=0
-                                
-                                until curl -f http://localhost:8081/actuator/health || [ \$attempt -eq \$max_attempts ]; do
+                                health_check_passed=false
+
+                                until curl -f http://localhost:8082/actuator/health || [ \$attempt -eq \$max_attempts ]; do
                                     echo "Health check attempt \$((\$attempt + 1))/\$max_attempts"
                                     attempt=\$((\$attempt + 1))
                                     sleep 10
                                 done
-                                
-                                if [ \$attempt -eq \$max_attempts ]; then
-                                    echo "Health check failed after \$max_attempts attempts"
-                                    echo "Checking container status..."
-                                    sudo docker ps -a
-                                    echo "=== Backend container logs ==="
-                                    sudo docker logs bluemarble-backend
-                                    echo "=== MySQL container logs ==="
-                                    sudo docker logs bluemarble-mysql --tail=50
-                                    echo "=== Redis container logs ==="
-                                    sudo docker logs bluemarble-redis --tail=50
-                                    exit 1
+
+                                if [ \$attempt -lt \$max_attempts ]; then
+                                    echo "✅ New version health check passed!"
+                                    health_check_passed=true
+                                else
+                                    echo "❌ New version health check failed"
+                                    health_check_passed=false
                                 fi
-                                
-                                echo "Application is healthy on EC2!"
+
+                                if [ "\$health_check_passed" = true ]; then
+                                    echo "🔄 Switching to new version..."
+                                    # Stop old version (Blue - 8081)
+                                    sudo docker-compose down --remove-orphans || true
+                                    # Start new version on 8081 (promote Green to Blue)
+                                    sudo docker-compose up -d
+                                    # Stop temporary 8082 version
+                                    sudo docker-compose -f docker-compose.green.yml down || true
+                                    echo "✅ Successfully deployed new version!"
+                                else
+                                    echo "🔄 Rolling back - keeping old version..."
+                                    # Remove failed new version
+                                    sudo docker-compose -f docker-compose.green.yml down || true
+                                    echo "✅ Old version continues running on port 8081"
+                                fi
                             '
                         """
                     }
