@@ -30,7 +30,7 @@ RUN apk add --no-cache curl
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 # Create logs directory with proper permissions
-RUN mkdir -p /app/logs && chown -R appuser:appuser /app/logs && chmod 755 /app/logs
+RUN mkdir -p /app/logs && chown -R appuser:appuser /app/logs
 
 # Copy JAR file from build stage
 COPY --from=build /app/build/libs/*.jar app.jar

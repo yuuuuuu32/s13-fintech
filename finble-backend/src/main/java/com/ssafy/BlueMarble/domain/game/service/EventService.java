@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
+import com.ssafy.BlueMarble.domain.game.dto.request.NtsRequest;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.Timer.Service.TimerService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
@@ -17,6 +18,7 @@ import com.ssafy.BlueMarble.websocket.dto.payload.game.JailPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.ConstructPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.WorldTravelPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.UseDicePayload;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.NtsPayload;
 import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
 
 import lombok.RequiredArgsConstructor;
@@ -97,12 +99,9 @@ public class EventService {
             }
         }
 
-        // 4. 플레이어 상태 업데이트
-        gameRedisService.savePlayerState(roomId, jailRequest.getNickname(), user);
-
-        // 5. 게임 상태 업데이트
+        // 4. 게임 상태 업데이트
         if (gameState != null && gameState.getPlayers() != null) {
-            gameState.getPlayers().put(jailRequest.getNickname(), user);
+            gameState.getPlayers().put(userId, user);
             gameRedisService.saveGameMapState(roomId, gameState);
         }
 
@@ -211,6 +210,56 @@ public class EventService {
     }
 
     /**
+     * 국세청 이벤트 처리 (현금의 15% 세금 부과)
+     */
+    public void handleNtsEvent(String roomId, String nickname) {
+        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
+        if (gameState == null) {
+            throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
+        }
+
+        String userId = userRedisService.getUserIdByNickname(nickname);
+        if (userId == null) {
+            throw new BusinessException(BusinessError.USER_NOT_FOUND);
+        }
+
+        CreateMapPayload.PlayerState player = gameState.getPlayers().get(userId);
+        if (player == null) {
+            throw new BusinessException(BusinessError.USER_NOT_FOUND);
+        }
+
+        // 현재 현금의 15% 계산
+        int currentMoney = player.getMoney();
+        int taxAmount = (int) (currentMoney * 0.15);
+
+        // 세금 차감 (최소 0원까지만)
+        int newMoney = Math.max(0, currentMoney - taxAmount);
+        player.setMoney(newMoney);
+
+        // 게임 상태 저장
+        gameRedisService.saveGameMapState(roomId, gameState);
+
+        // 결과 메시지 전송
+        NtsPayload payload = NtsPayload.builder()
+                .nickname(nickname)
+                .taxAmount(taxAmount)
+                .updatedAsset(
+                        ConstructPayload.Asset.builder()
+                                .money(player.getMoney())
+                                .lands(player.getOwnedProperties() != null ? player.getOwnedProperties() : new ArrayList<>())
+                                .build()
+                )
+                .build();
+
+        JsonNode payloadNode = objectMapper.valueToTree(payload);
+        MessageDto message = new MessageDto(MessageType.NTS_EVENT, payloadNode);
+        sessionMessageService.sendMessageToRoom(roomId, message);
+
+        log.info("국세청 세금 처리: player={}, taxAmount={}, remainingMoney={}",
+                nickname, taxAmount, player.getMoney());
+    }
+
+    /**
      * 주사위 사용 이벤트 처리
      */
     public void handleUseDiceEvent(WebSocketSession session, UseDiceRequest useDiceRequest) {
@@ -266,8 +315,12 @@ public class EventService {
         if (!isChancePosition(newPosition)) {
             var targetCell = gameState.getCurrentMap().getCells().get(newPosition);
 
+            // 국세청 칸 처리
+            if (targetCell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NTS) {
+                handleNtsEvent(roomId, useDiceRequest.getUserName());
+            }
             // 일반땅인 경우에만 통행료 처리
-            if (targetCell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NORMAL) {
+            else if (targetCell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NORMAL) {
                 if (targetCell.getOwnerName() != null && !targetCell.getOwnerName().equals(useDiceRequest.getUserName())) {
                     // 다른 플레이어의 땅 - 통행료 지불
                     landOwner = targetCell.getOwnerName();

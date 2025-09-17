@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface TileRepository extends JpaRepository<Tile, Integer> {
+public interface TileRepository extends JpaRepository<Tile, Long> {
 
     /**
      * 타일 타입으로 조회
