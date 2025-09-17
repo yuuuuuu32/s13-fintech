@@ -76,6 +76,18 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/kakao")
+    @Operation(summary = "Kakao 로그인(프론트 SDK 토큰)", description = "프론트에서 받은 Kakao accessToken으로 로그인/회원가입 처리")
+    public ResponseEntity<TokenResponse> kakaoLoginWithAccessToken(@RequestBody java.util.Map<String, String> body) {
+        String accessToken = body.get("accessToken");
+        if (accessToken == null || accessToken.isBlank()) {
+            throw new IllegalArgumentException("accessToken is required");
+        }
+        KakaoUserInfoResponse kakaoUserInfoResponse = kakaoAuthService.getKakaoUserInfo(accessToken);
+        TokenResponse token = authService.kakaoLogin(kakaoUserInfoResponse);
+        return ResponseEntity.ok(token);
+    }
+
     @PostMapping("/reissue")
     @Operation(summary = "토큰 재발급", description = "refresh token을 통해 access token 재발급")
     public ResponseEntity<TokenResponse> reissue(@RequestBody TokenRequest request) {

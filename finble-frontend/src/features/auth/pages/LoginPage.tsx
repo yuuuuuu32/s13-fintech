@@ -100,6 +100,7 @@ export default function LoginPage() {
     setLoginProvider('kakao');
     setErrorMessage(null);
 
+    // Legacy: Kakao SDK access token -> POST /auth/kakao (활성화)
     window.Kakao.Auth.login({
       success: function (authObj: KakaoLoginResponse) {
         apiClient
@@ -123,6 +124,26 @@ export default function LoginPage() {
         setErrorMessage('Kakao 로그인에 실패했습니다. 다시 시도해주세요.');
       },
     });
+
+    /*
+    // 백엔드에서 인가 URL을 받아 리다이렉트하는 플로우 (비활성화)
+    apiClient
+      .post('/auth/kakao-login')
+      .then((res) => {
+        const { authorizationUrl } = res.data as { authorizationUrl: string };
+        if (authorizationUrl) {
+          window.location.href = authorizationUrl;
+        } else {
+          throw new Error('authorizationUrl not found');
+        }
+      })
+      .catch((error) => {
+        console.error('Kakao login init error:', error);
+        setErrorMessage('카카오 로그인 시작에 실패했습니다. 다시 시도해주세요.');
+        setIsLoggingIn(false);
+        setLoginProvider(null);
+      });
+    */
   };
 
   const handleNicknameComplete = () => {
