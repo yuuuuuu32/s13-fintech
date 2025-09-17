@@ -54,7 +54,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 String email = jwtTokenProvider.getEmail(token);
                 String sessionIdFromToken = jwtTokenProvider.getSessionId(token);
-                String savedRefreshToken = redisTemplate.opsForValue().get(email);
+                String savedRefreshToken = redisTemplate.opsForValue().get("RT:" + email);
 
                 if (savedRefreshToken != null) {
                     String sessionIdFromRedis = jwtTokenProvider.getSessionId(savedRefreshToken);
@@ -72,12 +72,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
 
-            filterChain.doFilter(request, response);
-
         } catch (Exception ex) {
             log.error("JWT 인증 처리 중 예외 발생", ex);
             setErrorResponse(response, HttpStatus.UNAUTHORIZED, "JWT 인증 처리 중 오류가 발생했습니다.");
+            return;
         }
+        
+        filterChain.doFilter(request, response);
     }
 
     private String resolveToken(HttpServletRequest request) {
