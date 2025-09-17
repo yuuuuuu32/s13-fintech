@@ -81,6 +81,15 @@ public class TimerService {
         cancelTurnTimer(roomId);
     }
 
+    /**
+     * 게임 종료 시 타이머 정리
+     */
+    public void clearGameTimer(String roomId) {
+        String timerKey = TURN_TIMER_PREFIX + roomId;
+        redisTemplate.delete(timerKey);
+        log.info("게임 종료로 인한 타이머 정리 완료: roomId={}", roomId);
+    }
+
     private void endTurnByTimer(String roomId) {
             // 턴 종료 로직 실행
             CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);

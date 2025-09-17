@@ -8,6 +8,7 @@ import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.game.repository.TileRepository;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
+import com.ssafy.BlueMarble.domain.Timer.Service.TimerService;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
@@ -36,6 +37,7 @@ public class MapService {
     private final UserRedisService userRedisService;
     private final RedisTemplate<String, String> redisTemplate;
     private final RoomService roomService;
+    private final TimerService timerService;
 
     private static final int MAP_SIZE = 32;
     private static final Random random = new Random(System.nanoTime());
@@ -169,8 +171,10 @@ public class MapService {
         gameState.setGameState(GameState.FINISHED);
         gameRedisService.saveGameMapState(roomId, gameState);
 
-        log.info("게임 종료: roomId={}", roomId);
+        // 게임 종료 시 타이머 정리
+        timerService.clearGameTimer(roomId);
 
+        log.info("게임 종료: roomId={}", roomId);
     }
 
     /**
