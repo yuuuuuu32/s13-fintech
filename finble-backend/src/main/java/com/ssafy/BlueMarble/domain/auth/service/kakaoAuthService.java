@@ -6,6 +6,7 @@ import com.ssafy.BlueMarble.domain.auth.dto.response.KakaoUserInfoResponse;
 import com.ssafy.BlueMarble.domain.auth.dto.response.KakoAuthTokenResponse;
 import com.ssafy.BlueMarble.domain.auth.repository.KakaoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -30,7 +31,7 @@ public class kakaoAuthService {
     //    @Value("${KAKAO_REDIRECT_URI}")
     private String kakaoRedirectUri = "http://localhost:8081/auth/kakao/callback";
 
-    //    @Value("${KAKAO_REST_API_KEY}")
+//    @Value("${KAKAO_REST_API_KEY}")
     private String kakaoClientId = "409725197be3c8a40abff4791c2ac7e6";
 
     private String kakaoUserUrl = "https://kapi.kakao.com/v2/user/me";

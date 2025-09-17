@@ -35,33 +35,44 @@ public class AuthController {
     /**
      * kakao 리다이렉트 url 호출하는 API
      * */
-    @PostMapping("/authorize")
+    @PostMapping("/kakao-login")
     @Operation(summary = "Kakao 로그인", description = "kakao 로그인 하는거에요")
     public KakaoAuthCodeResponse getAuthorizationUrl() {
         String state = UUID.randomUUID().toString();
         String authorizationUrl = kakaoAuthService.buildAuthorizationUrl(state);
-
         return new KakaoAuthCodeResponse(authorizationUrl);
     }
 
     @GetMapping("/kakao/callback")
-    public String kakaoCallback(
+    @Operation(summary = "Kakao 로그인 콜백", description = "카카오 OAuth 인증 후 콜백 처리 및 토큰 발급")
+    public ResponseEntity<TokenResponse> kakaoCallback(
             @RequestParam("code") String code,
             @RequestParam(value = "state", required = false) String state) {
 
-        // 1. state 검증 
-        // TODO : 현재 검증 안하고 있음
-        boolean isValidState = kakaoAuthService.validateState(state);
-        if (!isValidState) {
-            return "Invalid state parameter";
+        try {
+            // 1. state 검증 
+            // TODO : 현재 검증 안하고 있음
+            boolean isValidState = kakaoAuthService.validateState(state);
+            if (!isValidState) {
+                throw new RuntimeException("Invalid state parameter");
+            }
+
+            // 2. 받은 인가 코드(code)를 이용해 토큰 요청을 진행할 수 있도록 다음 처리 호출
+            KakoAuthTokenResponse kakoAuthTokenResponse = kakaoAuthService.requestAccessToken(code);
+
+            // 3.AccessToken을 받아와서 유저정보 요청
+            KakaoUserInfoResponse kakaoUserInfoResponse = kakaoAuthService.getKakaoUserInfo(kakoAuthTokenResponse.getAccess_token());
+            
+            // 4. 카카오 로그인 처리 (사용자 생성/조회 및 JWT 토큰 발급)
+            TokenResponse tokenResponse = authService.kakaoLogin(kakaoUserInfoResponse);
+            
+            // 5. 토큰 응답 반환
+            return ResponseEntity.ok(tokenResponse);
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("카카오 로그인 처리 중 오류가 발생했습니다: " + e.getMessage());
         }
-
-        // 2. 받은 인가 코드(code)를 이용해 토큰 요청을 진행할 수 있도록 다음 처리 호출
-        KakoAuthTokenResponse kakoAuthTokenResponse = kakaoAuthService.requestAccessToken(code);
-
-        // 3.AccessToken을 받아와서 유저정보 요청
-        KakaoUserInfoResponse kakaoUserInfoResponse = kakaoAuthService.getKakaoUserInfo(kakoAuthTokenResponse.getAccess_token());
-        return "유저정보 : "+ kakaoUserInfoResponse.getKakaoAccount().getEmail();
     }
 
     @PostMapping("/reissue")
