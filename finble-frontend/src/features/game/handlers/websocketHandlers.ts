@@ -21,14 +21,20 @@ export const createWebSocketHandlers = (
         set((state) => {
           const nextPlayerIndex = state.players.findIndex(p => p.name === payload.curPlayer);
           if (nextPlayerIndex !== -1) {
+            const newTurn = payload.gameTurn ?? state.currentTurn;
             const newState = {
               currentPlayerIndex: nextPlayerIndex,
-              currentTurn: payload.gameTurn ?? state.currentTurn,
+              currentTurn: newTurn,
               gamePhase: "WAITING_FOR_ROLL",
               isDiceRolled: false, // Ensure dice state is reset
               // 찬스카드 모달이 떠있으면 유지
               modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
             };
+
+            // Update economic history when turn changes
+            setTimeout(() => {
+              get().updateEconomicHistory(newTurn);
+            }, 100);
 
             // Check for game over after turn change
             setTimeout(() => {
@@ -61,14 +67,21 @@ export const createWebSocketHandlers = (
       if (payload.currentPlayerIndex !== undefined) {
         console.log("🔄 Turn changing to player index:", payload.currentPlayerIndex);
         console.log("🎮 Setting gamePhase to WAITING_FOR_ROLL");
+        const newTurn = payload.currentTurn || get().currentTurn;
         set((state) => ({
           currentPlayerIndex: payload.currentPlayerIndex,
-          currentTurn: payload.currentTurn || get().currentTurn,
+          currentTurn: newTurn,
           gamePhase: "WAITING_FOR_ROLL",
           isDiceRolled: false, // Reset for the next turn
           // 찬스카드 모달이 떠있으면 유지
           modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
         }));
+
+        // Update economic history when turn changes
+        setTimeout(() => {
+          get().updateEconomicHistory(newTurn);
+        }, 100);
+
         console.log("✅ Turn change completed. New player index:", payload.currentPlayerIndex);
       }
     });
@@ -175,9 +188,22 @@ export const createWebSocketHandlers = (
           if (player.name === userName) {
             const updatedPlayer = { ...player };
 
-            // 돈 변화 적용
+            // 돈 변화 적용 (경제역사 효과 적용)
             if (moneyChange !== undefined && moneyChange !== null) {
-              updatedPlayer.money += moneyChange;
+              let adjustedMoneyChange = moneyChange;
+
+              // 돈을 받는 경우 (양수) - 보너스 배수 적용
+              if (moneyChange > 0) {
+                adjustedMoneyChange = get().applyEconomicMultiplier(moneyChange, 'chanceCardBonusMultiplier');
+              }
+              // 돈을 내는 경우 (음수) - 페널티 배수 적용
+              else if (moneyChange < 0) {
+                const absMoneyChange = Math.abs(moneyChange);
+                const adjustedPenalty = get().applyEconomicMultiplier(absMoneyChange, 'chanceCardPenaltyMultiplier');
+                adjustedMoneyChange = -adjustedPenalty;
+              }
+
+              updatedPlayer.money += adjustedMoneyChange;
             }
 
             // 위치 변화 적용

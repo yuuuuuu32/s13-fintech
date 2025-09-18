@@ -1,6 +1,6 @@
 // src/pages/room/WaitingRoomPage.tsx
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLobbyStore } from '../../lobby/store/useLobbyStore';
 import { useUserStore } from '../../../stores/useUserStore';
@@ -17,18 +17,21 @@ import bgImage from '../../../assets/waitingroom-background.png';
 export default function WaitingRoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
+  const hasEnteredRoom = useRef(false);
 
   const exitRoom = useLobbyStore((state) => state.exitRoom);
   const { userInfo } = useUserStore();
   const { room, enterRoomAndSubscribe, cleanup } = useRoomStore();
 
-  
+
   useEffect(() => {
-    if (roomId) {
+    if (roomId && !hasEnteredRoom.current) {
+      hasEnteredRoom.current = true;
       console.log('🚪 [WAITING_ROOM] Attempting to enter room:', roomId);
 
       enterRoomAndSubscribe(roomId).catch(error => {
         console.error('❌ [WAITING_ROOM] Failed to enter room:', error);
+        hasEnteredRoom.current = false;
 
         // 에러 타입에 따른 처리
         if (error.message?.includes('가득')) {
@@ -50,8 +53,7 @@ export default function WaitingRoomPage() {
     return () => {
       cleanup();
     };
-    // 👇 2. 의존성 배열을 수정하여 무한 루프 및 타임아웃 오류를 해결합니다.
-  }, [roomId, navigate]);
+  }, [roomId]);
 
   useEffect(() => {
     if (room?.status === 'playing' && roomId) {
@@ -110,8 +112,9 @@ export default function WaitingRoomPage() {
             players={room.players} 
             currentUserId={userInfo?.userId}
           />
-          <RoomActions 
+          <RoomActions
             isHost={isHost}
+            playerCount={room.players.length}
             onExit={handleExit}
             onStartGame={handleStartGame}
           />

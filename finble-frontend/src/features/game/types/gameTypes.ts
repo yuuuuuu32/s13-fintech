@@ -11,6 +11,7 @@ export type GamePhase =
   | "WORLD_TRAVEL_MOVE"
   | "SELECTING_ORDER";
 
+
 export type ModalType =
   | "NONE"
   | "BUY_PROPERTY"

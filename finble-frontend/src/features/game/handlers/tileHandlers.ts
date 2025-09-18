@@ -15,10 +15,13 @@ export const handleCityCompanyTile = (
   const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
 
   if (!owner) {
-    const landPrice = (currentTile as any).landPrice ?? currentTile.price ?? 0;
-    if (currentPlayer.money >= landPrice) {
+    const baseLandPrice = (currentTile as any).landPrice ?? currentTile.price ?? 0;
+    const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
+    if (currentPlayer.money >= adjustedLandPrice) {
       if (isMyTurn) {
-        set({ modal: { type: "BUY_PROPERTY", tile: currentTile } });
+        // 조정된 가격으로 모달 표시
+        const adjustedTile = { ...currentTile, price: adjustedLandPrice };
+        set({ modal: { type: "BUY_PROPERTY", tile: adjustedTile } });
       } else {
         // 다른 플레이어의 턴: 모달 표시하지 않음
         set({ modal: { type: "NONE" as const } });
@@ -32,15 +35,17 @@ export const handleCityCompanyTile = (
       }
     }
   } else if (owner.id !== currentPlayer.id) {
-    let toll = (currentTile as any).toll || currentTile.tolls?.[currentTile.buildings?.level || 0] || 50000;
+    let baseToll = (currentTile as any).toll || currentTile.tolls?.[currentTile.buildings?.level || 0] || 50000;
+    let toll = get().applyEconomicMultiplier(baseToll, 'tollMultiplier');
 
     if (get().expoLocation === currentPlayer.position) {
       toll *= 2;
     }
 
     if (isMyTurn) {
-      const landPrice = (currentTile as any).landPrice ?? currentTile.price ?? 0;
-      const acquireCost = landPrice * 2;
+      const baseLandPrice = (currentTile as any).landPrice ?? currentTile.price ?? 0;
+      const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
+      const acquireCost = adjustedLandPrice * 2;
       set({
         modal: { type: "ACQUIRE_PROPERTY", tile: currentTile, acquireCost, toll },
       });
@@ -143,8 +148,8 @@ export const handleSpecialTile = (
 ) => {
   const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
 
-  switch (currentTile.name) {
-    case "감옥":
+  switch (currentTile.type) {
+    case "JAIL":
       set((state) => {
         const updatedPlayers = [...state.players];
         updatedPlayers[state.currentPlayerIndex] = {
@@ -162,29 +167,29 @@ export const handleSpecialTile = (
         };
       });
       break;
-    case "박람회": {
-      if (isMyTurn) {
-        const ownedProperties = currentPlayer.properties.map((index) => ({
-          name: board[index].name,
-          index,
-        }));
-        if (ownedProperties.length > 0) {
-          set({ modal: { type: "EXPO", properties: ownedProperties } });
-        } else {
-          set({
-            modal: {
-              type: "INFO",
-              text: "소유한 땅이 없어 박람회 효과를 받을 수 없습니다.",
-              onConfirm: () => set({ modal: { type: "NONE" as const } }),
-            },
-          });
-        }
-      } else {
-        set({ modal: { type: "NONE" as const } });
-      }
-      break;
-    }
-    case "세계여행":
+    // case "박람회": {
+    //   if (isMyTurn) {
+    //     const ownedProperties = currentPlayer.properties.map((index) => ({
+    //       name: board[index].name,
+    //       index,
+    //     }));
+    //     if (ownedProperties.length > 0) {
+    //       set({ modal: { type: "EXPO", properties: ownedProperties } });
+    //     } else {
+    //       set({
+    //         modal: {
+    //           type: "INFO",
+    //           text: "소유한 땅이 없어 박람회 효과를 받을 수 없습니다.",
+    //           onConfirm: () => set({ modal: { type: "NONE" as const } }),
+    //         },
+    //       });
+    //     }
+    //   } else {
+    //     set({ modal: { type: "NONE" as const } });
+    //   }
+    //   break;
+    // }
+    case "AIRPLANE":
       // 백엔드에 세계여행 이벤트 요청 전송
       if (send && isMyTurn) {
         send('/app/game/world-travel', {
