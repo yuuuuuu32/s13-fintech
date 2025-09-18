@@ -25,12 +25,28 @@ export default function WaitingRoomPage() {
   
   useEffect(() => {
     if (roomId) {
+      console.log('🚪 [WAITING_ROOM] Attempting to enter room:', roomId);
+
       enterRoomAndSubscribe(roomId).catch(error => {
-        console.error("Failed to enter room", error);
+        console.error('❌ [WAITING_ROOM] Failed to enter room:', error);
+
+        // 에러 타입에 따른 처리
+        if (error.message?.includes('가득')) {
+          alert('방이 가득 찼습니다. 다른 방을 이용해 주세요.');
+        } else if (error.message?.includes('찾을 수 없')) {
+          alert('방을 찾을 수 없습니다. 방이 삭제되었을 수 있습니다.');
+        } else if (error.message?.includes('진행')) {
+          alert('이미 게임이 진행 중인 방입니다.');
+        } else if (error.message?.includes('시간')) {
+          alert('서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.');
+        } else {
+          alert(`방 입장에 실패했습니다: ${error.message}`);
+        }
+
         navigate('/lobby');
       });
     }
-    
+
     return () => {
       cleanup();
     };
