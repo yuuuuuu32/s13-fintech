@@ -9,19 +9,18 @@ export const createWebSocketHandlers = (
 ) => ({
   connect: (gameId: string) => {
     set({ gameId });
-    console.log("Game store connected to game:", gameId);
+    console.log("🔌 [WEBSOCKET] Connected to game:", gameId);
 
     subscribeToTopic("GAME_STATE_CHANGE", (message) => {
-      console.log("Received game update (GAME_STATE_CHANGE):", message);
+      console.log("📥 [WEBSOCKET] GAME_STATE_CHANGE received:", message);
       const { payload } = message;
+      console.log("📥 [WEBSOCKET] GAME_STATE_CHANGE payload detail:", JSON.stringify(payload, null, 2));
 
       // If the payload has curPlayer, it's likely a turn change from the timer
       if (payload.curPlayer) {
-        console.log("🔄 GAME_STATE_CHANGE with curPlayer:", payload.curPlayer);
         set((state) => {
           const nextPlayerIndex = state.players.findIndex(p => p.name === payload.curPlayer);
           if (nextPlayerIndex !== -1) {
-            console.log("✅ Player found, changing turn to index:", nextPlayerIndex);
             return {
               currentPlayerIndex: nextPlayerIndex,
               currentTurn: payload.gameTurn ?? state.currentTurn,
@@ -31,23 +30,26 @@ export const createWebSocketHandlers = (
               modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
             };
           }
-          console.warn("❌ Player not found:", payload.curPlayer);
-          return {}; // No change if player not found
+          return {};
         });
       } else {
-        // Handle other generic game state updates
-        console.log("📝 Updating game state with payload:", payload);
-        get().updateGameState(payload);
+        // GAME_STATE_CHANGE should not update player positions to prevent snap-back
+        const { players, ...safePayload } = payload;
+        get().updateGameState(safePayload);
       }
     });
 
     subscribeToTopic("START_GAME_OBSERVE", (message) => {
-      console.log("Received game update (START_GAME_OBSERVE):", message);
-      get().updateGameState(message.payload);
+      console.log("📥 [WEBSOCKET] START_GAME_OBSERVE received:", message);
+      console.log("📥 [WEBSOCKET] START_GAME_OBSERVE payload detail:", JSON.stringify(message.payload, null, 2));
+
+      // START_GAME_OBSERVE should not update player positions to prevent snap-back
+      const { players, ...safePayload } = message.payload;
+      get().updateGameState(safePayload);
     });
 
     subscribeToTopic("TURN_CHANGE", (message) => {
-      console.log("Received TURN_CHANGE message:", message);
+      console.log("📥 [WEBSOCKET] TURN_CHANGE received:", message);
       const { payload } = message;
       if (payload.currentPlayerIndex !== undefined) {
         console.log("🔄 Turn changing to player index:", payload.currentPlayerIndex);
@@ -65,7 +67,7 @@ export const createWebSocketHandlers = (
     });
 
     subscribeToTopic("USE_DICE", (message) => {
-      console.log("Received USE_DICE message:", message);
+      console.log("📥 [WEBSOCKET] USE_DICE received:", message);
       const { payload } = message;
 
       const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn } = payload;
@@ -76,17 +78,29 @@ export const createWebSocketHandlers = (
           serverDiceNum: diceNumSum,
           serverCurrentPosition: currentPosition,
           currentTurn: curTurn,
-          gamePhase: "DICE_ROLLING", // Trigger animation for all clients
+          gamePhase: "DICE_ROLLING",
         };
       });
     });
 
     subscribeToTopic("TRADE_LAND", (message) => {
-      console.log("Received TRADE_LAND message:", message);
+      console.log("📥 [WEBSOCKET] TRADE_LAND received:", message);
       const { payload } = message;
       if (payload.players) {
         const serverPlayersMap = payload.players;
+        console.log("📍 [POSITION] TRADE_LAND server positions:", Object.entries(serverPlayersMap).map(([id, player]) => ({
+          playerId: id,
+          nickname: player.nickname,
+          serverPosition: player.position
+        })));
+
         set((state) => {
+          console.log("📍 [POSITION] TRADE_LAND current client positions:", state.players.map(p => ({
+            playerId: p.id,
+            nickname: p.name,
+            clientPosition: p.position
+          })));
+
           const updatedPlayers = state.players.map(clientPlayer => {
             const serverPlayerState = serverPlayersMap[clientPlayer.id];
             if (serverPlayerState) {
@@ -101,6 +115,13 @@ export const createWebSocketHandlers = (
             }
             return clientPlayer;
           });
+
+          console.log("📍 [POSITION] TRADE_LAND after update positions:", updatedPlayers.map(p => ({
+            playerId: p.id,
+            nickname: p.name,
+            positionAfterUpdate: p.position
+          })));
+
           return { players: updatedPlayers };
         });
       }
@@ -204,6 +225,17 @@ export const createWebSocketHandlers = (
 
     subscribeToTopic("DRAW_CARD", handleChanceCard);
     subscribeToTopic("CHANCE_CARD", handleChanceCard);
+
+    // 게임 중 방 관련 메시지 처리
+    subscribeToTopic("ENTER_ROOM_OK", (message) => {
+      console.log("📥 [WEBSOCKET] ENTER_ROOM_OK received in game:", message);
+      // 게임 중에는 특별한 처리가 필요하지 않으므로 로그만 기록
+    });
+
+    subscribeToTopic("ENTER_NEW_USER", (message) => {
+      console.log("📥 [WEBSOCKET] ENTER_NEW_USER received in game:", message);
+      // 게임 중 새 유저 입장은 일반적으로 발생하지 않지만 로그 기록
+    });
   },
 
   disconnect: () => {
@@ -215,6 +247,17 @@ export const createWebSocketHandlers = (
   },
 
   initializeGame: (initialState: GameInitialState) => {
+    console.log("📍 [POSITION] initializeGame called - forcing all players to start position (0):", {
+      roomId: initialState.roomId,
+      playerOrder: initialState.playerOrder,
+      serverPlayers: Object.values(initialState.players).map(p => ({
+        userId: p.userId,
+        nickname: p.nickname,
+        serverPosition: p.position,
+        forcedPosition: 0
+      }))
+    });
+
     const playerNicknamesOrder: string[] = initialState.playerOrder;
     const playersMap = initialState.players;
     const allServerPlayers = Object.values(playersMap);
@@ -234,7 +277,7 @@ export const createWebSocketHandlers = (
           id: serverPlayer.userId,
           name: serverPlayer.nickname,
           money: serverPlayer.money,
-          position: serverPlayer.position, // 서버에서 받은 위치 값 사용
+          position: 0, // 게임 시작 시 모든 플레이어를 시작칸(0번)에 배치
           properties: serverPlayer.ownedProperties || [],
           isInJail: serverPlayer.inJail,
           jailTurns: serverPlayer.jailTurns,
@@ -268,6 +311,33 @@ export const createWebSocketHandlers = (
   },
 
   updateGameState: (newState: Partial<GameState>) => {
+    console.log("📍 [POSITION] updateGameState called:", {
+      hasPlayers: !!newState.players,
+      newStateKeys: Object.keys(newState),
+      playersType: newState.players ? (Array.isArray(newState.players) ? 'array' : 'object') : 'none',
+      playerCount: newState.players ? (Array.isArray(newState.players) ? newState.players.length : Object.keys(newState.players).length) : 0
+    });
+
+    if (newState.players) {
+      const players = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
+      console.log("📍 [POSITION] updateGameState player positions:", players.map(p => ({
+        playerId: p.id,
+        nickname: p.name,
+        position: p.position
+      })));
+
+      // Check for position 0 resets
+      players.forEach(p => {
+        if (p.position === 0) {
+          console.warn("⚠️ [WARNING] updateGameState setting player to position 0:", {
+            playerId: p.id,
+            nickname: p.name,
+            position: p.position
+          });
+        }
+      });
+    }
+
     set(newState);
   },
 });

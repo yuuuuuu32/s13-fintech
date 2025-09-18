@@ -10,12 +10,26 @@ export const createGameLogicHandlers = (
 
   finishDiceRoll: () => {
     set((state) => {
-        const { serverCurrentPosition, players, currentPlayerIndex } = state;
+        const { serverCurrentPosition, players, currentPlayerIndex, board } = state;
         if (serverCurrentPosition === null) return {};
+
+        const currentPlayer = players[currentPlayerIndex];
+        const finalPosition = Math.max(0, Math.min(serverCurrentPosition, board.length - 1));
+
+        console.log("📍 [POSITION] Player position update:", {
+          playerId: currentPlayer.id,
+          playerName: currentPlayer.name,
+          previousPosition: currentPlayer.position,
+          serverPosition: serverCurrentPosition,
+          finalPosition: finalPosition
+        });
 
         const updatedPlayers = players.map((p, index) => {
             if (index === currentPlayerIndex) {
-                return { ...p, position: serverCurrentPosition };
+                return {
+                    ...p,
+                    position: finalPosition,
+                };
             }
             return p;
         });
@@ -33,8 +47,6 @@ export const createGameLogicHandlers = (
   rollDice: () => {
     const { gamePhase, players, currentPlayerIndex, gameId, send } = get();
     const currentPlayer = players[currentPlayerIndex];
-
-    console.log("rollDice called. Current gamePhase:", gamePhase);
 
     if (gamePhase !== "WAITING_FOR_ROLL") return;
 
@@ -57,14 +69,17 @@ export const createGameLogicHandlers = (
     set({ gamePhase: "DICE_ROLLING" });
 
     if (gameId) {
+      console.log("📤 [WEBSOCKET] Sending USE_DICE:", {
+        destination: `/app/game/${gameId}/roll-dice`,
+        type: "USE_DICE",
+        payload: { userName: currentPlayer.name }
+      });
       send(`/app/game/${gameId}/roll-dice`, {
         type: "USE_DICE",
         payload: {
           userName: currentPlayer.name,
         },
       });
-    } else {
-      console.warn("Game ID not set. Cannot send roll dice message.");
     }
   },
 
@@ -99,7 +114,6 @@ export const createGameLogicHandlers = (
   },
 
   handleTileAction: () => {
-    console.log("🎯 handleTileAction called!");
     set({ gamePhase: "TILE_ACTION" });
     const { players, currentPlayerIndex, board } = get();
     const currentPlayer = players[currentPlayerIndex];
@@ -117,10 +131,8 @@ export const createGameLogicHandlers = (
     console.log("🎯 Is my turn:", isMyTurn);
     console.log("🎯 Current board position:", currentPlayer.position);
     const currentTile = board[currentPlayer.position];
-    console.log("🎯 Current tile:", currentTile);
 
     if (currentPlayer.money < 0) {
-      // 직접 checkGameOver 로직 실행
       const { players, currentTurn, totalTurns, board } = get();
       const alivePlayers = players.filter((p) => p.money >= 0);
 
@@ -154,17 +166,16 @@ export const createGameLogicHandlers = (
       return;
     }
 
-    console.log("🎯 Tile type:", currentTile?.type);
     switch (currentTile?.type) {
       case "city":
       case "company":
       case "NORMAL":
-        console.log("🏢 Handling city/company/normal tile");
         handleCityCompanyTile(set, get, currentTile, currentPlayer, players);
         break;
 
       case "chance":
       case "CHANCE":
+        handleChanceTile(set, get, currentTile, currentPlayer, chanceCards);
         console.log("🎲 Chance tile - handled by server via USE_DICE");
         // 찬스카드는 서버에서 처리되므로 별도 액션 없음
         get().endTurn();
@@ -175,42 +186,73 @@ export const createGameLogicHandlers = (
       case "JAIL":
       case "START":
       case "AIRPLANE":
-        console.log("⭐ Handling special tile");
-        handleSpecialTile(set, get, currentTile, currentPlayer, board);
+        handleSpecialTile(set, get, currentTile, currentPlayer, board, get().send);
         break;
 
       default:
-        console.log("❓ Unknown tile type or no tile, ending turn");
-        // 직접 endTurn 로직 실행
         get().endTurn();
         break;
     }
   },
 
   endTurn: () => {
-    const { gameId, send, currentPlayerIndex, players } = get();
+    const state = get();
+    const { gameId, send, players, currentPlayerIndex } = state;
     const currentPlayer = players[currentPlayerIndex];
 
-    console.log("🏁 EndTurn called by player:", currentPlayer?.name);
-    console.log("🎮 Current gamePhase before endTurn:", get().gamePhase);
+    console.log("🔄 [TURN_TRANSITION] endTurn called - PRE state:", {
+      timestamp: new Date().toISOString(),
+      currentPlayer: {
+        id: currentPlayer?.id,
+        name: currentPlayer?.name,
+        position: currentPlayer?.position
+      },
+      currentPlayerIndex,
+      gamePhase: state.gamePhase,
+      modal: state.modal,
+      stackTrace: new Error().stack?.split('\n').slice(1, 4).join(' -> ')
+    });
+
+    // Log all player positions before turn end
+    console.log("📍 [POSITION] All player positions before endTurn:", players.map(p => ({
+      playerId: p.id,
+      nickname: p.name,
+      position: p.position
+    })));
 
     if (gameId) {
-      console.log("📤 Sending end-turn message to server");
+      console.log("📤 [WEBSOCKET] Sending TURN_SKIP:", {
+        destination: `/app/game/${gameId}/end-turn`,
+        type: "TURN_SKIP",
+        payload: {},
+        timestamp: new Date().toISOString()
+      });
       send(`/app/game/${gameId}/end-turn`, {
         type: "TURN_SKIP",
         payload: {},
       });
-    } else {
-      console.warn("❌ Game ID not set. Cannot send end-turn message.");
     }
 
-    // The client will wait for a TURN_CHANGE message from the server
-    // to actually change the turn. We can set a phase to prevent further actions.
-    console.log("⏳ Setting gamePhase to WAITING_FOR_TURN_END, waiting for server response");
     set({
       modal: { type: "NONE" as const },
       gamePhase: "WAITING_FOR_TURN_END",
     });
+
+    console.log("🔄 [TURN_TRANSITION] endTurn completed - POST state:", {
+      timestamp: new Date().toISOString(),
+      gamePhase: "WAITING_FOR_TURN_END",
+      modal: { type: "NONE" }
+    });
+
+    // Log positions again after state change
+    setTimeout(() => {
+      const postState = get();
+      console.log("📍 [POSITION] All player positions AFTER endTurn (delayed check):", postState.players.map(p => ({
+        playerId: p.id,
+        nickname: p.name,
+        position: p.position
+      })));
+    }, 100);
   },
 
   checkGameOver: () => {

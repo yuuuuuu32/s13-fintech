@@ -25,9 +25,35 @@ export default function GameCanvas() {
 
   const { gameId } = useParams<{ gameId: string }>();
 
+  // Component Lifecycle Tracking
+  useEffect(() => {
+    console.log("🎮 [LIFECYCLE] GameCanvas MOUNTED:", {
+      timestamp: new Date().toISOString(),
+      gameId,
+      isWebSocketReady,
+      hasInitialGameState: !!initialGameState,
+      playersCount: players.length,
+      stackTrace: new Error().stack?.split('\n').slice(1, 3).join(' -> ')
+    });
+
+    return () => {
+      console.log("🎮 [LIFECYCLE] GameCanvas UNMOUNTING:", {
+        timestamp: new Date().toISOString(),
+        gameId,
+        playersCount: players.length,
+        stackTrace: new Error().stack?.split('\n').slice(1, 3).join(' -> ')
+      });
+    };
+  }, []);
+
   useEffect(() => {
     if (initialGameState && isWebSocketReady) {
-        console.log("Initializing game from stored state:", initialGameState);
+        console.log("🎮 [LIFECYCLE] Initializing game from stored state:", {
+          timestamp: new Date().toISOString(),
+          initialGameState,
+          currentPlayersCount: players.length,
+          stackTrace: new Error().stack?.split('\n').slice(1, 3).join(' -> ')
+        });
         initializeGame(initialGameState);
         setInitialGameState(null); // Clear the state after using it
     }
@@ -42,11 +68,14 @@ export default function GameCanvas() {
     };
   }, [connect, disconnect, gameId, isWebSocketReady]); // isWebSocketReady를 의존성 배열에 추가
 
-  if (players.length === 0) {
+  console.log('Players in GameCanvas:', players);
+
+  // Convert players object to array if needed
+  const playersArray = Array.isArray(players) ? players : Object.values(players || {});
+
+  if (playersArray.length === 0) {
     return <div>Loading game...</div>; // 데이터가 로드될 때까지 로딩 상태를 표시
   }
-
-  console.log('Players in GameCanvas:', players);
 
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
@@ -55,18 +84,18 @@ export default function GameCanvas() {
       <Canvas camera={{ position: [0, 40, 50], fov: 50 }} shadows>
         <Sky sunPosition={[100, 20, 100]} />
         <ambientLight intensity={1.5} />
-        <directionalLight 
-          position={[0, 10, 5]} 
-          intensity={2} 
-          castShadow 
-          shadow-mapSize-width={2048} 
+        <directionalLight
+          position={[0, 10, 5]}
+          intensity={2}
+          castShadow
+          shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
         />
-        
+
         <Physics>
           <group scale={1.2}>
               <Board />
-              {players.map((player) => (
+              {playersArray.map((player) => (
                 <Player key={player.id} player={player} />
               ))}
               <Dice />

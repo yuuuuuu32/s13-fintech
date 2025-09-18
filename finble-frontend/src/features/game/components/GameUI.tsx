@@ -326,6 +326,7 @@ export function GameUI() {
   const handleJail = useGameStore(state => state.handleJail);
   const selectExpoProperty = useGameStore(state => state.selectExpoProperty);
   const buildBuilding = useGameStore(state => state.buildBuilding);
+  const cancelWorldTravel = useGameStore(state => state.cancelWorldTravel);
 
   const navigate = useNavigate();
 
@@ -477,9 +478,57 @@ export function GameUI() {
       </Box>
       
       {gamePhase === 'WORLD_TRAVEL_MOVE' && (
-          <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', p: 3, bgcolor: 'rgba(0,0,0,0.8)', borderRadius: 2 }}>
-              <Typography variant="h4">세계여행</Typography>
-              <Typography variant="h6">이동하고 싶은 타일을 보드에서 직접 클릭하세요.</Typography>
+          <Box sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            p: 4,
+            bgcolor: 'rgba(0, 20, 40, 0.95)',
+            borderRadius: 3,
+            border: '2px solid #00ffff',
+            boxShadow: '0 0 20px rgba(0, 255, 255, 0.3)',
+            textAlign: 'center',
+            minWidth: 400
+          }}>
+              <Typography
+                variant="h4"
+                sx={{
+                  color: '#00ffff',
+                  textShadow: '0 0 10px rgba(0, 255, 255, 0.8)',
+                  mb: 2,
+                  fontWeight: 'bold'
+                }}
+              >
+                🌍 세계여행
+              </Typography>
+              <Typography
+                variant="h6"
+                sx={{
+                  color: '#ffffff',
+                  mb: 3,
+                  lineHeight: 1.6
+                }}
+              >
+                원하는 목적지를 보드에서 직접 클릭하세요!<br />
+                <span style={{ color: '#00ffff', fontSize: '0.9em' }}>
+                  ✨ 반짝이는 타일들이 클릭 가능한 곳입니다
+                </span>
+              </Typography>
+              <Button
+                variant="outlined"
+                onClick={cancelWorldTravel}
+                sx={{
+                  color: '#ff6b6b',
+                  borderColor: '#ff6b6b',
+                  '&:hover': {
+                    borderColor: '#ff5252',
+                    bgcolor: 'rgba(255, 107, 107, 0.1)'
+                  }
+                }}
+              >
+                취소
+              </Button>
           </Box>
       )}
 

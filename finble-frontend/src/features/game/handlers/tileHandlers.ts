@@ -90,15 +90,56 @@ export const handleCityCompanyTile = (
   }
 };
 
-// 찬스카드 처리는 서버에서 하므로 제거됨
-// USE_DICE -> 서버 처리 -> DRAW_CARD 메시지로 결과 전송
+export const handleChanceTile = (
+  set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
+  get: () => GameState,
+  currentTile: TileData,
+  currentPlayer: Player,
+  chanceCards: { text: string; action: (player: Player) => Player }[]
+) => {
+  const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
+  const randomCard =
+    chanceCards[Math.floor(Math.random() * chanceCards.length)];
+
+  set((state) => {
+    const currentPlayer = state.players[state.currentPlayerIndex];
+    const originalPosition = currentPlayer.position;
+    const playerAfterAction = randomCard.action(currentPlayer);
+    const moved = playerAfterAction.position !== originalPosition;
+    const updatedPlayers = state.players.map((p) =>
+      p.id === playerAfterAction.id ? playerAfterAction : p
+    );
+
+    return {
+      players: updatedPlayers,
+      modal: isMyTurn ? {
+        type: "CHANCE_CARD",
+        text: randomCard.text,
+        onConfirm: () => {
+          set({ modal: { type: "NONE" as const } });
+          // Do not trigger handleTileAction again to prevent chain reactions
+          // The chance card effect has already been applied
+          get().endTurn();
+        },
+      } : { type: "NONE" as const },
+    };
+  });
+
+  // 다른 플레이어의 턴이면 바로 턴 종료
+  if (!isMyTurn) {
+    // Do not trigger additional tile actions for other players
+    // to prevent chain reactions and unexpected behavior
+    setTimeout(() => get().endTurn(), 100);
+  }
+};
 
 export const handleSpecialTile = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
   get: () => GameState,
   currentTile: TileData,
   currentPlayer: Player,
-  board: TileData[]
+  board: TileData[],
+  send?: (destination: string, body: Record<string, unknown>) => void
 ) => {
   const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
 
@@ -144,6 +185,17 @@ export const handleSpecialTile = (
       break;
     }
     case "세계여행":
+      // 백엔드에 세계여행 이벤트 요청 전송
+      if (send && isMyTurn) {
+        send('/app/game/world-travel', {
+          type: "WORLD_TRAVEL_EVENT",
+          payload: {
+            playerId: currentPlayer.id,
+            currentPosition: currentPlayer.position
+          }
+        });
+      }
+
       set((state) => {
         const updatedPlayers = [...state.players];
         updatedPlayers[state.currentPlayerIndex] = {
