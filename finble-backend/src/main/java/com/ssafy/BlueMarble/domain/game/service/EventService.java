@@ -6,6 +6,7 @@ import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.NtsRequest;
+import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.Timer.Service.TimerService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
@@ -109,7 +110,7 @@ public class EventService {
         JailPayload payload = JailPayload.builder()
                 .result(escapeSuccess)
                 .userName(jailRequest.getNickname())
-                .updatedAsset( 
+                .updatedAsset(
                         ConstructPayload.Asset.builder()
                                 .money(user.getMoney())
                                 .lands(user.getOwnedProperties() != null ? user.getOwnedProperties() : new ArrayList<>())
@@ -138,8 +139,6 @@ public class EventService {
         if (traveler == null) {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
-        //2.1 TODO : 현재 여행 하려는 사람이 세계여행 칸에 있는지 체크해야함
-
         //3. 출발지 도착지 정보
         int startPosition = traveler.getPosition();
         int endPosition = worldTravelRequest.getDestination();
@@ -149,11 +148,15 @@ public class EventService {
         int tollAmount = 0;
         CreateMapPayload.PlayerState owner = null;
 
+        //2.1 TODO : 현재 여행 하려는 사람이 세계여행 칸에 있는지 체크해야함
+        if (gameState.getCurrentMap().getCells().get(traveler.getPosition()).getType() != Tile.TileType.AIRPLANE) {
+            throw new BusinessException(BusinessError.INVALID_BEHAVIOR);
+        }
+
         // 4.1 만약 해당 땅에 주인이 있다면
         if (gameState.getCurrentMap().getCells().get(endPosition).getOwnerName() != null) {
             landOwner = gameState.getCurrentMap().getCells().get(endPosition).getOwnerName();
             tollAmount = gameState.getCurrentMap().getCells().get(endPosition).getToll();
-            // landOwner는 nickname이므로 userId로 변환 필요
             String ownerUserId = userRedisService.getUserIdByNickname(landOwner);
             if (ownerUserId != null) {
                 owner = gameState.getPlayers().get(ownerUserId);
@@ -264,7 +267,7 @@ public class EventService {
      */
     public void handleUseDiceEvent(WebSocketSession session, UseDiceRequest useDiceRequest) {
         String roomId = roomService.getRoom(session.getId());
-        
+
         // 1. 게임 맵 정보
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
 
@@ -275,7 +278,7 @@ public class EventService {
         // 예외처리
         //TODO : 본인의 턴에만 주사위를 던질 수 있었야함
         String currentTurnUserName = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
-        if(!currentTurnUserName.equals(useDiceRequest.getUserName())){
+        if (!currentTurnUserName.equals(useDiceRequest.getUserName())) {
             throw new BusinessException(BusinessError.INVALID_TURN);
         }
         CreateMapPayload.PlayerState player = gameState.getPlayers().get(userId);
@@ -284,28 +287,28 @@ public class EventService {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
         // 감옥에 있다면 던질 수 없음.
-        if(player.isInJail()){
-            throw new  BusinessException(BusinessError.INVALID_TURN);
+        if (player.isInJail()) {
+            throw new BusinessException(BusinessError.INVALID_TURN);
         }
 
         // 3. 주사위 던지기
         int diceNum1 = random.nextInt(6) + 1;
         int diceNum2 = random.nextInt(6) + 1;
-        int diceNumSum  = diceNum1 + diceNum2;
+        int diceNumSum = diceNum1 + diceNum2;
         // 4. 위치 계산
         int currentPosition = player.getPosition();
         int newPosition = (currentPosition + diceNumSum) % 32; // 32개 칸 순환
-        
+
         // 5. 시작점 통과 여부
         int salaryBonus = 0;
         if (newPosition < currentPosition) { // 시작점을 통과했는지 확인
             salaryBonus = 1000000; // 월급
             player.setMoney(player.getMoney() + salaryBonus);
         }
-        
+
         // 6. 새로운 위치로 이동
         player.setPosition(newPosition);
-        
+
         // 7. 도착한 땅 정보 확인 (찬스칸이 아닌 경우에만)
         String landOwner = null;
         int tollAmount = 0;
@@ -337,18 +340,18 @@ public class EventService {
                             if (owner != null) {
                                 owner.setMoney(owner.getMoney() + tollAmount);
                                 log.info("통행료 지불: player={}, owner={}, amount={}",
-                                       useDiceRequest.getUserName(), landOwner, tollAmount);
+                                        useDiceRequest.getUserName(), landOwner, tollAmount);
                             }
                         }
                     } else {
                         log.warn("통행료 부족: player={}, required={}, available={}",
-                               useDiceRequest.getUserName(), tollAmount, player.getMoney());
+                                useDiceRequest.getUserName(), tollAmount, player.getMoney());
                     }
                 } else if (targetCell.getOwnerName() == null) {
                     // 비어있는 일반땅 - 구매 가능
                     canBuyLand = true;
                     log.info("구매 가능한 땅 도착: player={}, position={}, price={}",
-                           useDiceRequest.getUserName(), newPosition, targetCell.getToll());
+                            useDiceRequest.getUserName(), newPosition, targetCell.getToll());
                 }
             }
         }
@@ -367,7 +370,7 @@ public class EventService {
 
         // 10. 타이머 시작 (턴을 즉시 종료하지 않음)
         timerService.startTurnTimer(roomId, userId);
-        
+
         // 10. 결과 메시지 전송 (찬스카드로 이동했을 수 있으므로 실제 플레이어 위치 사용)
         String nextTurnUserName = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
         UseDicePayload payload = UseDicePayload.builder()
@@ -388,7 +391,7 @@ public class EventService {
                                 .build()
                 )
                 .build();
-        
+
         JsonNode payloadNode = objectMapper.valueToTree(payload);
         MessageDto message = new MessageDto(MessageType.USE_DICE, payloadNode);
         sessionMessageService.sendMessageToRoom(roomId, message);
