@@ -70,8 +70,6 @@ export const useGameStore = create<GameState>()((set, get) => {
     cancelWorldTravel: playerActions.cancelWorldTravel,
     buildBuilding: playerActions.buildBuilding,
 
-    
-
     // 기타 유틸리티 메서드
     handleInsufficientFundsForToll: (
       requiredAmount: number,

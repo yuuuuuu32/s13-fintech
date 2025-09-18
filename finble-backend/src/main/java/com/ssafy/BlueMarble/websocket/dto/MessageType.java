@@ -30,6 +30,7 @@ public enum MessageType {
     WORLD_TRAVEL_EVENT,
     USE_DICE,
     NTS_EVENT,
+    ECONOMIC_HISTORY_UPDATE,
 
     // 카드 관련
     DRAW_CARD,

@@ -6,6 +6,7 @@ import { useWebSocketStore } from '../../../stores/useWebSocketStore';
 
 interface RoomState {
   room: GameRoom | null;
+  isEntering: boolean;
   setRoom: (room: GameRoom) => void;
   addPlayer: (player: Player) => void;
   removePlayer: (playerId: string) => void;
@@ -15,6 +16,7 @@ interface RoomState {
 
 export const useRoomStore = create<RoomState>((set, get) => ({
   room: null,
+  isEntering: false,
   setRoom: (room) => set({ room }),
   addPlayer: (player) => set((state) => {
     if (!state.room) return {};
@@ -38,6 +40,14 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     };
   }),
   enterRoomAndSubscribe: async (roomId: string) => {
+    // 이미 입장 중이면 중복 요청 방지
+    if (get().isEntering) {
+      console.log('🚪 [ROOM_ENTRY] Already entering room, skipping duplicate request');
+      return;
+    }
+
+    set({ isEntering: true });
+
     // Find initial room info from lobby store
     const lobbyRoom = useLobbyStore.getState().rooms.find(r => r.id === roomId);
 
@@ -64,6 +74,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
           unsubscribeOk();
           unsubscribeFail();
           unsubscribeNotFound();
+          unsubscribeError();
           resolve(message.payload);
         });
 
@@ -75,6 +86,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
           unsubscribeOk();
           unsubscribeFail();
           unsubscribeNotFound();
+          unsubscribeError();
 
           // 에러 메시지 상세화
           let errorMessage = '입장할 수 없는 방입니다.';
@@ -106,19 +118,32 @@ export const useRoomStore = create<RoomState>((set, get) => ({
           unsubscribeOk();
           unsubscribeFail();
           unsubscribeNotFound();
+          unsubscribeError();
           reject(new Error(message.message || '방 ID를 찾을 수 없습니다.'));
+        });
+
+        const unsubscribeError = subscribeToTopic('INTERNAL_SERVER_ERROR', (message: any) => {
+          if (isResolved) return;
+          isResolved = true;
+
+          console.log('❌ [ROOM_ENTRY] INTERNAL_SERVER_ERROR received:', message);
+          unsubscribeOk();
+          unsubscribeFail();
+          unsubscribeNotFound();
+          unsubscribeError();
+          reject(new Error(message.message || '서버 내부 오류가 발생했습니다.'));
         });
 
         console.log('📤 [ROOM_ENTRY] Sending ENTER_ROOM message:', {
           destination: '/app/room/enter',
           type: "ENTER_ROOM",
-          payload: { roomId: parseInt(roomId, 10) }
+          payload: { roomId: roomId }
         });
 
         sendMessage('/app/room/enter', {
           type: "ENTER_ROOM",
           payload: {
-            roomId: parseInt(roomId, 10),
+            roomId: roomId,
           }
         });
 

@@ -35,11 +35,11 @@ public class TimerService {
     /**
      * 턴 시작 시 타이머 설정
      */
-    public void startTurnTimer(String roomId, String currentPlayerId) {
+    public void startTurnTimer(String roomId, String currentPlayerId, Long seconds ) {
         String timerKey = TURN_TIMER_PREFIX + roomId;
 
         // 현재 시간 + 30초를 Redis에 저장
-        long endTime = System.currentTimeMillis() + 30000; // 30초
+        long endTime = System.currentTimeMillis() + seconds; // 30초
         redisTemplate.opsForValue().set(timerKey, String.valueOf(endTime));
 
         // TODO : 타이머 시작 알림 보내야함
@@ -72,8 +72,8 @@ public class TimerService {
             long endTime = Long.parseLong(endTimeStr);
             if (now >= endTime) {
                 String roomId = key.substring(TURN_TIMER_PREFIX.length());
-                endTurnByTimer(roomId);
                 redisTemplate.delete(key);
+                endTurnByTimer(roomId);
             }
         }
     }
@@ -117,7 +117,7 @@ public class TimerService {
                 log.error("플레이어 ID를 찾을 수 없음: nickname={}", nextPlayerNickname);
                 return;
             }
-            startTurnTimer(roomId, nextPlayerId);
+            startTurnTimer(roomId, nextPlayerId,30000L);
 
             log.info("타이머로 인한 턴 종료: roomId={}, nextPlayerId={}", roomId, nextPlayerId);
 

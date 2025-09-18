@@ -126,6 +126,11 @@ public class MapService {
         MessageDto message = new MessageDto(MessageType.START_GAME_OBSERVE, mapState);
         sessionMessageService.sendMessageToRoom(roomId, message);
 
+        // TODO : 게임을 시작하자마자 타이머를 돌려야함 (이때 5초 딜레이 필요)
+        // 10. 타이머 시작 (턴을 즉시 종료하지 않음)
+        String firstUserId = shuffledPlayers.get(0);
+        timerService.startTurnTimer(roomId, firstUserId, 35000L);
+
         log.info("새로운 게임 맵 상태 생성: roomId={}, players={}",
                 roomId, shuffledPlayers.size());
     }
