@@ -58,12 +58,12 @@ public class AuthService {
     public TokenResponse kakaoLoginWithTokenReuse(KakaoUserInfoResponse kakaoUserInfo, String existingToken) {
         // 디버깅을 위한 로그 추가
         log.info("카카오 사용자 정보: {}", kakaoUserInfo);
-        
+
         String email = kakaoUserInfo.getKakaoAccount().getEmail();
         String nickname = kakaoUserInfo.getKakaoAccount().getProfile().getNickname();
-        
+
         log.info("추출된 이메일: {}, 닉네임: {}", email, nickname);
-        
+
         // 이메일이 null인 경우 처리
         final String finalEmail;
         if (email == null || email.isEmpty()) {
@@ -73,7 +73,7 @@ public class AuthService {
         } else {
             finalEmail = email;
         }
-        
+
         // 닉네임이 null인 경우 처리
         final String finalNickname;
         if (nickname == null || nickname.isEmpty()) {
@@ -82,7 +82,7 @@ public class AuthService {
         } else {
             finalNickname = nickname;
         }
-        
+
         // 기존 사용자 조회 또는 신규 사용자 생성
         User user = userRepository.findByEmail(finalEmail)
                 .orElseGet(() -> createKakaoUserFromKakaoInfo(finalEmail, finalNickname));
@@ -94,7 +94,7 @@ public class AuthService {
                 String tokenEmail = jwtTokenProvider.getEmail(token);
                 if (finalEmail.equals(tokenEmail)) {
                     log.info("기존 유효한 토큰 재사용: {}", tokenEmail);
-                    
+
                     // 기존 토큰의 refreshToken도 함께 반환
                     String savedRefreshToken = redisTemplate.opsForValue().get("RT:" + finalEmail);
                     if (savedRefreshToken != null) {
@@ -122,7 +122,6 @@ public class AuthService {
 
     @Transactional
     public TokenResponse kakaoLogin(KakaoUserInfoResponse kakaoUserInfo) {
-        // 기존 메서드 유지 (하위 호환성)
         return kakaoLoginWithTokenReuse(kakaoUserInfo, null);
     }
 
@@ -145,25 +144,25 @@ public class AuthService {
 
     private User createKakaoUserFromKakaoInfo(String email, String nickname) {
         log.info("카카오 사용자 생성 - 이메일: {}, 닉네임: {}", email, nickname);
-        
+
         // null 체크 및 기본값 설정
         if (email == null || email.isEmpty()) {
             throw new IllegalArgumentException("이메일이 null이거나 비어있습니다.");
         }
-        
+
         if (nickname == null || nickname.isEmpty()) {
             nickname = "카카오사용자";
         }
-        
+
         User user = User.createOAuthUser(
                 email,
                 nickname, // 카카오에서는 name 대신 nickname 사용
                 nickname,
                 User.Provider.KAKAO
         );
-        
+
         log.info("생성된 사용자: {}", user);
-        
+
         User savedUser = userRepository.save(user);
         userRedisService.putNickname(user.getId().toString(), user.getNickname(), "null");
 

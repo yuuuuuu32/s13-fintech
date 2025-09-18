@@ -33,7 +33,7 @@ public class AuthController {
     // 리다이렉트 기반 카카오 로그인은 사용하지 않음 (SDK 토큰 기반으로 통일)
 
     @PostMapping("/kakao")
-    @Operation(summary = "Kakao 로그인(프론트 SDK 토큰)", description = "프론트에서 받은 Kakao accessToken으로 로그인/회원가입 처리")
+    @Operation(summary = "Kakao 로그인", description = "프론트에서 받은 Kakao accessToken으로 로그인/회원가입 처리")
     public ResponseEntity<TokenResponse> kakaoLoginWithAccessToken(@RequestBody Map<String, String> body) {
         String accessToken = body.get("accessToken");
         if (accessToken == null || accessToken.isBlank()) {
