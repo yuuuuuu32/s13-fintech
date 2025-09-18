@@ -61,7 +61,7 @@ public class LandService {
         // 5. 땅이 이미 소유되어 있는지 확인
         String currentOwner = targetCell.getOwnerName();
         if (currentOwner != null) {
-            // 이미 소유된 땅인 경우, 판매자의 닉네임을 userId로 변환
+            // 이미 소유된 땅인 경우
             String sellerUserId = userRedisService.getUserIdByNickname(currentOwner);
             if (sellerUserId == null) {
                 throw new BusinessException(BusinessError.USER_ID_NOT_FOUND);
