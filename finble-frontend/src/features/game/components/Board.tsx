@@ -73,20 +73,46 @@ export function Board() {
         );
       })}
       
+      {/* Board Background */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
           <planeGeometry args={[BOARD_SIZE, BOARD_SIZE]} />
-          <meshStandardMaterial color="#2d3748" visible={false} />
+          <meshStandardMaterial color="#1a1a2e" />
         </mesh>
 
+      {/* Center Board Area - Lighter green with pattern */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
         <planeGeometry args={[BOARD_SIZE - TILE_DEPTH * 2, BOARD_SIZE - TILE_DEPTH * 2]} />
-        <meshStandardMaterial color="#38a169" />
+        <meshStandardMaterial color="#2c5530" />
       </mesh>
-      
+
+      {/* Board Border Lines */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+        <ringGeometry args={[(BOARD_SIZE - TILE_DEPTH * 2) / 2 - 0.1, (BOARD_SIZE - TILE_DEPTH * 2) / 2]} />
+        <meshStandardMaterial color="#ffd700" />
+      </mesh>
+
+      {/* Inner decorative border */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
+        <ringGeometry args={[(BOARD_SIZE - TILE_DEPTH * 2) / 2 - 1, (BOARD_SIZE - TILE_DEPTH * 2) / 2 - 0.5]} />
+        <meshStandardMaterial color="#654321" />
+      </mesh>
+
+      {/* Center Logo Area */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
+        <circleGeometry args={[4]} />
+        <meshStandardMaterial color="#f4f4f4" />
+      </mesh>
+
+      {/* Logo border */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
+        <ringGeometry args={[3.8, 4]} />
+        <meshStandardMaterial color="#333" />
+      </mesh>
+
       <RigidBody type="fixed" colliders="cuboid">
         <mesh position={[0, -0.2, 0]}>
           <boxGeometry args={[BOARD_SIZE, 0.4, BOARD_SIZE]} />
-          <meshStandardMaterial color="#855a3c" />
+          <meshStandardMaterial color="#654321" />
         </mesh>
       </RigidBody>
     </group>
