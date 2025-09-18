@@ -27,7 +27,8 @@ export const createWebSocketHandlers = (
               currentTurn: payload.gameTurn ?? state.currentTurn,
               gamePhase: "WAITING_FOR_ROLL",
               isDiceRolled: false, // Ensure dice state is reset
-              modal: { type: "NONE" }, // Clear any modals
+              // 찬스카드 모달이 떠있으면 유지
+              modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
             };
           }
           console.warn("❌ Player not found:", payload.curPlayer);
@@ -51,13 +52,14 @@ export const createWebSocketHandlers = (
       if (payload.currentPlayerIndex !== undefined) {
         console.log("🔄 Turn changing to player index:", payload.currentPlayerIndex);
         console.log("🎮 Setting gamePhase to WAITING_FOR_ROLL");
-        set({
+        set((state) => ({
           currentPlayerIndex: payload.currentPlayerIndex,
           currentTurn: payload.currentTurn || get().currentTurn,
           gamePhase: "WAITING_FOR_ROLL",
           isDiceRolled: false, // Reset for the next turn
-          modal: { type: "NONE" }, // Clear any modals from previous turn
-        });
+          // 찬스카드 모달이 떠있으면 유지
+          modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
+        }));
         console.log("✅ Turn change completed. New player index:", payload.currentPlayerIndex);
       }
     });
@@ -122,13 +124,14 @@ export const createWebSocketHandlers = (
           playersCount: state.players?.length
         });
 
-        const { userName, result } = payload;
+        // 백엔드에서 보내는 구조: { result: { userName, cardName, ... } }
+        const result = payload.result;
         if (!result) {
           console.error("🎲 [DRAW_CARD] result가 없습니다!");
           return state;
         }
 
-        const { cardName, effectDescription, moneyChange, newPosition } = result;
+        const { userName, cardName, effectDescription, moneyChange, newPosition } = result;
 
         console.log("🎲 [DRAW_CARD] 데이터 파싱 완료:", {
           userName,
