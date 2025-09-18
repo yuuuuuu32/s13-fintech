@@ -23,7 +23,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class BankruptcyService {
     private final SessionMessageService sessionMessageService;
-    private final GameRedisService gameRedisService;
     private final UserService userService;
     private final ObjectMapper objectMapper;
     private final MapService mapService;
@@ -67,7 +66,8 @@ public class BankruptcyService {
                 .filter(CreateMapPayload.PlayerState::isActive)
                 .toList();
 
-        if (activePlayers.size() <= 1) {
+        // 플레이어가 한명 남았거나 or 게임의 턴수는 최대 20까지
+        if (activePlayers.size() <= 1 || gameState.getGameTurn() > 20) {
             String winnerName = activePlayers.isEmpty() ? "No Winner" : activePlayers.get(0).getNickname();
             EndGamePayload payload = EndGamePayload.builder()
                     .winnerName(winnerName)
@@ -76,10 +76,10 @@ public class BankruptcyService {
             JsonNode payloadNode = objectMapper.valueToTree(payload);
             MessageDto message = new MessageDto(MessageType.GAME_END, payloadNode);
             sessionMessageService.sendMessageToRoom(roomId, message);
-            
+
             // 게임 종료 처리 (타이머 정리 포함)
             mapService.endGame(roomId);
-            
+
             // 게임정보 모두 삭제
             mapService.deleteGameMapState(roomId);
         }

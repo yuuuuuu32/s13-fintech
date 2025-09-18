@@ -95,6 +95,7 @@ export const createPlayerActions = (
   },
 
   acquireProperty: () => {
+    const { gameId, send } = get();
     set((state) => {
       const { players, currentPlayerIndex, modal, board } = state;
       const tileIndex = board.findIndex((t) => t.name === modal.tile?.name);
@@ -116,7 +117,20 @@ export const createPlayerActions = (
           money: owner.money + modal.acquireCost,
           properties: owner.properties.filter((p) => p !== tileIndex),
         };
-        return { players: updatedPlayers };
+
+        if (gameId) {
+          send(`/app/game/${gameId}/trade-land`, {
+            type: "TRADE_LAND",
+            payload: {
+              buyerName: currentPlayer.name,
+              landNum: tileIndex,
+            },
+          });
+        } else {
+          console.error("Cannot sync property purchase, gameId is not set");
+        }
+
+        return { players: updatedPlayers, modal: { type: "NONE" as const } };
       }
       return {
         modal: { type: "INFO" as const, text: "자산이 부족하여 인수할 수 없습니다." },

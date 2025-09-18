@@ -199,7 +199,7 @@ public class RoomService {
         Long userLimit = Long.parseLong(redisTemplate.opsForValue().get(userLimitKey));
 
         //있으면 인원수 체크해서 12명이상이면 꽉찼다는 메시지
-        if (userSet.size() >= userLimit) {
+        if (userSet.size() > userLimit) {
             log.warn("인원 꽉 참");
             throw new BusinessException(BusinessError.ENTER_ROOM_FAIL);
         }
