@@ -130,6 +130,11 @@ export const initializeWebSocket = () => {
         });
       }
 
+      // 찬스카드 관련 메시지 특별 로깅
+      if (messageType.includes('CARD') || messageType.includes('CHANCE') || messageType.includes('DRAW')) {
+        console.log('🎲 CHANCE/CARD related message detected:', parsedMessage);
+      }
+
       if (subscriptions[messageType]) {
         console.log(`🎯 [WEBSOCKET_INTERCEPTOR] DISPATCHING to ${subscriptions[messageType].length} subscribers for: ${messageType}`);
         subscriptions[messageType].forEach(callback => callback(parsedMessage));

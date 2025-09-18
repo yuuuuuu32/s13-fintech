@@ -1,6 +1,6 @@
 import type { GameState, GamePhase } from "../types/gameTypes.ts";
-import { handleCityCompanyTile, handleChanceTile, handleSpecialTile } from "./tileHandlers.ts";
-import { chanceCards } from "../constants/gameConstants.ts";
+import { handleCityCompanyTile, handleSpecialTile } from "./tileHandlers.ts";
+import { useUserStore } from "../../../stores/useUserStore.ts";
 
 export const createGameLogicHandlers = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
@@ -117,6 +117,19 @@ export const createGameLogicHandlers = (
     set({ gamePhase: "TILE_ACTION" });
     const { players, currentPlayerIndex, board } = get();
     const currentPlayer = players[currentPlayerIndex];
+    const currentUserId = useUserStore.getState().userInfo?.userId;
+    const isMyTurn = currentPlayer.id === currentUserId;
+
+    console.log("🎯 User ID check:", {
+      currentPlayerId: currentPlayer.id,
+      currentUserId,
+      isMyTurn,
+      userStoreData: useUserStore.getState().userInfo
+    });
+
+    console.log("🎯 Current player:", currentPlayer);
+    console.log("🎯 Is my turn:", isMyTurn);
+    console.log("🎯 Current board position:", currentPlayer.position);
     const currentTile = board[currentPlayer.position];
 
     if (currentPlayer.money < 0) {
@@ -163,6 +176,9 @@ export const createGameLogicHandlers = (
       case "chance":
       case "CHANCE":
         handleChanceTile(set, get, currentTile, currentPlayer, chanceCards);
+        console.log("🎲 Chance tile - handled by server via USE_DICE");
+        // 찬스카드는 서버에서 처리되므로 별도 액션 없음
+        get().endTurn();
         break;
 
       case "special":
