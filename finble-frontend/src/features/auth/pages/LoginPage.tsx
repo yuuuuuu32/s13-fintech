@@ -115,7 +115,7 @@ export default function LoginPage() {
     window.Kakao.Auth.login({
       success: function (authObj: KakaoLoginResponse) {
         apiClient
-          .post('/auth/kakao', {
+          .post('/auth/kakao-login', {
             accessToken: authObj.access_token,
           })
           .then(async (res) => {

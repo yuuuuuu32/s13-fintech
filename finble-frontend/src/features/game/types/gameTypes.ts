@@ -104,6 +104,7 @@ export interface GameState {
   selectExpoProperty: (propertyIndex: number) => void;
   startWorldTravelSelection: () => void;
   selectTravelDestination: (tileIndex: number) => void;
+  cancelWorldTravel: () => void;
   buildBuilding: (tileIndex: number) => void;
   connect: (gameId: string) => void;
   disconnect: () => void;

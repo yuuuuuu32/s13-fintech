@@ -134,6 +134,7 @@ export const useGameStore = create<GameState>()((set, get) => {
     selectExpoProperty: playerActions.selectExpoProperty,
     startWorldTravelSelection: playerActions.startWorldTravelSelection,
     selectTravelDestination: playerActions.selectTravelDestination,
+    cancelWorldTravel: playerActions.cancelWorldTravel,
     buildBuilding: playerActions.buildBuilding,
 
     
