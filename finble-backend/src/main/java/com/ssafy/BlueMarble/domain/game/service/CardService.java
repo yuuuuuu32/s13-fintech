@@ -3,6 +3,7 @@ package com.ssafy.BlueMarble.domain.game.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.entity.Card;
+import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.game.repository.CardRepository;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.DrawCardPayload;
@@ -610,7 +611,7 @@ public class CardService {
     }
 
     /**
-     * 토지 가치 변동 정책 효과 적용
+     * 토지 가치 변동 정책 효과 적용 (즉시 모든 타일 가격 변경)
      */
     private void applyLandValuePolicyEffect(String roomId, Card card, CreateMapPayload gameMapState) {
         try {
@@ -629,12 +630,43 @@ public class CardService {
             boolean isIncrease = card.getName().contains("호황");
             String changeType = isIncrease ? "상승" : "하락";
 
-            // Redis에 토지 가치 변동 정보 저장
-            String landValueKey = "land_value_policy:" + roomId;
-            String policyData = String.format("{\"type\":\"%s\",\"percent\":%d,\"cardName\":\"%s\"}",
-                    changeType, effectValue, card.getName());
+            // 즉시 모든 타일의 가격을 변경
+            if (gameMapState.getCurrentMap() != null && gameMapState.getCurrentMap().getCells() != null) {
+                for (Tile cell : gameMapState.getCurrentMap().getCells()) {
+                    // 일반 타일만 가격 변동 적용 (특별칸 제외)
+                    if (cell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NORMAL) {
+                        int currentPrice = cell.getLandPrice();
+                        int change = (currentPrice * effectValue) / 100;
 
-            redisTemplate.opsForValue().set(landValueKey, policyData);
+                        if (!isIncrease) {
+                            change = -change;
+                        }
+
+                        int newPrice = currentPrice + change;
+                        cell.setLandPrice(newPrice);
+
+                        // 건물 가격도 함께 변동
+                        if (cell.getHousePrice() > 0) {
+                            int newHousePrice = cell.getHousePrice() + (cell.getHousePrice() * change / currentPrice);
+                            cell.setHousePrice(newHousePrice);
+                        }
+                        if (cell.getBuildingPrice() > 0) {
+                            int newBuildingPrice = cell.getBuildingPrice() + (cell.getBuildingPrice() * change / currentPrice);
+                            cell.setBuildingPrice(newBuildingPrice);
+                        }
+                        if (cell.getHotelPrice() > 0) {
+                            int newHotelPrice = cell.getHotelPrice() + (cell.getHotelPrice() * change / currentPrice);
+                            cell.setHotelPrice(newHotelPrice);
+                        }
+
+                        log.info("토지 가격 변동: 타일={}, 기존가격={}, 새가격={}, 변동률={}%",
+                                cell.getName(), currentPrice, newPrice, effectValue);
+                    }
+                }
+            }
+
+            // 변경된 게임 상태를 Redis에 저장
+            gameRedisService.saveGameMapState(roomId, gameMapState);
 
             log.info("토지 가치 정책 적용: cardName={}, 변동타입={}, 변동률={}%, roomId={}",
                     card.getName(), changeType, effectValue, roomId);
@@ -656,9 +688,6 @@ public class CardService {
 
             sessionMessageService.sendMessageToRoom(roomId, gameStateMessage);
             log.info("토지 가치 정책 적용 및 게임 상태 업데이트 메시지 전송 완료: cardName={}, roomId={}", card.getName(), roomId);
-
-            // 실제 토지 가격 변동은 부동산 구매/판매 시점에 적용
-            // 현재는 정책 정보만 저장하고, 거래 시 MapService에서 참조하여 적용
 
         } catch (Exception e) {
             log.error("토지 가치 정책 효과 적용 실패: cardName={}, roomId={}", card.getName(), roomId, e);

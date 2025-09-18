@@ -299,7 +299,7 @@ public class EventService {
         // 5. 시작점 통과 여부
         int salaryBonus = 0;
         if (newPosition < currentPosition) { // 시작점을 통과했는지 확인
-            salaryBonus = 1000; // 월급
+            salaryBonus = 1000000; // 월급
             player.setMoney(player.getMoney() + salaryBonus);
         }
         

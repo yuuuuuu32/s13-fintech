@@ -93,7 +93,7 @@ public class MapService {
             CreateMapPayload.PlayerState playerState = CreateMapPayload.PlayerState.builder()
                     .userId(playerId)
                     .nickname(playerName)
-                    .position(16) // 시작 위치
+                    .position(0) // 시작 위치
                     .money(20000000) // 초기 자금
                     .ownedProperties(new ArrayList<>())
                     .isInJail(false)
