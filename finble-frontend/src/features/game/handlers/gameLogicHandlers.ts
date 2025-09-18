@@ -1,6 +1,40 @@
 import type { GameState, GamePhase } from "../types/gameTypes.ts";
-import { handleCityCompanyTile, handleChanceTile, handleSpecialTile } from "./tileHandlers.ts";
-import { chanceCards } from "../constants/gameConstants.ts";
+import { handleCityCompanyTile, handleSpecialTile } from "./tileHandlers.ts";
+import { useUserStore } from "../../../stores/useUserStore.ts";
+import type { TileData } from "../data/boardData.ts";
+
+// Calculate total assets (money + property values + building values)
+const calculateTotalAssets = (player: any, board: TileData[]) => {
+  const propertyValue = player.properties.reduce((sum: number, index: number) => {
+    const tile = board[index];
+    if (!tile) return sum;
+
+    // 서버 데이터 구조에 맞게 landPrice 사용
+    let value = (tile as any)?.landPrice || tile.price || 0;
+
+    // 건물 가치 추가
+    if (tile.buildings && tile.buildings.level > 0) {
+      const housePrice = (tile as any)?.housePrice || 0;
+      const buildingPrice = (tile as any)?.buildingPrice || 0;
+      const hotelPrice = (tile as any)?.hotelPrice || 0;
+
+      switch (tile.buildings.level) {
+        case 1: // 주택
+          value += housePrice;
+          break;
+        case 2: // 빌딩
+          value += housePrice + buildingPrice;
+          break;
+        case 3: // 호텔
+          value += housePrice + buildingPrice + hotelPrice;
+          break;
+      }
+    }
+
+    return sum + value;
+  }, 0);
+  return player.money + propertyValue;
+};
 
 export const createGameLogicHandlers = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
@@ -10,12 +44,26 @@ export const createGameLogicHandlers = (
 
   finishDiceRoll: () => {
     set((state) => {
-        const { serverCurrentPosition, players, currentPlayerIndex } = state;
+        const { serverCurrentPosition, players, currentPlayerIndex, board } = state;
         if (serverCurrentPosition === null) return {};
+
+        const currentPlayer = players[currentPlayerIndex];
+        const finalPosition = Math.max(0, Math.min(serverCurrentPosition, board.length - 1));
+
+        console.log("📍 [POSITION] Player position update:", {
+          playerId: currentPlayer.id,
+          playerName: currentPlayer.name,
+          previousPosition: currentPlayer.position,
+          serverPosition: serverCurrentPosition,
+          finalPosition: finalPosition
+        });
 
         const updatedPlayers = players.map((p, index) => {
             if (index === currentPlayerIndex) {
-                return { ...p, position: serverCurrentPosition };
+                return {
+                    ...p,
+                    position: finalPosition,
+                };
             }
             return p;
         });
@@ -33,8 +81,6 @@ export const createGameLogicHandlers = (
   rollDice: () => {
     const { gamePhase, players, currentPlayerIndex, gameId, send } = get();
     const currentPlayer = players[currentPlayerIndex];
-
-    console.log("rollDice called. Current gamePhase:", gamePhase);
 
     if (gamePhase !== "WAITING_FOR_ROLL") return;
 
@@ -57,14 +103,17 @@ export const createGameLogicHandlers = (
     set({ gamePhase: "DICE_ROLLING" });
 
     if (gameId) {
+      console.log("📤 [WEBSOCKET] Sending USE_DICE:", {
+        destination: `/app/game/${gameId}/roll-dice`,
+        type: "USE_DICE",
+        payload: { userName: currentPlayer.name }
+      });
       send(`/app/game/${gameId}/roll-dice`, {
         type: "USE_DICE",
         payload: {
           userName: currentPlayer.name,
         },
       });
-    } else {
-      console.warn("Game ID not set. Cannot send roll dice message.");
     }
   },
 
@@ -99,66 +148,42 @@ export const createGameLogicHandlers = (
   },
 
   handleTileAction: () => {
-    console.log("🎯 handleTileAction called!");
     set({ gamePhase: "TILE_ACTION" });
     const { players, currentPlayerIndex, board } = get();
     const currentPlayer = players[currentPlayerIndex];
-    const isMyTurn = currentPlayer.id === (window as any).__userStore?.getState?.()?.userInfo?.userId;
+    const currentUserId = useUserStore.getState().userInfo?.userId;
+    const isMyTurn = currentPlayer.id === currentUserId;
+
+    console.log("🎯 User ID check:", {
+      currentPlayerId: currentPlayer.id,
+      currentUserId,
+      isMyTurn,
+      userStoreData: useUserStore.getState().userInfo
+    });
 
     console.log("🎯 Current player:", currentPlayer);
     console.log("🎯 Is my turn:", isMyTurn);
     console.log("🎯 Current board position:", currentPlayer.position);
     const currentTile = board[currentPlayer.position];
-    console.log("🎯 Current tile:", currentTile);
 
     if (currentPlayer.money < 0) {
-      // 직접 checkGameOver 로직 실행
-      const { players, currentTurn, totalTurns, board } = get();
-      const alivePlayers = players.filter((p) => p.money >= 0);
-
-      let winner = null;
-      if (alivePlayers.length <= 1) {
-        winner = alivePlayers[0] ?? null;
-      } else if (currentTurn > totalTurns) {
-        winner = players
-          .filter((p) => p.money >= 0)
-          .reduce((prev, current) => {
-            const prevAssets =
-              prev.money +
-              prev.properties.reduce((sum, i) => sum + (board[i].price || 0), 0);
-            const currentAssets =
-              current.money +
-              current.properties.reduce(
-                (sum, i) => sum + (board[i].price || 0),
-                0
-              );
-            return prevAssets > currentAssets ? prev : current;
-          });
-      }
-
-      if (winner || alivePlayers.length === 0 || currentTurn > totalTurns) {
-        set({
-          gamePhase: "GAME_OVER",
-          winnerId: winner?.id ?? null,
-          modal: { type: "NONE" as const },
-        });
-      }
+      console.log("💸 [BANKRUPTCY] Player went bankrupt:", currentPlayer.name);
+      get().checkGameOver();
       return;
     }
 
-    console.log("🎯 Tile type:", currentTile?.type);
     switch (currentTile?.type) {
       case "city":
       case "company":
       case "NORMAL":
-        console.log("🏢 Handling city/company/normal tile");
         handleCityCompanyTile(set, get, currentTile, currentPlayer, players);
         break;
 
       case "chance":
       case "CHANCE":
-        console.log("🎲 Handling chance tile");
-        handleChanceTile(set, get, currentTile, currentPlayer, chanceCards);
+        console.log("🎲 Chance tile - handled by server via USE_DICE");
+        // 찬스카드는 서버에서 처리되므로 별도 액션 없음
+        get().endTurn();
         break;
 
       case "special":
@@ -166,69 +191,120 @@ export const createGameLogicHandlers = (
       case "JAIL":
       case "START":
       case "AIRPLANE":
-        console.log("⭐ Handling special tile");
-        handleSpecialTile(set, get, currentTile, currentPlayer, board);
+        handleSpecialTile(set, get, currentTile, currentPlayer, board, get().send);
         break;
 
       default:
-        console.log("❓ Unknown tile type or no tile, ending turn");
-        // 직접 endTurn 로직 실행
         get().endTurn();
         break;
     }
   },
 
   endTurn: () => {
-    const { gameId, send, currentPlayerIndex, players } = get();
+    const state = get();
+    const { gameId, send, players, currentPlayerIndex } = state;
     const currentPlayer = players[currentPlayerIndex];
 
-    console.log("🏁 EndTurn called by player:", currentPlayer?.name);
-    console.log("🎮 Current gamePhase before endTurn:", get().gamePhase);
+    console.log("🔄 [TURN_TRANSITION] endTurn called - PRE state:", {
+      timestamp: new Date().toISOString(),
+      currentPlayer: {
+        id: currentPlayer?.id,
+        name: currentPlayer?.name,
+        position: currentPlayer?.position
+      },
+      currentPlayerIndex,
+      gamePhase: state.gamePhase,
+      modal: state.modal,
+      stackTrace: new Error().stack?.split('\n').slice(1, 4).join(' -> ')
+    });
+
+    // Log all player positions before turn end
+    console.log("📍 [POSITION] All player positions before endTurn:", players.map(p => ({
+      playerId: p.id,
+      nickname: p.name,
+      position: p.position
+    })));
 
     if (gameId) {
-      console.log("📤 Sending end-turn message to server");
+      console.log("📤 [WEBSOCKET] Sending TURN_SKIP:", {
+        destination: `/app/game/${gameId}/end-turn`,
+        type: "TURN_SKIP",
+        payload: {},
+        timestamp: new Date().toISOString()
+      });
       send(`/app/game/${gameId}/end-turn`, {
         type: "TURN_SKIP",
         payload: {},
       });
-    } else {
-      console.warn("❌ Game ID not set. Cannot send end-turn message.");
     }
 
-    // The client will wait for a TURN_CHANGE message from the server
-    // to actually change the turn. We can set a phase to prevent further actions.
-    console.log("⏳ Setting gamePhase to WAITING_FOR_TURN_END, waiting for server response");
     set({
       modal: { type: "NONE" as const },
       gamePhase: "WAITING_FOR_TURN_END",
     });
+
+    console.log("🔄 [TURN_TRANSITION] endTurn completed - POST state:", {
+      timestamp: new Date().toISOString(),
+      gamePhase: "WAITING_FOR_TURN_END",
+      modal: { type: "NONE" }
+    });
+
+    // Check for game over conditions after turn ends
+    setTimeout(() => {
+      get().checkGameOver();
+    }, 500);
+
+    // Log positions again after state change
+    setTimeout(() => {
+      const postState = get();
+      console.log("📍 [POSITION] All player positions AFTER endTurn (delayed check):", postState.players.map(p => ({
+        playerId: p.id,
+        nickname: p.name,
+        position: p.position
+      })));
+    }, 100);
   },
 
   checkGameOver: () => {
     const { players, currentTurn, totalTurns, board } = get();
     const alivePlayers = players.filter((p) => p.money >= 0);
 
+    console.log("🏁 [GAME_OVER] checkGameOver called:", {
+      currentTurn,
+      totalTurns,
+      turnExceeded: currentTurn >= totalTurns,
+      alivePlayersCount: alivePlayers.length,
+      allPlayers: players.map(p => ({ id: p.id, name: p.name, money: p.money, assets: calculateTotalAssets(p, board) }))
+    });
+
     let winner = null;
     if (alivePlayers.length <= 1) {
       winner = alivePlayers[0] ?? null;
-    } else if (currentTurn > totalTurns) {
-      winner = players
-        .filter((p) => p.money >= 0)
-        .reduce((prev, current) => {
-          const prevAssets =
-            prev.money +
-            prev.properties.reduce((sum, i) => sum + (board[i].price || 0), 0);
-          const currentAssets =
-            current.money +
-            current.properties.reduce(
-              (sum, i) => sum + (board[i].price || 0),
-              0
-            );
-          return prevAssets > currentAssets ? prev : current;
-        });
+      console.log("🏁 [GAME_OVER] Winner by elimination:", winner?.name);
+    } else if (currentTurn >= totalTurns) {
+      // 20턴이 넘으면 총 자산 기준으로 승자 결정
+      winner = alivePlayers.reduce((prev, current) => {
+        const prevAssets = calculateTotalAssets(prev, board);
+        const currentAssets = calculateTotalAssets(current, board);
+        return prevAssets > currentAssets ? prev : current;
+      });
+      console.log("🏁 [GAME_OVER] Winner by assets after turn limit:", {
+        winner: winner?.name,
+        assets: calculateTotalAssets(winner, board),
+        allAssets: alivePlayers.map(p => ({
+          name: p.name,
+          assets: calculateTotalAssets(p, board)
+        }))
+      });
     }
 
-    if (winner || alivePlayers.length === 0 || currentTurn > totalTurns) {
+    if (winner || alivePlayers.length === 0 || currentTurn >= totalTurns) {
+      console.log("🏁 [GAME_OVER] Game ending:", {
+        reason: winner ? 'winner found' : alivePlayers.length === 0 ? 'no alive players' : 'turn limit reached',
+        winnerId: winner?.id,
+        winnerName: winner?.name
+      });
+
       set({
         gamePhase: "GAME_OVER",
         winnerId: winner?.id ?? null,

@@ -243,7 +243,7 @@ const InfoModalContent = ({ modal, endTurn }) => (
 // JailModalContent
 const JailModalContent = ({ payBail, handleJail, BAIL_AMOUNT }) => (
   <>
-    <Typography variant="h5" component="h2">무인도</Typography>
+    <Typography variant="h5" component="h2">감옥</Typography>
     <Typography sx={{ mt: 2 }}>3턴 동안 갖혀있게 됩니다.</Typography>
     <Typography sx={{ mt: 1 }}>보석금을 내고 즉시 탈출할 수 있습니다.</Typography>
     <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
@@ -326,6 +326,7 @@ export function GameUI() {
   const handleJail = useGameStore(state => state.handleJail);
   const selectExpoProperty = useGameStore(state => state.selectExpoProperty);
   const buildBuilding = useGameStore(state => state.buildBuilding);
+  const cancelWorldTravel = useGameStore(state => state.cancelWorldTravel);
 
   const navigate = useNavigate();
 
@@ -418,32 +419,87 @@ export function GameUI() {
         {isMyTurn && timeLeft > 5 && <Typography variant="h6">남은 시간: {timeLeft}초</Typography>}
       </Box>
 
-      <Grid container spacing={2} sx={{ p: 2, pointerEvents: 'all' }}>
-        {players.map((player, index) => {
-          const isMyPlayer = player.id === userInfo?.userId;
-          const totalAssets = calculateTotalAssets(player, board);
-          return (
-            <Grid item xs={6} key={player.id} sx={{ display: 'flex', justifyContent: index === 0 ? 'flex-start' : 'flex-end' }}>
-              <Card sx={{ 
-                minWidth: 250, 
-                bgcolor: `rgba(0,0,0,${player.money < 0 ? 0.3 : 0.7})`, 
-                border: `3px solid ${index === currentPlayerIndex && !isGameOver ? 'yellow' : 'white'}`,
-                color: 'white',
-                transition: 'border-color 0.3s'
-              }}>
-                <CardContent>
-                  <Typography variant="h6" component="div" fontWeight="bold">
-                    {player.name} {isMyPlayer ? '(나)' : ''} {player.money < 0 ? '(파산)' : ''}
-                  </Typography>
-                  <Typography>현금: {player.money.toLocaleString()}원</Typography>
-                  <Typography>총 자산: {totalAssets.toLocaleString()}원</Typography>
-                  <Typography>소유 도시: {player.properties.length}개</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          )
-        })}
-      </Grid>
+      {/* Player Cards in Corner Positions */}
+      {players.map((player, index) => {
+        const isMyPlayer = player.id === userInfo?.userId;
+        const totalAssets = calculateTotalAssets(player, board);
+        const characterColors = {
+          'cone': '#4A90E2',
+          'sphere': '#E74C3C',
+          'box': '#F39C12',
+          'torus': '#9B59B6'
+        };
+
+        // Corner positioning logic based on player index
+        const getCornerPosition = (playerIndex: number) => {
+          const positions = [
+            { top: 20, left: 20 },        // Top-left
+            { top: 20, right: 20 },       // Top-right
+            { bottom: 120, right: 20 },   // Bottom-right
+            { bottom: 120, left: 20 }     // Bottom-left
+          ];
+          return positions[playerIndex] || positions[0];
+        };
+
+        const position = getCornerPosition(index);
+
+        return (
+          <Card key={player.id} sx={{
+            position: 'absolute',
+            ...position,
+            minWidth: 200,
+            maxWidth: 220,
+            bgcolor: `rgba(0,0,0,${player.money < 0 ? 0.4 : 0.8})`,
+            border: `3px solid ${index === currentPlayerIndex && !isGameOver ? '#FFD700' : characterColors[player.character] || 'white'}`,
+            color: 'white',
+            transition: 'all 0.3s',
+            borderRadius: 2,
+            boxShadow: index === currentPlayerIndex && !isGameOver ? '0 0 15px rgba(255, 215, 0, 0.6)' : '0 4px 8px rgba(0,0,0,0.3)',
+            pointerEvents: 'all',
+            zIndex: 1000
+          }}>
+            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Box
+                  sx={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: '50%',
+                    bgcolor: characterColors[player.character] || 'white',
+                    mr: 1,
+                    boxShadow: '0 0 4px rgba(0,0,0,0.5)'
+                  }}
+                />
+                <Typography variant="subtitle1" component="div" fontWeight="bold" sx={{ fontSize: '0.9rem' }}>
+                  {player.name} {isMyPlayer ? '(나)' : ''}
+                  {player.money < 0 && <span style={{ color: '#ff6b6b' }}> (파산)</span>}
+                  {player.isInJail && <span style={{ color: '#ffa726' }}> 🔒</span>}
+                </Typography>
+              </Box>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+                💰 {player.money.toLocaleString()}원
+              </Typography>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+                📊 총 {totalAssets.toLocaleString()}원
+              </Typography>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+                🏘️ {player.properties.length}개 도시
+              </Typography>
+              {index === currentPlayerIndex && !isGameOver && (
+                <Typography variant="caption" sx={{
+                  display: 'block',
+                  mt: 0.5,
+                  color: '#FFD700',
+                  fontWeight: 'bold',
+                  fontSize: '0.7rem'
+                }}>
+                  ⭐ 현재 턴
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        )
+      })}
 
       <Box sx={{ position: 'absolute', bottom: '5%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'all', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
         {gamePhase === 'WAITING_FOR_ROLL' && (
@@ -460,7 +516,7 @@ export function GameUI() {
           disabled={gamePhase !== 'WAITING_FOR_ROLL' || !isMyTurn}
           sx={{ width: 250, height: 60, fontSize: '1.2rem' }}
         >
-          {currentPlayer?.isInJail ? '무인도...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
+          {currentPlayer?.isInJail ? '감옥...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
         </Button>
 
         {isMyTurn && gamePhase === 'TILE_ACTION' && modal.type === 'NONE' && (
@@ -477,9 +533,57 @@ export function GameUI() {
       </Box>
       
       {gamePhase === 'WORLD_TRAVEL_MOVE' && (
-          <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', p: 3, bgcolor: 'rgba(0,0,0,0.8)', borderRadius: 2 }}>
-              <Typography variant="h4">세계여행</Typography>
-              <Typography variant="h6">이동하고 싶은 타일을 보드에서 직접 클릭하세요.</Typography>
+          <Box sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            p: 4,
+            bgcolor: 'rgba(0, 20, 40, 0.95)',
+            borderRadius: 3,
+            border: '2px solid #00ffff',
+            boxShadow: '0 0 20px rgba(0, 255, 255, 0.3)',
+            textAlign: 'center',
+            minWidth: 400
+          }}>
+              <Typography
+                variant="h4"
+                sx={{
+                  color: '#00ffff',
+                  textShadow: '0 0 10px rgba(0, 255, 255, 0.8)',
+                  mb: 2,
+                  fontWeight: 'bold'
+                }}
+              >
+                🌍 세계여행
+              </Typography>
+              <Typography
+                variant="h6"
+                sx={{
+                  color: '#ffffff',
+                  mb: 3,
+                  lineHeight: 1.6
+                }}
+              >
+                원하는 목적지를 보드에서 직접 클릭하세요!<br />
+                <span style={{ color: '#00ffff', fontSize: '0.9em' }}>
+                  ✨ 반짝이는 타일들이 클릭 가능한 곳입니다
+                </span>
+              </Typography>
+              <Button
+                variant="outlined"
+                onClick={cancelWorldTravel}
+                sx={{
+                  color: '#ff6b6b',
+                  borderColor: '#ff6b6b',
+                  '&:hover': {
+                    borderColor: '#ff5252',
+                    bgcolor: 'rgba(255, 107, 107, 0.1)'
+                  }
+                }}
+              >
+                취소
+              </Button>
           </Box>
       )}
 

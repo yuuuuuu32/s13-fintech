@@ -206,7 +206,7 @@ export const createPlayerActions = (
           players: updatedPlayers,
           modal: {
             type: "INFO" as const,
-            text: "무인도에서 탈출했습니다! 다음 턴부터 정상 진행됩니다.",
+            text: "감옥에서 탈출했습니다! 다음 턴부터 정상 진행됩니다.",
             onConfirm: () => set({ modal: { type: "NONE" as const } }),
           },
         };
@@ -219,7 +219,7 @@ export const createPlayerActions = (
           players: updatedPlayers,
           modal: {
             type: "INFO" as const,
-            text: `무인도 탈출까지 ${newJailTurns}턴 남았습니다.`,
+            text: `감옥 탈출까지 ${newJailTurns}턴 남았습니다.`,
             onConfirm: () => set({ modal: { type: "NONE" as const } }),
           },
         };
@@ -266,7 +266,29 @@ export const createPlayerActions = (
     set({ gamePhase: "WORLD_TRAVEL_MOVE", modal: { type: "NONE" as const } });
   },
 
+  cancelWorldTravel: () => {
+    set({
+      gamePhase: "WAITING_FOR_ROLL",
+      modal: { type: "NONE" as const }
+    });
+  },
+
   selectTravelDestination: (tileIndex: number) => {
+    const { send, players, currentPlayerIndex } = get();
+    const currentPlayer = players[currentPlayerIndex];
+
+    // 백엔드에 세계여행 목적지 전송
+    if (send) {
+      send('/app/game/world-travel', {
+        type: "WORLD_TRAVEL_EVENT",
+        payload: {
+          playerId: currentPlayer.id,
+          destinationPosition: tileIndex,
+          currentPosition: currentPlayer.position
+        }
+      });
+    }
+
     set((state) => {
       const { players, currentPlayerIndex } = state;
       const updatedPlayers = [...players];

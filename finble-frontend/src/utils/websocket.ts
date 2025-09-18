@@ -45,7 +45,14 @@ export const initializeWebSocket = () => {
   webSocket = new WebSocket(authenticatedUrl);
 
   webSocket.onopen = () => {
-    console.log('WebSocket connection established.');
+    const timestamp = new Date().toISOString();
+    console.log('🔌 [SERVER_AUDIT] WebSocket connection established:', {
+      timestamp,
+      url: authenticatedUrl.replace(/token=[^&]+/, 'token=***'),
+      connectionId: Math.random().toString(36).substr(2, 9),
+      stackTrace: new Error().stack?.split('\n').slice(1, 3).join(' → ')
+    });
+
     isConnected = true;
     useWebSocketStore.getState().setIsConnected(true);
     useWebSocketStore.getState().setIsWebSocketReady(true); // WebSocket 준비 완료 상태 설정
@@ -56,32 +63,120 @@ export const initializeWebSocket = () => {
   };
 
   webSocket.onmessage = (event) => {
-    console.log('Received raw WebSocket message:', event.data);
+    const timestamp = new Date().toISOString();
+    console.log('🌐 [WEBSOCKET_INTERCEPTOR] RAW MESSAGE RECEIVED:', {
+      timestamp,
+      rawData: event.data,
+      dataLength: event.data?.length || 0
+    });
+
     try {
       const parsedMessage = JSON.parse(event.data as string);
       const messageType = parsedMessage.type;
 
-      console.log(`Received message of type: ${messageType}`);
+      // COMPREHENSIVE MESSAGE LOGGING
+      console.log('📨 [WEBSOCKET_INTERCEPTOR] PARSED MESSAGE:', {
+        timestamp,
+        messageType,
+        fullPayload: JSON.stringify(parsedMessage, null, 2),
+        hasPlayers: !!(parsedMessage.payload && parsedMessage.payload.players),
+        hasPosition: !!(parsedMessage.payload && (parsedMessage.payload.position !== undefined || parsedMessage.payload.currentPosition !== undefined)),
+        payloadKeys: parsedMessage.payload ? Object.keys(parsedMessage.payload) : [],
+        isSubscribed: !!subscriptions[messageType]
+      });
+
+      // Check if message contains player position data
+      if (parsedMessage.payload && parsedMessage.payload.players) {
+        const players = parsedMessage.payload.players;
+        const playersArray = Array.isArray(players) ? players : Object.values(players);
+        console.log("📍 [WEBSOCKET_INTERCEPTOR] PLAYER POSITION DATA:", {
+          timestamp,
+          messageType,
+          playerCount: playersArray.length,
+          positions: playersArray.map(p => ({
+            playerId: p.userId || p.id,
+            nickname: p.nickname || p.name,
+            position: p.position,
+            money: p.money
+          }))
+        });
+      }
+
+      // Check for individual position updates
+      if (parsedMessage.payload && (parsedMessage.payload.position !== undefined || parsedMessage.payload.currentPosition !== undefined)) {
+        console.log("📍 [WEBSOCKET_INTERCEPTOR] INDIVIDUAL POSITION UPDATE:", {
+          timestamp,
+          messageType,
+          position: parsedMessage.payload.position,
+          currentPosition: parsedMessage.payload.currentPosition,
+          userName: parsedMessage.payload.userName,
+          curPlayer: parsedMessage.payload.curPlayer,
+          fullPayload: parsedMessage.payload
+        });
+      }
+
+      // Log ANY message that might cause state changes
+      if (messageType && ['GAME_STATE_CHANGE', 'TURN_CHANGE', 'USE_DICE', 'TRADE_LAND', 'START_GAME_OBSERVE', 'PLAYER_UPDATE', 'POSITION_UPDATE'].includes(messageType)) {
+        console.log("🚨 [WEBSOCKET_INTERCEPTOR] CRITICAL STATE MESSAGE:", {
+          timestamp,
+          messageType,
+          criticalData: {
+            curPlayer: parsedMessage.payload?.curPlayer,
+            currentPlayerIndex: parsedMessage.payload?.currentPlayerIndex,
+            players: parsedMessage.payload?.players ? Object.keys(parsedMessage.payload.players) : 'none',
+            position: parsedMessage.payload?.position,
+            currentPosition: parsedMessage.payload?.currentPosition
+          }
+        });
+      }
+
+      // 찬스카드 관련 메시지 특별 로깅
+      if (messageType.includes('CARD') || messageType.includes('CHANCE') || messageType.includes('DRAW')) {
+        console.log('🎲 CHANCE/CARD related message detected:', parsedMessage);
+      }
 
       if (subscriptions[messageType]) {
+        console.log(`🎯 [WEBSOCKET_INTERCEPTOR] DISPATCHING to ${subscriptions[messageType].length} subscribers for: ${messageType}`);
         subscriptions[messageType].forEach(callback => callback(parsedMessage));
       } else {
-        console.log(`No subscription found for message type: ${messageType}`);
+        console.warn(`❌ [WEBSOCKET_INTERCEPTOR] NO SUBSCRIPTION for message type: ${messageType}`, {
+          timestamp,
+          messageType,
+          payload: parsedMessage.payload,
+          availableSubscriptions: Object.keys(subscriptions)
+        });
       }
     } catch (e) {
-      console.error('Error parsing WebSocket message:', e);
+      console.error('🚨 [WEBSOCKET_INTERCEPTOR] ERROR parsing message:', {
+        timestamp,
+        error: e,
+        rawData: event.data
+      });
     }
   };
 
   webSocket.onclose = (event) => {
-    console.log('WebSocket disconnected:', event);
+    const timestamp = new Date().toISOString();
+    console.log('🔌 [SERVER_AUDIT] WebSocket disconnected:', {
+      timestamp,
+      code: event.code,
+      reason: event.reason,
+      wasClean: event.wasClean,
+      manualDisconnect,
+      willReconnect: !manualDisconnect,
+      stackTrace: new Error().stack?.split('\n').slice(1, 3).join(' → ')
+    });
+
     isConnected = false;
     useWebSocketStore.getState().setIsConnected(false);
     useWebSocketStore.getState().setIsWebSocketReady(false); // WebSocket 준비 상태 초기화
     if (!manualDisconnect) { // 수동 종료가 아닐 경우에만 재연결
       if (!reconnectTimeout) {
         reconnectTimeout = setTimeout(() => {
-          console.log('Attempting to reconnect WebSocket...');
+          console.log('🔄 [SERVER_AUDIT] Attempting WebSocket reconnection...', {
+            timestamp: new Date().toISOString(),
+            attemptNumber: 1
+          });
           initializeWebSocket();
         }, 5000);
       }
@@ -130,10 +225,46 @@ export const subscribeToTopic = (messageType: string, callback: (message: any) =
 };
 
 export const sendMessage = (destination: string, body: any) => {
+  const timestamp = new Date().toISOString();
+  const fullStackTrace = new Error().stack;
+  const callChain = fullStackTrace?.split('\n').slice(1, 6).map(line => line.trim()).join(' → ');
+
   if (!webSocket || !isConnected) {
-    console.warn('WebSocket not connected. Cannot send message to:', destination);
+    console.warn('🚨 [SERVER_AUDIT] WebSocket not connected - message blocked:', {
+      timestamp,
+      destination,
+      body,
+      callChain
+    });
     return;
   }
-  console.log(`Sending message to ${destination}: `, body);
-  webSocket.send(JSON.stringify(body));
+
+  console.log("📤 [SERVER_AUDIT] OUTGOING MESSAGE:", {
+    timestamp,
+    destination,
+    messageType: body.type,
+    fullPayload: JSON.stringify(body, null, 2),
+    hasPosition: !!(body.payload && (body.payload.position !== undefined || body.payload.currentPosition !== undefined)),
+    isPositionRelated: destination.includes('roll-dice') || destination.includes('end-turn') || destination.includes('move') || body.type?.includes('POSITION'),
+    callChain,
+    connectionStatus: isConnected
+  });
+
+  try {
+    webSocket.send(JSON.stringify(body));
+    console.log("✅ [SERVER_AUDIT] Message sent successfully:", {
+      timestamp,
+      destination,
+      messageType: body.type,
+      size: JSON.stringify(body).length
+    });
+  } catch (error) {
+    console.error("❌ [SERVER_AUDIT] Failed to send message:", {
+      timestamp,
+      destination,
+      messageType: body.type,
+      error,
+      callChain
+    });
+  }
 };
