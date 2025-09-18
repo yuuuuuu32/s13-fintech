@@ -1,6 +1,5 @@
 import type { GameState, Player } from "../types/gameTypes.ts";
 import type { TileData } from "../data/boardData.ts";
-import { chanceCards } from "../constants/gameConstants.ts";
 import { useUserStore } from "../../../stores/useUserStore.ts";
 
 export const handleCityCompanyTile = (
@@ -91,57 +90,8 @@ export const handleCityCompanyTile = (
   }
 };
 
-export const handleChanceTile = (
-  set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
-  get: () => GameState,
-  currentTile: TileData,
-  currentPlayer: Player,
-  chanceCards: { text: string; action: (player: Player) => Player }[]
-) => {
-  const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
-  const randomCard =
-    chanceCards[Math.floor(Math.random() * chanceCards.length)];
-
-  set((state) => {
-    const currentPlayer = state.players[state.currentPlayerIndex];
-    const originalPosition = currentPlayer.position;
-    const playerAfterAction = randomCard.action(currentPlayer);
-    const moved = playerAfterAction.position !== originalPosition;
-    const updatedPlayers = state.players.map((p) =>
-      p.id === playerAfterAction.id ? playerAfterAction : p
-    );
-
-    return {
-      players: updatedPlayers,
-      modal: isMyTurn ? {
-        type: "CHANCE_CARD",
-        text: randomCard.text,
-        onConfirm: () => {
-          set({ modal: { type: "NONE" as const } });
-          if (moved) {
-            get().handleTileAction();
-          } else {
-            set({ modal: { type: "NONE" as const } });
-          }
-        },
-      } : { type: "NONE" as const },
-    };
-  });
-
-  // 다른 플레이어의 턴이면 이동 후 추가 처리가 필요한지 확인
-  if (!isMyTurn) {
-    const state = get();
-    const currentPlayer = state.players[state.currentPlayerIndex];
-    const originalPosition = currentPlayer.position;
-    const playerAfterAction = randomCard.action(currentPlayer);
-    const moved = playerAfterAction.position !== originalPosition;
-
-    if (moved) {
-      // 이동했다면 새 타일에서 추가 처리 필요
-      setTimeout(() => get().handleTileAction(), 100);
-    }
-  }
-};
+// 찬스카드 처리는 서버에서 하므로 제거됨
+// USE_DICE -> 서버 처리 -> DRAW_CARD 메시지로 결과 전송
 
 export const handleSpecialTile = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,

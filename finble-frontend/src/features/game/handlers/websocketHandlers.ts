@@ -1,6 +1,7 @@
 import type { GameState, GameInitialState, Player } from "../types/gameTypes.ts";
 import { sendMessage, subscribeToTopic } from "../../../utils/websocket.ts";
 import { CHARACTER_PREFABS } from "../constants/gameConstants.ts";
+import { useUserStore } from "../../../stores/useUserStore.ts";
 
 export const createWebSocketHandlers = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
@@ -26,7 +27,8 @@ export const createWebSocketHandlers = (
               currentTurn: payload.gameTurn ?? state.currentTurn,
               gamePhase: "WAITING_FOR_ROLL",
               isDiceRolled: false, // Ensure dice state is reset
-              modal: { type: "NONE" }, // Clear any modals
+              // 찬스카드 모달이 떠있으면 유지
+              modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
             };
           }
           console.warn("❌ Player not found:", payload.curPlayer);
@@ -50,13 +52,14 @@ export const createWebSocketHandlers = (
       if (payload.currentPlayerIndex !== undefined) {
         console.log("🔄 Turn changing to player index:", payload.currentPlayerIndex);
         console.log("🎮 Setting gamePhase to WAITING_FOR_ROLL");
-        set({
+        set((state) => ({
           currentPlayerIndex: payload.currentPlayerIndex,
           currentTurn: payload.currentTurn || get().currentTurn,
           gamePhase: "WAITING_FOR_ROLL",
           isDiceRolled: false, // Reset for the next turn
-          modal: { type: "NONE" }, // Clear any modals from previous turn
-        });
+          // 찬스카드 모달이 떠있으면 유지
+          modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
+        }));
         console.log("✅ Turn change completed. New player index:", payload.currentPlayerIndex);
       }
     });
@@ -102,6 +105,105 @@ export const createWebSocketHandlers = (
         });
       }
     });
+
+    // 찬스카드 결과 구독 (DRAW_CARD와 CHANCE_CARD 둘 다)
+    const handleChanceCard = (message) => {
+      console.log("🎲 [DRAW_CARD] 메시지 수신:", message);
+      console.log("🎲 [DRAW_CARD] 메시지 타입:", message?.type);
+      console.log("🎲 [DRAW_CARD] 페이로드:", message?.payload);
+
+      const { payload } = message;
+      if (!payload) {
+        console.error("🎲 [DRAW_CARD] 페이로드가 없습니다!");
+        return;
+      }
+
+      set((state) => {
+        console.log("🎲 [DRAW_CARD] 현재 상태:", {
+          currentModal: state.modal,
+          playersCount: state.players?.length
+        });
+
+        // 백엔드에서 보내는 구조: { result: { userName, cardName, ... } }
+        const result = payload.result;
+        if (!result) {
+          console.error("🎲 [DRAW_CARD] result가 없습니다!");
+          return state;
+        }
+
+        const { userName, cardName, effectDescription, moneyChange, newPosition } = result;
+
+        console.log("🎲 [DRAW_CARD] 데이터 파싱 완료:", {
+          userName,
+          cardName,
+          effectDescription,
+          moneyChange,
+          newPosition,
+          modalText: `${cardName}: ${effectDescription}`
+        });
+
+        // 플레이어 정보 업데이트
+        const updatedPlayers = state.players.map(player => {
+          if (player.name === userName) {
+            const updatedPlayer = { ...player };
+
+            // 돈 변화 적용
+            if (moneyChange !== undefined && moneyChange !== null) {
+              updatedPlayer.money += moneyChange;
+            }
+
+            // 위치 변화 적용
+            if (newPosition !== undefined && newPosition !== null) {
+              updatedPlayer.position = newPosition;
+            }
+
+            return updatedPlayer;
+          }
+          return player;
+        });
+
+        // 찬스카드는 모든 플레이어가 봐야 함
+        console.log("🎲 Modal display check - showing to all players:", {
+          userName,
+          cardName,
+          effectDescription
+        });
+
+        const newModal = {
+          type: "CHANCE_CARD" as const,
+          text: `${cardName}: ${effectDescription}`,
+          onConfirm: () => {
+            console.log("🎲 [MODAL] 찬스카드 모달 확인 버튼 클릭");
+            set({ modal: { type: "NONE" as const } });
+            // 위치가 변경되었다면 다시 타일 액션 처리
+            if (newPosition !== undefined && newPosition !== null) {
+              console.log("🎲 [MODAL] 위치 변경으로 인한 타일 액션 처리");
+              get().handleTileAction();
+            }
+          }
+        };
+
+        console.log("🎲 [MODAL] 새 모달 상태 설정:", newModal);
+        console.log("🎲 [MODAL] 모달 타입 확인:", newModal.type);
+        console.log("🎲 [MODAL] 모달 텍스트 확인:", newModal.text);
+
+        const newState = {
+          players: updatedPlayers,
+          modal: newModal
+        };
+
+        console.log("🎲 [STATE] 새로운 상태 반환:", {
+          playersUpdated: updatedPlayers.length,
+          modalType: newState.modal.type,
+          modalText: newState.modal.text
+        });
+
+        return newState;
+      });
+    };
+
+    subscribeToTopic("DRAW_CARD", handleChanceCard);
+    subscribeToTopic("CHANCE_CARD", handleChanceCard);
   },
 
   disconnect: () => {
