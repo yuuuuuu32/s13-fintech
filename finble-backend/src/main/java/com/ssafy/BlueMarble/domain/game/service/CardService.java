@@ -590,8 +590,10 @@ public class CardService {
             CreateMapPayload gameStateUpdate = CreateMapPayload.builder()
                     .players(gameMapState.getPlayers())
                     .currentMap(gameMapState.getCurrentMap())
-                    .currentTurn(gameMapState.getCurrentTurn())
-                    .gamePhase(gameMapState.getGamePhase())
+                    .gameTurn(gameMapState.getGameTurn())
+                    .gameState(gameMapState.getGameState())
+                    .playerOrder(gameMapState.getPlayerOrder())
+                    .currentPlayerIndex(gameMapState.getCurrentPlayerIndex())
                     .build();
 
             MessageDto gameStateMessage = new MessageDto(
@@ -641,8 +643,10 @@ public class CardService {
             CreateMapPayload gameStateUpdate = CreateMapPayload.builder()
                     .players(gameMapState.getPlayers())
                     .currentMap(gameMapState.getCurrentMap())
-                    .currentTurn(gameMapState.getCurrentTurn())
-                    .gamePhase(gameMapState.getGamePhase())
+                    .gameTurn(gameMapState.getGameTurn())
+                    .gameState(gameMapState.getGameState())
+                    .playerOrder(gameMapState.getPlayerOrder())
+                    .currentPlayerIndex(gameMapState.getCurrentPlayerIndex())
                     .build();
 
             MessageDto gameStateMessage = new MessageDto(
