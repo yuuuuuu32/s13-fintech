@@ -1,6 +1,40 @@
 import type { GameState, GamePhase } from "../types/gameTypes.ts";
 import { handleCityCompanyTile, handleSpecialTile } from "./tileHandlers.ts";
 import { useUserStore } from "../../../stores/useUserStore.ts";
+import type { TileData } from "../data/boardData.ts";
+
+// Calculate total assets (money + property values + building values)
+const calculateTotalAssets = (player: any, board: TileData[]) => {
+  const propertyValue = player.properties.reduce((sum: number, index: number) => {
+    const tile = board[index];
+    if (!tile) return sum;
+
+    // 서버 데이터 구조에 맞게 landPrice 사용
+    let value = (tile as any)?.landPrice || tile.price || 0;
+
+    // 건물 가치 추가
+    if (tile.buildings && tile.buildings.level > 0) {
+      const housePrice = (tile as any)?.housePrice || 0;
+      const buildingPrice = (tile as any)?.buildingPrice || 0;
+      const hotelPrice = (tile as any)?.hotelPrice || 0;
+
+      switch (tile.buildings.level) {
+        case 1: // 주택
+          value += housePrice;
+          break;
+        case 2: // 빌딩
+          value += housePrice + buildingPrice;
+          break;
+        case 3: // 호텔
+          value += housePrice + buildingPrice + hotelPrice;
+          break;
+      }
+    }
+
+    return sum + value;
+  }, 0);
+  return player.money + propertyValue;
+};
 
 export const createGameLogicHandlers = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
@@ -133,36 +167,8 @@ export const createGameLogicHandlers = (
     const currentTile = board[currentPlayer.position];
 
     if (currentPlayer.money < 0) {
-      const { players, currentTurn, totalTurns, board } = get();
-      const alivePlayers = players.filter((p) => p.money >= 0);
-
-      let winner = null;
-      if (alivePlayers.length <= 1) {
-        winner = alivePlayers[0] ?? null;
-      } else if (currentTurn > totalTurns) {
-        winner = players
-          .filter((p) => p.money >= 0)
-          .reduce((prev, current) => {
-            const prevAssets =
-              prev.money +
-              prev.properties.reduce((sum, i) => sum + (board[i].price || 0), 0);
-            const currentAssets =
-              current.money +
-              current.properties.reduce(
-                (sum, i) => sum + (board[i].price || 0),
-                0
-              );
-            return prevAssets > currentAssets ? prev : current;
-          });
-      }
-
-      if (winner || alivePlayers.length === 0 || currentTurn > totalTurns) {
-        set({
-          gamePhase: "GAME_OVER",
-          winnerId: winner?.id ?? null,
-          modal: { type: "NONE" as const },
-        });
-      }
+      console.log("💸 [BANKRUPTCY] Player went bankrupt:", currentPlayer.name);
+      get().checkGameOver();
       return;
     }
 
@@ -175,7 +181,6 @@ export const createGameLogicHandlers = (
 
       case "chance":
       case "CHANCE":
-        handleChanceTile(set, get, currentTile, currentPlayer, chanceCards);
         console.log("🎲 Chance tile - handled by server via USE_DICE");
         // 찬스카드는 서버에서 처리되므로 별도 액션 없음
         get().endTurn();
@@ -244,6 +249,11 @@ export const createGameLogicHandlers = (
       modal: { type: "NONE" }
     });
 
+    // Check for game over conditions after turn ends
+    setTimeout(() => {
+      get().checkGameOver();
+    }, 500);
+
     // Log positions again after state change
     setTimeout(() => {
       const postState = get();
@@ -259,27 +269,42 @@ export const createGameLogicHandlers = (
     const { players, currentTurn, totalTurns, board } = get();
     const alivePlayers = players.filter((p) => p.money >= 0);
 
+    console.log("🏁 [GAME_OVER] checkGameOver called:", {
+      currentTurn,
+      totalTurns,
+      turnExceeded: currentTurn >= totalTurns,
+      alivePlayersCount: alivePlayers.length,
+      allPlayers: players.map(p => ({ id: p.id, name: p.name, money: p.money, assets: calculateTotalAssets(p, board) }))
+    });
+
     let winner = null;
     if (alivePlayers.length <= 1) {
       winner = alivePlayers[0] ?? null;
-    } else if (currentTurn > totalTurns) {
-      winner = players
-        .filter((p) => p.money >= 0)
-        .reduce((prev, current) => {
-          const prevAssets =
-            prev.money +
-            prev.properties.reduce((sum, i) => sum + (board[i].price || 0), 0);
-          const currentAssets =
-            current.money +
-            current.properties.reduce(
-              (sum, i) => sum + (board[i].price || 0),
-              0
-            );
-          return prevAssets > currentAssets ? prev : current;
-        });
+      console.log("🏁 [GAME_OVER] Winner by elimination:", winner?.name);
+    } else if (currentTurn >= totalTurns) {
+      // 20턴이 넘으면 총 자산 기준으로 승자 결정
+      winner = alivePlayers.reduce((prev, current) => {
+        const prevAssets = calculateTotalAssets(prev, board);
+        const currentAssets = calculateTotalAssets(current, board);
+        return prevAssets > currentAssets ? prev : current;
+      });
+      console.log("🏁 [GAME_OVER] Winner by assets after turn limit:", {
+        winner: winner?.name,
+        assets: calculateTotalAssets(winner, board),
+        allAssets: alivePlayers.map(p => ({
+          name: p.name,
+          assets: calculateTotalAssets(p, board)
+        }))
+      });
     }
 
-    if (winner || alivePlayers.length === 0 || currentTurn > totalTurns) {
+    if (winner || alivePlayers.length === 0 || currentTurn >= totalTurns) {
+      console.log("🏁 [GAME_OVER] Game ending:", {
+        reason: winner ? 'winner found' : alivePlayers.length === 0 ? 'no alive players' : 'turn limit reached',
+        winnerId: winner?.id,
+        winnerName: winner?.name
+      });
+
       set({
         gamePhase: "GAME_OVER",
         winnerId: winner?.id ?? null,

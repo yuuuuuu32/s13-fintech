@@ -419,32 +419,87 @@ export function GameUI() {
         {isMyTurn && timeLeft > 5 && <Typography variant="h6">남은 시간: {timeLeft}초</Typography>}
       </Box>
 
-      <Grid container spacing={2} sx={{ p: 2, pointerEvents: 'all' }}>
-        {players.map((player, index) => {
-          const isMyPlayer = player.id === userInfo?.userId;
-          const totalAssets = calculateTotalAssets(player, board);
-          return (
-            <Grid item xs={6} key={player.id} sx={{ display: 'flex', justifyContent: index === 0 ? 'flex-start' : 'flex-end' }}>
-              <Card sx={{ 
-                minWidth: 250, 
-                bgcolor: `rgba(0,0,0,${player.money < 0 ? 0.3 : 0.7})`, 
-                border: `3px solid ${index === currentPlayerIndex && !isGameOver ? 'yellow' : 'white'}`,
-                color: 'white',
-                transition: 'border-color 0.3s'
-              }}>
-                <CardContent>
-                  <Typography variant="h6" component="div" fontWeight="bold">
-                    {player.name} {isMyPlayer ? '(나)' : ''} {player.money < 0 ? '(파산)' : ''}
-                  </Typography>
-                  <Typography>현금: {player.money.toLocaleString()}원</Typography>
-                  <Typography>총 자산: {totalAssets.toLocaleString()}원</Typography>
-                  <Typography>소유 도시: {player.properties.length}개</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          )
-        })}
-      </Grid>
+      {/* Player Cards in Corner Positions */}
+      {players.map((player, index) => {
+        const isMyPlayer = player.id === userInfo?.userId;
+        const totalAssets = calculateTotalAssets(player, board);
+        const characterColors = {
+          'cone': '#4A90E2',
+          'sphere': '#E74C3C',
+          'box': '#F39C12',
+          'torus': '#9B59B6'
+        };
+
+        // Corner positioning logic based on player index
+        const getCornerPosition = (playerIndex: number) => {
+          const positions = [
+            { top: 20, left: 20 },        // Top-left
+            { top: 20, right: 20 },       // Top-right
+            { bottom: 120, right: 20 },   // Bottom-right
+            { bottom: 120, left: 20 }     // Bottom-left
+          ];
+          return positions[playerIndex] || positions[0];
+        };
+
+        const position = getCornerPosition(index);
+
+        return (
+          <Card key={player.id} sx={{
+            position: 'absolute',
+            ...position,
+            minWidth: 200,
+            maxWidth: 220,
+            bgcolor: `rgba(0,0,0,${player.money < 0 ? 0.4 : 0.8})`,
+            border: `3px solid ${index === currentPlayerIndex && !isGameOver ? '#FFD700' : characterColors[player.character] || 'white'}`,
+            color: 'white',
+            transition: 'all 0.3s',
+            borderRadius: 2,
+            boxShadow: index === currentPlayerIndex && !isGameOver ? '0 0 15px rgba(255, 215, 0, 0.6)' : '0 4px 8px rgba(0,0,0,0.3)',
+            pointerEvents: 'all',
+            zIndex: 1000
+          }}>
+            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Box
+                  sx={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: '50%',
+                    bgcolor: characterColors[player.character] || 'white',
+                    mr: 1,
+                    boxShadow: '0 0 4px rgba(0,0,0,0.5)'
+                  }}
+                />
+                <Typography variant="subtitle1" component="div" fontWeight="bold" sx={{ fontSize: '0.9rem' }}>
+                  {player.name} {isMyPlayer ? '(나)' : ''}
+                  {player.money < 0 && <span style={{ color: '#ff6b6b' }}> (파산)</span>}
+                  {player.isInJail && <span style={{ color: '#ffa726' }}> 🔒</span>}
+                </Typography>
+              </Box>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+                💰 {player.money.toLocaleString()}원
+              </Typography>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+                📊 총 {totalAssets.toLocaleString()}원
+              </Typography>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+                🏘️ {player.properties.length}개 도시
+              </Typography>
+              {index === currentPlayerIndex && !isGameOver && (
+                <Typography variant="caption" sx={{
+                  display: 'block',
+                  mt: 0.5,
+                  color: '#FFD700',
+                  fontWeight: 'bold',
+                  fontSize: '0.7rem'
+                }}>
+                  ⭐ 현재 턴
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        )
+      })}
 
       <Box sx={{ position: 'absolute', bottom: '5%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'all', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
         {gamePhase === 'WAITING_FOR_ROLL' && (
