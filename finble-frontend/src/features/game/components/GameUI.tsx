@@ -243,7 +243,7 @@ const InfoModalContent = ({ modal, endTurn }) => (
 // JailModalContent
 const JailModalContent = ({ payBail, handleJail, BAIL_AMOUNT }) => (
   <>
-    <Typography variant="h5" component="h2">무인도</Typography>
+    <Typography variant="h5" component="h2">감옥</Typography>
     <Typography sx={{ mt: 2 }}>3턴 동안 갖혀있게 됩니다.</Typography>
     <Typography sx={{ mt: 1 }}>보석금을 내고 즉시 탈출할 수 있습니다.</Typography>
     <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
@@ -460,7 +460,7 @@ export function GameUI() {
           disabled={gamePhase !== 'WAITING_FOR_ROLL' || !isMyTurn}
           sx={{ width: 250, height: 60, fontSize: '1.2rem' }}
         >
-          {currentPlayer?.isInJail ? '무인도...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
+          {currentPlayer?.isInJail ? '감옥...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
         </Button>
 
         {isMyTurn && gamePhase === 'TILE_ACTION' && modal.type === 'NONE' && (
