@@ -585,7 +585,22 @@ public class CardService {
             }
 
             gameRedisService.saveGameMapState(roomId, gameMapState);
-            log.info("금융정책 카드 효과 전체 적용 완료: cardName={}, roomId={}", card.getName(), roomId);
+
+            // 금융정책 카드 효과 적용 후 모든 플레이어에게 게임 상태 업데이트 메시지 전송
+            CreateMapPayload gameStateUpdate = CreateMapPayload.builder()
+                    .players(gameMapState.getPlayers())
+                    .currentMap(gameMapState.getCurrentMap())
+                    .currentTurn(gameMapState.getCurrentTurn())
+                    .gamePhase(gameMapState.getGamePhase())
+                    .build();
+
+            MessageDto gameStateMessage = new MessageDto(
+                    MessageType.GAME_STATE_CHANGE,
+                    objectMapper.valueToTree(gameStateUpdate)
+            );
+
+            sessionMessageService.sendMessageToRoom(roomId, gameStateMessage);
+            log.info("금융정책 카드 효과 전체 적용 및 게임 상태 업데이트 메시지 전송 완료: cardName={}, roomId={}", card.getName(), roomId);
 
         } catch (Exception e) {
             log.error("금융정책 카드 효과 적용 실패: cardName={}, roomId={}", card.getName(), roomId, e);
@@ -621,6 +636,22 @@ public class CardService {
 
             log.info("토지 가치 정책 적용: cardName={}, 변동타입={}, 변동률={}%, roomId={}",
                     card.getName(), changeType, effectValue, roomId);
+
+            // 토지 가치 정책 적용 후 모든 플레이어에게 게임 상태 업데이트 메시지 전송
+            CreateMapPayload gameStateUpdate = CreateMapPayload.builder()
+                    .players(gameMapState.getPlayers())
+                    .currentMap(gameMapState.getCurrentMap())
+                    .currentTurn(gameMapState.getCurrentTurn())
+                    .gamePhase(gameMapState.getGamePhase())
+                    .build();
+
+            MessageDto gameStateMessage = new MessageDto(
+                    MessageType.GAME_STATE_CHANGE,
+                    objectMapper.valueToTree(gameStateUpdate)
+            );
+
+            sessionMessageService.sendMessageToRoom(roomId, gameStateMessage);
+            log.info("토지 가치 정책 적용 및 게임 상태 업데이트 메시지 전송 완료: cardName={}, roomId={}", card.getName(), roomId);
 
             // 실제 토지 가격 변동은 부동산 구매/판매 시점에 적용
             // 현재는 정책 정보만 저장하고, 거래 시 MapService에서 참조하여 적용
