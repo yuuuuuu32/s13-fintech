@@ -318,26 +318,20 @@ export const createWebSocketHandlers = (
       playerCount: newState.players ? (Array.isArray(newState.players) ? newState.players.length : Object.keys(newState.players).length) : 0
     });
 
-    if (newState.players) {
-      const players = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
-      console.log("📍 [POSITION] updateGameState player positions:", players.map(p => ({
-        playerId: p.id,
-        nickname: p.name,
-        position: p.position
-      })));
+    // 위치 업데이트를 방지하기 위해 players 필드를 제외한 안전한 상태만 업데이트
+    const { players, ...safeState } = newState;
 
-      // Check for position 0 resets
-      players.forEach(p => {
-        if (p.position === 0) {
-          console.warn("⚠️ [WARNING] updateGameState setting player to position 0:", {
-            playerId: p.id,
-            nickname: p.name,
-            position: p.position
-          });
-        }
-      });
+    if (players) {
+      console.log("📍 [POSITION] updateGameState BLOCKED player position updates to prevent snap-back:",
+        Array.isArray(players) ? players : Object.values(players).map(p => ({
+          playerId: p.id,
+          nickname: p.name,
+          blockedPosition: p.position
+        }))
+      );
     }
 
-    set(newState);
+    console.log("📍 [POSITION] updateGameState applying safe state (no players):", Object.keys(safeState));
+    set(safeState);
   },
 });
