@@ -631,7 +631,7 @@ public class CardService {
 
             // 즉시 모든 타일의 가격을 변경
             if (gameMapState.getCurrentMap() != null && gameMapState.getCurrentMap().getCells() != null) {
-                for (var cell : gameMapState.getCurrentMap().getCells().values()) {
+                for (var cell : gameMapState.getCurrentMap().getCells()) {
                     // 일반 타일만 가격 변동 적용 (특별칸 제외)
                     if (cell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NORMAL) {
                         int currentPrice = cell.getLandPrice();
