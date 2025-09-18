@@ -43,10 +43,6 @@ public class BankruptcyService {
             }
         });
 
-        // 게임 상태 저장 (이때는 AOP가 실행되지 않도록 주의)
-        gameRedisService.saveGameMapState(roomId, state);
-
-
         // 게임 종료 조건 체크 (모든 플레이어가 파산했는지)
         checkGameEndCondition(roomId, state);
     }
