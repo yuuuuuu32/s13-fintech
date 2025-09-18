@@ -66,26 +66,91 @@ export function Player({ player }: PlayerProps) {
   // Initialize useSpring with the player's current position
   const [springs, api] = useSpring(() => ({
     position: getTilePosition(player.position), // Initialize with actual player position
-    config: { duration: 200 }, 
+    config: { duration: 200 },
   }));
+
+  // Component Lifecycle Tracking
+  useEffect(() => {
+    console.log("🎭 [LIFECYCLE] Player component MOUNTED:", {
+      timestamp: new Date().toISOString(),
+      playerId: player.id,
+      playerName: player.name,
+      initialPosition: player.position,
+      stackTrace: new Error().stack?.split('\n').slice(1, 3).join(' -> ')
+    });
+
+    return () => {
+      console.log("🎭 [LIFECYCLE] Player component UNMOUNTING:", {
+        timestamp: new Date().toISOString(),
+        playerId: player.id,
+        playerName: player.name,
+        finalPosition: player.position,
+        stackTrace: new Error().stack?.split('\n').slice(1, 3).join(' -> ')
+      });
+    };
+  }, []);
+
+  // Initialize prevPositionRef with current position
+  useEffect(() => {
+    if (prevPositionRef.current !== player.position) {
+      prevPositionRef.current = player.position;
+    }
+  }, []);
 
   // This useEffect will handle all position updates
   useEffect(() => {
     const targetPosition = getTilePosition(player.position);
-
-    // 현재 턴인 플레이어인지 확인
+    const currentUser = useUserStore.getState().userInfo;
     const currentPlayer = useGameStore.getState().players[useGameStore.getState().currentPlayerIndex];
     const isThisPlayersTurn = currentPlayer?.id === player.id;
+    const isMyPlayer = currentUser?.userId === player.id;
+
+    // Always log position for debugging, regardless of change
+    console.log("📍 [POSITION] Player useEffect triggered:", {
+      playerId: player.id,
+      playerName: player.name,
+      currentPosition: player.position,
+      prevPosition: prevPositionRef.current,
+      positionChanged: player.position !== prevPositionRef.current,
+      isMyPlayer: isMyPlayer,
+      gamePhase: gamePhase
+    });
+
+    // CRITICAL: Alert if position becomes 0 unexpectedly
+    if (player.position === 0 && prevPositionRef.current !== 0 && prevPositionRef.current !== undefined) {
+      console.error("🚨 [CRITICAL] Player position reset to 0 in useEffect!", {
+        playerId: player.id,
+        playerName: player.name,
+        from: prevPositionRef.current,
+        to: player.position,
+        gamePhase: gamePhase,
+        isMyPlayer: isMyPlayer,
+        stackTrace: new Error().stack
+      });
+    }
 
     // Only animate if the player's position has actually changed in the state
     if (player.position !== prevPositionRef.current) {
+      console.log("📍 [POSITION] Player position CHANGE detected:", {
+        playerId: player.id,
+        playerName: player.name,
+        from: prevPositionRef.current,
+        to: player.position,
+        isMyPlayer: isMyPlayer,
+        isThisPlayersTurn: isThisPlayersTurn,
+        gamePhase: gamePhase,
+        currentUserId: currentUser?.userId,
+        currentUserNickname: currentUser?.nickname,
+        willAnimate: isThisPlayersTurn && gamePhase === 'PLAYER_MOVING'
+      });
+
       if (isThisPlayersTurn && gamePhase === 'PLAYER_MOVING') {
         // This is a dice roll move, animate step-by-step
         const diceSum = dice[0] + dice[1];
         const path = calculatePath(prevPositionRef.current, player.position, diceSum, boardLength);
-        
+
         api.start({
-          from: getTilePosition(prevPositionRef.current), // Start from the actual previous position
+          from: getTilePosition(prevPositionRef.current),
           to: async (next) => {
             for (const pos of path) {
               await next({ position: pos });
@@ -93,25 +158,41 @@ export function Player({ player }: PlayerProps) {
           },
           config: { duration: path.length > 1 ? 200 : 400 },
           onRest: () => {
-            // Only call handleTileAction if it's still PLAYER_MOVING phase
-            if (isThisPlayersTurn && useGameStore.getState().gamePhase === 'PLAYER_MOVING') {
+            console.log("📍 [POSITION] Animation completed for player:", player.id);
+            prevPositionRef.current = player.position;
+            // Only trigger tile action for my own player
+            if (isMyPlayer && isThisPlayersTurn && useGameStore.getState().gamePhase === 'PLAYER_MOVING') {
               handleTileAction();
             }
           }
         });
+      } else if (gamePhase === 'TILE_ACTION' && isThisPlayersTurn) {
+        // This is a chance card or special tile movement, animate with smooth transition
+        console.log("📍 [POSITION] Chance card movement animation:", {
+          playerId: player.id,
+          from: prevPositionRef.current,
+          to: player.position
+        });
+
+        api.start({
+          position: targetPosition,
+          config: { duration: 800 }, // Smoother transition for chance card moves
+          onRest: () => {
+            console.log("📍 [POSITION] Chance card animation completed for player:", player.id);
+            prevPositionRef.current = player.position;
+          }
+        });
       } else {
-        // This is a non-animated position change (e.g., teleport from chance card, world travel, or initial setup)
+        // This is a non-animated position change
         api.set({ position: targetPosition });
+        prevPositionRef.current = player.position;
       }
     }
-    
-    // Always update prevPositionRef to the current player.position for the next render cycle
-    prevPositionRef.current = player.position;
-  }, [player.position, api, boardLength, dice, gamePhase, handleTileAction]);
+  }, [player.position, api, boardLength, dice, gamePhase, handleTileAction, player.id]);
 
   useFrame(() => {
     if (meshRef.current) {
-      // console.log(`Player ${player.id}: Mesh Position:`, meshRef.current.position.toArray()); // Keep this for now
+      // Animation frame logic if needed
     }
   });
 
