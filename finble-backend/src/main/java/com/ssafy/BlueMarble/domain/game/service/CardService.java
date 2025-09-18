@@ -641,20 +641,20 @@ public class CardService {
                             change = -change;
                         }
 
-                        int newPrice = Math.max(50000, currentPrice + change); // 최소 가격 보장
+                        int newPrice = currentPrice + change;
                         cell.setLandPrice(newPrice);
 
                         // 건물 가격도 함께 변동
                         if (cell.getHousePrice() > 0) {
-                            int newHousePrice = Math.max(20000, cell.getHousePrice() + (cell.getHousePrice() * change / currentPrice));
+                            int newHousePrice = cell.getHousePrice() + (cell.getHousePrice() * change / currentPrice);
                             cell.setHousePrice(newHousePrice);
                         }
                         if (cell.getBuildingPrice() > 0) {
-                            int newBuildingPrice = Math.max(40000, cell.getBuildingPrice() + (cell.getBuildingPrice() * change / currentPrice));
+                            int newBuildingPrice = cell.getBuildingPrice() + (cell.getBuildingPrice() * change / currentPrice);
                             cell.setBuildingPrice(newBuildingPrice);
                         }
                         if (cell.getHotelPrice() > 0) {
-                            int newHotelPrice = Math.max(60000, cell.getHotelPrice() + (cell.getHotelPrice() * change / currentPrice));
+                            int newHotelPrice = cell.getHotelPrice() + (cell.getHotelPrice() * change / currentPrice);
                             cell.setHotelPrice(newHotelPrice);
                         }
 
