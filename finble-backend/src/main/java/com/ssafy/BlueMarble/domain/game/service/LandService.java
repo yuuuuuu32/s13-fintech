@@ -42,6 +42,8 @@ public class LandService {
     public void tradeLand(WebSocketSession session, TradeLandRequest tradeLandRequest) {
         String roomId = roomService.getRoom(session.getId());
 
+        log.info("[TRADE] roomId={}, buyerName={}, landNum={}", roomId, tradeLandRequest.getBuyerName(), tradeLandRequest.getLandNum());
+
         // 1. 구매자 userId 가져옴
         String buyerUserId = userRedisService.getUserIdByNickname(tradeLandRequest.getBuyerName());
         if (buyerUserId == null) {
@@ -54,9 +56,14 @@ public class LandService {
 
         // 3. 구매자의 자산 정보를 가져온다.
         CreateMapPayload.PlayerState buyer = gameState.getPlayers().get(buyerUserId);
+        log.info("[TRADE] buyerUserId={}, buyerNickname={}, buyerMoney(before)={}", buyerUserId, buyer.getNickname(), buyer.getMoney());
 
         // 4. 구매하려는 땅의 정보를 찾는다.
         Tile targetCell = mapData.getCells().get(tradeLandRequest.getLandNum());
+        log.info("[TRADE] targetCell: cellNumber={}, ownerName(before)={}, toll={}, type={}", targetCell.getCellNumber(), targetCell.getOwnerName(), targetCell.getToll(), targetCell.getType());
+        if (targetCell.getCellNumber() != tradeLandRequest.getLandNum()) {
+            log.warn("[TRADE][WARN] landNum mismatch: req.landNum={}, cell.cellNumber={}", tradeLandRequest.getLandNum(), targetCell.getCellNumber());
+        }
 
         // 5. 땅이 이미 소유되어 있는지 확인
         String currentOwner = targetCell.getOwnerName();
@@ -69,6 +76,7 @@ public class LandService {
             
             // 판매자의 자산 정보를 가져온다.
             CreateMapPayload.PlayerState seller = gameState.getPlayers().get(sellerUserId);
+            log.info("[TRADE] sellerUserId={}, sellerNickname={}, sellerMoney(before)={}", sellerUserId, seller.getNickname(), seller.getMoney());
             if (seller == null) {
                 throw new BusinessException(BusinessError.USER_ID_NOT_FOUND);
             }
@@ -84,29 +92,40 @@ public class LandService {
             }
 
             // 판매자의 자산 업데이트
+            int price = targetCell.getToll();
+            log.info("[TRADE] transfer price={}, from buyer {} to seller {}", price, buyer.getNickname(), seller.getNickname());
             seller.setMoney(seller.getMoney() + targetCell.getToll());
+            log.info("[TRADE] sellerMoney(after)={}, sellerOwnedProps(before)={}", seller.getMoney(), seller.getOwnedProperties());
             if (seller.getOwnedProperties() != null) {
                 seller.getOwnedProperties().remove(Integer.valueOf(targetCell.getCellNumber()));
+                log.info("[TRADE] sellerOwnedProps(after)={}", seller.getOwnedProperties());
             }
         } else {
             // 소유되지 않은 땅인 경우, 땅 가격으로 구매
             if (buyer.getMoney() < targetCell.getToll()) {
                 throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
             }
+            log.info("[TRADE] unowned land purchase, price={} (using toll)", targetCell.getToll());
         }
 
         // 6. 땅 주인을 구매자로 변경
+        String prevOwner = targetCell.getOwnerName();
         targetCell.setOwnerName(tradeLandRequest.getBuyerName());
+        log.info("[TRADE] owner changed: {} -> {}", prevOwner, tradeLandRequest.getBuyerName());
 
         // 7. 구매자의 자산 업데이트
         buyer.setMoney(buyer.getMoney() - targetCell.getToll());
+        log.info("[TRADE] buyerMoney(after)={}", buyer.getMoney());
         if (buyer.getOwnedProperties() == null) {
             buyer.setOwnedProperties(new ArrayList<>());
         }
         buyer.getOwnedProperties().add(targetCell.getCellNumber());
+        log.info("[TRADE] buyerOwnedProps(after)={}", buyer.getOwnedProperties());
 
         // 8. 업데이트된 상태를 Redis에 저장
+        log.info("[TRADE] saving game state to redis: roomId={}", roomId);
         gameRedisService.saveGameMapState(roomId, gameState);
+        log.info("[TRADE] saved game state. players snapshot={}", gameState.getPlayers());
 
         // 9. 다른 플레이어들에게 땅 구매 알림 전송
         TradeLandPayload payload = TradeLandPayload.builder()
@@ -115,6 +134,7 @@ public class LandService {
                 .build();
         JsonNode payloadNode = objectMapper.valueToTree(payload);
         MessageDto message = new MessageDto(MessageType.TRADE_LAND, payloadNode);
+        log.info("[TRADE] broadcast TRADE_LAND message sent to roomId={}", roomId);
         sessionMessageService.sendMessageToRoom(roomId, message);
     }
 

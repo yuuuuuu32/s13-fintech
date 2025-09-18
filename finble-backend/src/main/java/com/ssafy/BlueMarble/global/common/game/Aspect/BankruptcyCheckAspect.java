@@ -26,7 +26,7 @@ public class BankruptcyCheckAspect {
             String roomId = (String) args[0];  // 첫 번째 파라미터
             CreateMapPayload state = (CreateMapPayload) args[1];  // 두 번째 파라미터
 
-            log.debug("AOP 파산 체크 시작: roomId={}", roomId);
+            log.debug("AOP 파산 & 종료조건 체크 시작: roomId={}", roomId);
 
             // 모든 플레이어의 자산 체크
             if (state.getPlayers() != null) {
