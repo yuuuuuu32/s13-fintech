@@ -143,8 +143,8 @@ export const handleSpecialTile = (
 ) => {
   const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
 
-  switch (currentTile.name) {
-    case "감옥":
+  switch (currentTile.type) {
+    case "JAIL":
       set((state) => {
         const updatedPlayers = [...state.players];
         updatedPlayers[state.currentPlayerIndex] = {
@@ -162,29 +162,29 @@ export const handleSpecialTile = (
         };
       });
       break;
-    case "박람회": {
-      if (isMyTurn) {
-        const ownedProperties = currentPlayer.properties.map((index) => ({
-          name: board[index].name,
-          index,
-        }));
-        if (ownedProperties.length > 0) {
-          set({ modal: { type: "EXPO", properties: ownedProperties } });
-        } else {
-          set({
-            modal: {
-              type: "INFO",
-              text: "소유한 땅이 없어 박람회 효과를 받을 수 없습니다.",
-              onConfirm: () => set({ modal: { type: "NONE" as const } }),
-            },
-          });
-        }
-      } else {
-        set({ modal: { type: "NONE" as const } });
-      }
-      break;
-    }
-    case "세계여행":
+    // case "박람회": {
+    //   if (isMyTurn) {
+    //     const ownedProperties = currentPlayer.properties.map((index) => ({
+    //       name: board[index].name,
+    //       index,
+    //     }));
+    //     if (ownedProperties.length > 0) {
+    //       set({ modal: { type: "EXPO", properties: ownedProperties } });
+    //     } else {
+    //       set({
+    //         modal: {
+    //           type: "INFO",
+    //           text: "소유한 땅이 없어 박람회 효과를 받을 수 없습니다.",
+    //           onConfirm: () => set({ modal: { type: "NONE" as const } }),
+    //         },
+    //       });
+    //     }
+    //   } else {
+    //     set({ modal: { type: "NONE" as const } });
+    //   }
+    //   break;
+    // }
+    case "AIRPLANE":
       // 백엔드에 세계여행 이벤트 요청 전송
       if (send && isMyTurn) {
         send('/app/game/world-travel', {
