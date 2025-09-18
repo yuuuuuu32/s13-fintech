@@ -267,6 +267,21 @@ export const createPlayerActions = (
   },
 
   selectTravelDestination: (tileIndex: number) => {
+    const { send, players, currentPlayerIndex } = get();
+    const currentPlayer = players[currentPlayerIndex];
+
+    // 백엔드에 세계여행 목적지 전송
+    if (send) {
+      send('/app/game/world-travel', {
+        type: "WORLD_TRAVEL_EVENT",
+        payload: {
+          playerId: currentPlayer.id,
+          destinationPosition: tileIndex,
+          currentPosition: currentPlayer.position
+        }
+      });
+    }
+
     set((state) => {
       const { players, currentPlayerIndex } = state;
       const updatedPlayers = [...players];

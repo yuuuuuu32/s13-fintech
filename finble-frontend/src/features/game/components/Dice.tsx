@@ -126,7 +126,6 @@ export function Dice() {
         }
       });
 
-      console.log(`서버 주사위 결과: ${dice[0]}, ${dice[1]}`)
       setDisplayDiceSum(serverDiceNum);
       setTimeout(() => {
         setDisplayDiceSum(null);

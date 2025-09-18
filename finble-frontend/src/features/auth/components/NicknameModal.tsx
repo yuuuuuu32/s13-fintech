@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import './NicknameModal.css';
-import { updateMyInfo } from '../../../api/user'; // getMyInfo는 더 이상 필요 없습니다.
+import { updateMyInfo, getMyInfo } from '../../../api/user';
 import { useUserStore } from '../../../stores/useUserStore';
 
 interface NicknameModalProps {
@@ -40,14 +40,15 @@ export default function NicknameModal({
     setIsLoading(true);
 
     try {
-      // updateMyInfo API를 호출하고, 서버가 반환한 최신 사용자 정보를 변수에 저장합니다.
-      const updatedUserInfo = await updateMyInfo(nickname);
-      console.log(
-        'Nickname update successful. Using server response:',
-        updatedUserInfo
-      );
+      // updateMyInfo API를 호출하여 닉네임을 업데이트합니다.
+      await updateMyInfo(nickname);
+      console.log('Nickname update successful');
 
-      // 별도로 getMyInfo를 호출할 필요 없이, 반환된 정보로 바로 전역 상태를 업데이트합니다.
+      // 업데이트 후 최신 사용자 정보를 다시 가져옵니다.
+      const updatedUserInfo = await getMyInfo();
+      console.log('Updated user info:', updatedUserInfo);
+
+      // 최신 정보로 전역 상태를 업데이트합니다.
       setUserInfo(updatedUserInfo);
 
       // 성공적으로 완료되었음을 알립니다.
