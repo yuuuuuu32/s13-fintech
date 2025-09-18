@@ -225,6 +225,17 @@ export const createWebSocketHandlers = (
 
     subscribeToTopic("DRAW_CARD", handleChanceCard);
     subscribeToTopic("CHANCE_CARD", handleChanceCard);
+
+    // 게임 중 방 관련 메시지 처리
+    subscribeToTopic("ENTER_ROOM_OK", (message) => {
+      console.log("📥 [WEBSOCKET] ENTER_ROOM_OK received in game:", message);
+      // 게임 중에는 특별한 처리가 필요하지 않으므로 로그만 기록
+    });
+
+    subscribeToTopic("ENTER_NEW_USER", (message) => {
+      console.log("📥 [WEBSOCKET] ENTER_NEW_USER received in game:", message);
+      // 게임 중 새 유저 입장은 일반적으로 발생하지 않지만 로그 기록
+    });
   },
 
   disconnect: () => {
