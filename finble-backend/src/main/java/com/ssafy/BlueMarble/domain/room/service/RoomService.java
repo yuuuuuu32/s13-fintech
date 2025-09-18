@@ -7,6 +7,8 @@ import com.ssafy.BlueMarble.domain.game.entity.GameState;
 import com.ssafy.BlueMarble.domain.room.dto.FastStartResponse;
 import com.ssafy.BlueMarble.domain.room.dto.RoomListDTO;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.ssafy.BlueMarble.global.common.event.RoomDeletedEvent;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
@@ -43,6 +45,7 @@ public class RoomService {
     private final UserRedisService userRedisService;
     private final ObjectMapper objectMapper;
     private final WebSocketSessionService webSocketSessionService;
+    private final ApplicationEventPublisher eventPublisher;
     private final int MAX_USER_LIMIT = 4;
 
     //대기방 만들기₩
@@ -273,11 +276,10 @@ public class RoomService {
     }
 
     public void deleteRoom(String roomId) {
+        // 방 관련 데이터 정리
         String usersKey = "room:" + roomId + ":users";
         redisTemplate.delete(usersKey);
-//        System.out.println(redisTemplate.opsForSet().isMember(roomIdKey,String.valueOf(roomId)));
         redisTemplate.opsForSet().remove(roomIdKey, String.valueOf(roomId));
-//        System.out.println(redisTemplate.opsForSet().isMember(roomIdKey,String.valueOf(roomId)));
         String infoKey = "room:" + roomId + ":info";
         redisTemplate.delete(infoKey);
         String stateKey = "room:" + roomId + ":state";
@@ -289,6 +291,11 @@ public class RoomService {
         String missionKey = "room:" + roomId + ":mission";
         redisTemplate.delete(missionKey);
         redisTemplate.delete("room:" + roomId + ":channel");
+        
+        // 게임 관련 데이터 정리를 위한 이벤트 발행
+        eventPublisher.publishEvent(new RoomDeletedEvent(this, roomId));
+        
+        log.info("방 삭제 완료: roomId={}", roomId);
     }
 
     public void kick(WebSocketSession session, KickRoomPayload kickRoomPayload) {

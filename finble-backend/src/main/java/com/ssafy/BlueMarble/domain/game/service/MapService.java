@@ -6,8 +6,10 @@ import com.ssafy.BlueMarble.domain.game.dto.GameMap;
 import com.ssafy.BlueMarble.domain.game.entity.GameState;
 import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.game.repository.TileRepository;
-import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
+import com.ssafy.BlueMarble.domain.Timer.Service.TimerService;
+import com.ssafy.BlueMarble.global.common.event.RoomDeletedEvent;
+import org.springframework.context.event.EventListener;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
@@ -18,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.socket.WebSocketSession;
 
 
 import java.util.*;
@@ -35,7 +36,7 @@ public class MapService {
     private final ObjectMapper objectMapper;
     private final UserRedisService userRedisService;
     private final RedisTemplate<String, String> redisTemplate;
-    private final RoomService roomService;
+    private final TimerService timerService;
 
     private static final int MAP_SIZE = 32;
     private static final Random random = new Random(System.nanoTime());
@@ -54,6 +55,7 @@ public class MapService {
         cells.put(16, Tile.builder().id(16L).name("세계여행").type(Tile.TileType.AIRPLANE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("일정 금액 지불하고 원하는 땅으로 이동").build());
         cells.put(19, Tile.builder().id(19L).name("찬스").type(Tile.TileType.CHANCE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("찬스카드 뽑기").build());
         cells.put(21, Tile.builder().id(21L).name("구미").type(Tile.TileType.SPECIAL).landPrice(160).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build());
+        cells.put(24, Tile.builder().id(24L).name("국세청").type(Tile.TileType.NTS).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("일정 금액을 납부").build());
         cells.put(27, Tile.builder().id(27L).name("찬스").type(Tile.TileType.CHANCE).landPrice(0).housePrice(0).buildingPrice(0).hotelPrice(0).description("찬스카드 뽑기").build());
         cells.put(29, Tile.builder().id(29L).name("서울").type(Tile.TileType.SPECIAL).landPrice(220).housePrice(0).buildingPrice(0).hotelPrice(0).description("싸피특별땅 - 건설 불가").build());
         EVENT_CELLS = Collections.unmodifiableMap(cells);
@@ -61,8 +63,7 @@ public class MapService {
     /**
      * 새로운 게임 맵 상태 생성 (방에서 게임 시작할 때 호출)
      */
-    public void createNewGameMapState(WebSocketSession session) {
-        String roomId = roomService.getRoom(session.getId());
+    public void createNewGameMapState(String roomId) {
         if (roomId == null) {
             throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
         }
@@ -91,7 +92,7 @@ public class MapService {
             CreateMapPayload.PlayerState playerState = CreateMapPayload.PlayerState.builder()
                     .userId(playerId)
                     .nickname(playerName)
-                    .position(0) // 시작 위치
+                    .position(16) // 시작 위치
                     .money(20000) // 초기 자금
                     .ownedProperties(new ArrayList<>())
                     .isInJail(false)
@@ -175,8 +176,10 @@ public class MapService {
         gameState.setGameState(GameState.FINISHED);
         gameRedisService.saveGameMapState(roomId, gameState);
 
-        log.info("게임 종료: roomId={}", roomId);
+        // 게임 종료 시 타이머 정리
+        timerService.clearGameTimer(roomId);
 
+        log.info("게임 종료: roomId={}", roomId);
     }
 
     /**
@@ -185,6 +188,19 @@ public class MapService {
     public void deleteGameMapState(String roomId) {
         gameRedisService.deleteGameMapState(roomId);
         log.info("게임 맵 상태 삭제: roomId={}", roomId);
+    }
+
+    /**
+     * 방 삭제 이벤트 리스너
+     */
+    @EventListener
+    public void handleRoomDeletedEvent(RoomDeletedEvent event) {
+        String roomId = event.getRoomId();
+        log.info("방 삭제 이벤트 수신: roomId={}", roomId);
+        
+        // 게임 관련 데이터 정리
+        deleteGameMapState(roomId);
+        timerService.clearGameTimer(roomId);
     }
 
     /**

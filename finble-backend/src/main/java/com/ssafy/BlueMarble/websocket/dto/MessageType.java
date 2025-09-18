@@ -29,6 +29,7 @@ public enum MessageType {
     JAIL_EVENT,
     WORLD_TRAVEL_EVENT,
     USE_DICE,
+    NTS_EVENT,
 
     // 카드 관련
     DRAW_CARD,

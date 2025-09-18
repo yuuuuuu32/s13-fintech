@@ -142,6 +142,10 @@ public class LandService {
         //3. 건설시도 ( 건설 자금이 충분한지 / 현재 건설하려는 땅을 소유하고 있는지 체크해야함)
         Tile targetCell = mapData.getCells().get(constructRequest.getLandNum());
 
+        //3.0 특별 땅이라면 건물을 지을 수 없음
+        if(targetCell.getType().equals(Tile.TileType.SPECIAL)){
+            throw new  BusinessException(BusinessError.SPECIAL_CANNOT_BUILD);
+        }
         //3.1 건설 자금이 충분한지
         if (targetCell.getToll() * 10 > user.getMoney()) {
             throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);

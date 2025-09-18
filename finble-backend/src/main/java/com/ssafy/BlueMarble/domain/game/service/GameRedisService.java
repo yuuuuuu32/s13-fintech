@@ -18,7 +18,6 @@ public class GameRedisService {
     private final ObjectMapper objectMapper;
 
     private static final String GAME_MAP_PREFIX = "room:map:";
-    private static final String PLAYER_STATE_PREFIX = "room:player:";
     private static final int GAME_STATE_TTL = 1800;
     
     /**
@@ -60,36 +59,8 @@ public class GameRedisService {
         log.info("게임 맵 상태 삭제 완료: roomId={}", roomId);
     }
     
-    /**
-     * 개별 플레이어 상태 저장
-     */
-    public void savePlayerState(String roomId, String userId, CreateMapPayload.PlayerState playerState) {
-        try {
-            String key = PLAYER_STATE_PREFIX + roomId + ":" + userId;
-            String value = objectMapper.writeValueAsString(playerState);
-            redisTemplate.opsForValue().set(key, value, GAME_STATE_TTL, TimeUnit.SECONDS);
-        } catch (JsonProcessingException e) {
-            log.error("플레이어 상태 저장 실패: roomId={}, userId={}", roomId, userId, e);
-        }
-    }
     
-    /**
-     * 개별 플레이어 상태 조회
-     */
-    public CreateMapPayload.PlayerState getPlayerState(String roomId, String userId) {
-        try {
-            String key = PLAYER_STATE_PREFIX + roomId + ":" + userId;
-            String value = redisTemplate.opsForValue().get(key);
-            if (value != null) {
-                return objectMapper.readValue(value, CreateMapPayload.PlayerState.class);
-            }
-        } catch (JsonProcessingException e) {
-            log.error("플레이어 상태 조회 실패: roomId={}, userId={}", roomId, userId, e);
-        }
-        return null;
-    }
-    
-    /**
+    /**한
      * 게임 상태 업데이트 (TTL 갱신)
      */
     public void updateGameStateTTL(String roomId) {

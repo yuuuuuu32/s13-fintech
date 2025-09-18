@@ -80,6 +80,10 @@ public class BankruptcyService {
             JsonNode payloadNode = objectMapper.valueToTree(payload);
             MessageDto message = new MessageDto(MessageType.GAME_END, payloadNode);
             sessionMessageService.sendMessageToRoom(roomId, message);
+            
+            // 게임 종료 처리 (타이머 정리 포함)
+            mapService.endGame(roomId);
+            
             // 게임정보 모두 삭제
             mapService.deleteGameMapState(roomId);
         }

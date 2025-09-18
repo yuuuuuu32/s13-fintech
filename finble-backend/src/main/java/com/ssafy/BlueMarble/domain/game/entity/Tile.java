@@ -86,11 +86,11 @@ public class Tile {
         CHANCE("찬스"),
         SPECIAL("싸피특별땅"),
         JAIL("감옥"),
-        EXHIBITION("박람회"),
-        AIRPLANE("비행기");
-        
+        AIRPLANE("비행기"),
+        NTS("국세청");
+
         private final String description;
-        
+
         TileType(String description) {
             this.description = description;
         }

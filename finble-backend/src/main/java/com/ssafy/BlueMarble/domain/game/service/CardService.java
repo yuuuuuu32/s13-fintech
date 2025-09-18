@@ -14,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import jakarta.annotation.PostConstruct;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,8 +41,7 @@ public class CardService {
     // 메모리에 로딩된 카드 리스트
     private List<Card> chanceCards;
 
-    @PostConstruct
-    public void loadCardsFromDB() {
+    private void loadCardsFromDB() {
         try {
             this.chanceCards = cardRepository.findAll();
             log.info("DB에서 찬스카드 {}개 로딩 완료", chanceCards.size());
@@ -328,7 +326,7 @@ public class CardService {
                     log.info("즉발카드 효과 적용 - 돈(퍼센트): cardName={}, percent={}, description={}", card.getName(), effectValue, description);
                     break;
                 case "JAIL":
-                    applyJailEffect(roomId, userName);
+                    applyJailEffectDirect(player);
                     log.info("즉발카드 효과 적용 - 감옥: cardName={}, description={}", card.getName(), description);
                     break;
                 case "MOVE":
@@ -420,13 +418,13 @@ public class CardService {
                 log.error("게임 맵 상태를 찾을 수 없음: roomId={}", roomId);
                 return;
             }
-            
+
             String userId = userRedisService.getUserIdByNickname(userName);
             if (userId == null) {
                 log.error("플레이어를 찾을 수 없음: userName={}", userName);
                 return;
             }
-            
+
             CreateMapPayload.PlayerState player = gameMapState.getPlayers().get(userId);
             if (player != null) {
                 player.setInJail(true);
@@ -438,6 +436,13 @@ public class CardService {
         } catch (Exception e) {
             log.error("감옥 송치 실패: roomId={}, userName={}", roomId, userName, e);
         }
+    }
+
+    private void applyJailEffectDirect(CreateMapPayload.PlayerState player) {
+        player.setInJail(true);
+        player.setJailTurns(3);
+        player.setPosition(8); // 감옥 위치 (MapService의 EVENT_CELLS와 일치)
+        log.info("플레이어 감옥 송치: userName={}", player.getNickname());
     }
     
     private void applyMoneyPercentEffectSimple(CreateMapPayload.PlayerState player, int percent) {
