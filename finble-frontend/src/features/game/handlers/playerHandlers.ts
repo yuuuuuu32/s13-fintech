@@ -309,7 +309,7 @@ export const createPlayerActions = (
   buildBuilding: (tileIndex: number) => {
     // Optimistic update
     set((state) => {
-      const { players, currentPlayerIndex, board } = state;
+      const { players, currentPlayerIndex, board, applyEconomicMultiplier } = state;
       const currentPlayer = players[currentPlayerIndex];
       const tile = board[tileIndex];
 
@@ -323,7 +323,9 @@ export const createPlayerActions = (
         };
       }
 
-      if (currentPlayer.money < tile.buildingPrice) {
+      const adjustedBuildingPrice = applyEconomicMultiplier(tile.buildingPrice, 'buildingCostMultiplier');
+
+      if (currentPlayer.money < adjustedBuildingPrice) {
         return {
           modal: {
             type: "INFO" as const,
@@ -348,7 +350,7 @@ export const createPlayerActions = (
       const updatedPlayers = [...players];
       updatedPlayers[currentPlayerIndex] = {
         ...currentPlayer,
-        money: currentPlayer.money - tile.buildingPrice,
+        money: currentPlayer.money - adjustedBuildingPrice,
       };
 
       const newBoard = board.map((t, index) => {
