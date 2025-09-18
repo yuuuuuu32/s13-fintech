@@ -67,7 +67,28 @@ export function BaseTile({ tile, tileIndex, position, textRotationY, children }:
       }
       return `hsl(180, 70%, ${60 + glowIntensity * 20}%)`;
     }
-    return "white";
+
+    // Tile type based colors similar to 132.png
+    switch (tile.type) {
+      case 'city':
+      case 'NORMAL':
+        return "#f8f8f8"; // Light beige like the reference
+      case 'company':
+        return "#e8e0d0"; // Slightly darker beige
+      case 'chance':
+      case 'CHANCE':
+        return "#ff6b6b"; // Red for chance tiles
+      case 'special':
+      case 'SPECIAL':
+      case 'START':
+        return "#4ecdc4"; // Teal for special tiles
+      case 'JAIL':
+        return "#95a5a6"; // Gray for jail
+      case 'AIRPLANE':
+        return "#3498db"; // Blue for airport
+      default:
+        return "#f8f8f8";
+    }
   };
 
   return (
@@ -81,6 +102,12 @@ export function BaseTile({ tile, tileIndex, position, textRotationY, children }:
           color={getTileColor()}
           emissive={isWorldTravelMode ? new THREE.Color(0x004d4d).multiplyScalar(glowIntensity * 0.3) : undefined}
         />
+      </mesh>
+
+      {/* Tile border */}
+      <mesh position={[0, TILE_HEIGHT / 2 + 0.001, 0]}>
+        <boxGeometry args={[TILE_WIDTH + 0.02, 0.002, TILE_DEPTH + 0.02]} />
+        <meshStandardMaterial color="#333333" />
       </mesh>
 
       {isWorldTravelMode && (

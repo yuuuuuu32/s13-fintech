@@ -45,24 +45,13 @@ export default function LoginPage() {
       // Set the user info in the global store
       setUserInfo(userInfo);
 
-      // 기본 닉네임 패턴들을 정의합니다.
+      // 'player'로 시작하고 숫자가 뒤따르는 닉네임 패턴을 정의합니다.
       const defaultNicknamePattern = /^player\d+$|^Player\d+$/; // 'player' 또는 'Player'로 시작하는 숫자 패턴
-      const koreanNamePattern = /^[가-힣]{2,4}$/; // 한국어 실명으로 보이는 2-4자 한글 패턴
 
-      console.log('Nickname check:', {
-        nickname: userInfo?.nickname,
-        isDefaultPattern: defaultNicknamePattern.test(userInfo?.nickname || ''),
-        isKoreanPattern: koreanNamePattern.test(userInfo?.nickname || ''),
-      });
-
-      if (userInfo && userInfo.nickname &&
-          !defaultNicknamePattern.test(userInfo.nickname) &&
-          !koreanNamePattern.test(userInfo.nickname)) {
-        console.log('Navigate to lobby - nickname is valid');
+      if (userInfo && userInfo.nickname && !defaultNicknamePattern.test(userInfo.nickname)) {
         navigate('/lobby');
       } else {
-        console.log('Show nickname modal - nickname needs change');
-        // 닉네임이 없거나, 'player숫자' 패턴이거나, 한국어 실명 패턴인 경우 닉네임 변경 모달을 띄웁니다.
+        // 닉네임이 없거나, 'player숫자' 패턴인 경우 닉네임 변경 모달을 띄웁니다.
         setIsModalOpen(true);
       }
     } catch (error) {
@@ -115,7 +104,7 @@ export default function LoginPage() {
     window.Kakao.Auth.login({
       success: function (authObj: KakaoLoginResponse) {
         apiClient
-          .post('/auth/kakao-login', {
+          .post('/auth/kakao', {
             accessToken: authObj.access_token,
           })
           .then(async (res) => {

@@ -21,7 +21,7 @@ export const createWebSocketHandlers = (
         set((state) => {
           const nextPlayerIndex = state.players.findIndex(p => p.name === payload.curPlayer);
           if (nextPlayerIndex !== -1) {
-            return {
+            const newState = {
               currentPlayerIndex: nextPlayerIndex,
               currentTurn: payload.gameTurn ?? state.currentTurn,
               gamePhase: "WAITING_FOR_ROLL",
@@ -29,6 +29,13 @@ export const createWebSocketHandlers = (
               // 찬스카드 모달이 떠있으면 유지
               modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
             };
+
+            // Check for game over after turn change
+            setTimeout(() => {
+              get().checkGameOver();
+            }, 1000);
+
+            return newState;
           }
           return {};
         });
@@ -225,6 +232,112 @@ export const createWebSocketHandlers = (
 
     subscribeToTopic("DRAW_CARD", handleChanceCard);
     subscribeToTopic("CHANCE_CARD", handleChanceCard);
+
+    // CONSTRUCT_BUILDING 메시지 처리
+    subscribeToTopic("CONSTRUCT_BUILDING", (message) => {
+      console.log("📥 [WEBSOCKET] CONSTRUCT_BUILDING received:", message);
+      const { payload } = message;
+
+      if (payload.result && payload.updatedAsset) {
+        set((state) => {
+          const updatedPlayers = state.players.map(player => {
+            if (player.name === payload.nickname) {
+              return {
+                ...player,
+                money: payload.updatedAsset.money,
+                properties: payload.updatedAsset.lands || []
+              };
+            }
+            return player;
+          });
+
+          // 보드에서 해당 땅의 건물 레벨 업데이트
+          const updatedBoard = state.board.map((tile, index) => {
+            if (index === payload.landNum) {
+              return {
+                ...tile,
+                buildings: {
+                  ...tile.buildings,
+                  level: payload.buildingType === "FIELD" ? 0 :
+                         payload.buildingType === "HOUSE" ? 1 :
+                         payload.buildingType === "BUILDING" ? 2 :
+                         payload.buildingType === "HOTEL" ? 3 : 0
+                }
+              };
+            }
+            return tile;
+          });
+
+          return {
+            players: updatedPlayers,
+            board: updatedBoard,
+            modal: { type: "NONE" }
+          };
+        });
+      }
+    });
+
+    // JAIL_EVENT 메시지 처리
+    subscribeToTopic("JAIL_EVENT", (message) => {
+      console.log("📥 [WEBSOCKET] JAIL_EVENT received:", message);
+      const { payload } = message;
+
+      set((state) => {
+        const updatedPlayers = state.players.map(player => {
+          if (player.name === payload.nickname) {
+            return {
+              ...player,
+              money: payload.updatedAsset ? payload.updatedAsset.money : player.money,
+              properties: payload.updatedAsset ? payload.updatedAsset.lands || [] : player.properties,
+              isInJail: payload.turns > 0,
+              jailTurns: payload.turns
+            };
+          }
+          return player;
+        });
+
+        return {
+          players: updatedPlayers,
+          modal: { type: "NONE" }
+        };
+      });
+    });
+
+    // WORLD_TRAVEL_EVENT 메시지 처리
+    subscribeToTopic("WORLD_TRAVEL_EVENT", (message) => {
+      console.log("📥 [WEBSOCKET] WORLD_TRAVEL_EVENT received:", message);
+      const { payload } = message;
+
+      if (payload.result) {
+        set((state) => {
+          const updatedPlayers = state.players.map(player => {
+            if (player.name === payload.nickname) {
+              return {
+                ...player,
+                position: payload.endLand,
+                money: payload.travelerAsset ? payload.travelerAsset.money : player.money,
+                properties: payload.travelerAsset ? payload.travelerAsset.lands || [] : player.properties
+              };
+            }
+            // 땅 소유자 자산 업데이트
+            if (payload.landOwner && player.name === payload.landOwner && payload.ownerAsset) {
+              return {
+                ...player,
+                money: payload.ownerAsset.money,
+                properties: payload.ownerAsset.lands || []
+              };
+            }
+            return player;
+          });
+
+          return {
+            players: updatedPlayers,
+            gamePhase: "TILE_ACTION",
+            modal: { type: "NONE" }
+          };
+        });
+      }
+    });
 
     // 게임 중 방 관련 메시지 처리
     subscribeToTopic("ENTER_ROOM_OK", (message) => {
