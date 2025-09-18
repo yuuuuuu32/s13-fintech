@@ -217,10 +217,29 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
       // 게임 시작 메시지 구독
       const gameStartSub = subscribeToTopic('START_GAME_OBSERVE', (message) => {
-        // 1. 초기 게임 상태를 임시 저장소에 저장
+        const currentWebSocketState = useWebSocketStore.getState();
+        const isGameAlreadyInitialized = currentWebSocketState.initialGameState !== null;
+
+        console.log("🚨 [ROOM_STORE] START_GAME_OBSERVE received:", {
+          timestamp: new Date().toISOString(),
+          payload: message.payload,
+          gameState: message.payload?.gameState,
+          isGameAlreadyInitialized: isGameAlreadyInitialized,
+          currentInitialGameState: currentWebSocketState.initialGameState,
+          willSkipDueToAlreadyInitialized: isGameAlreadyInitialized
+        });
+
+        // 1. 게임이 이미 초기화되었다면 무시 (중복 START_GAME_OBSERVE 방지)
+        if (isGameAlreadyInitialized) {
+          console.log("🚫 [ROOM_STORE] Skipping START_GAME_OBSERVE - game already initialized");
+          return; // 완전히 무시
+        }
+
+        // 2. 처음 받는 START_GAME_OBSERVE만 처리
+        console.log("🎮 [ROOM_STORE] First START_GAME_OBSERVE - setting initial game state");
         useWebSocketStore.getState().setInitialGameState(message.payload);
 
-        // 2. 게임 상태를 'playing'으로 변경하여 페이지 이동 트리거
+        // 3. 게임 상태를 'playing'으로 변경하여 페이지 이동 트리거
         if (message.payload.gameState === 'PLAYING') {
           set((state) => {
             if (!state.room) return {};

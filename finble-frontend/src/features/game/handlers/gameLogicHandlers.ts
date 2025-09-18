@@ -50,13 +50,6 @@ export const createGameLogicHandlers = (
         const currentPlayer = players[currentPlayerIndex];
         const finalPosition = Math.max(0, Math.min(serverCurrentPosition, board.length - 1));
 
-        console.log("📍 [POSITION] Player position update:", {
-          playerId: currentPlayer.id,
-          playerName: currentPlayer.name,
-          previousPosition: currentPlayer.position,
-          serverPosition: serverCurrentPosition,
-          finalPosition: finalPosition
-        });
 
         const updatedPlayers = players.map((p, index) => {
             if (index === currentPlayerIndex) {
@@ -154,16 +147,6 @@ export const createGameLogicHandlers = (
     const currentUserId = useUserStore.getState().userInfo?.userId;
     const isMyTurn = currentPlayer.id === currentUserId;
 
-    console.log("🎯 User ID check:", {
-      currentPlayerId: currentPlayer.id,
-      currentUserId,
-      isMyTurn,
-      userStoreData: useUserStore.getState().userInfo
-    });
-
-    console.log("🎯 Current player:", currentPlayer);
-    console.log("🎯 Is my turn:", isMyTurn);
-    console.log("🎯 Current board position:", currentPlayer.position);
     const currentTile = board[currentPlayer.position];
 
     if (currentPlayer.money < 0) {
@@ -181,7 +164,6 @@ export const createGameLogicHandlers = (
 
       case "chance":
       case "CHANCE":
-        console.log("🎲 Chance tile - handled by server via USE_DICE");
         // 찬스카드는 서버에서 처리되므로 별도 액션 없음
         get().endTurn();
         break;
@@ -205,33 +187,14 @@ export const createGameLogicHandlers = (
     const { gameId, send, players, currentPlayerIndex } = state;
     const currentPlayer = players[currentPlayerIndex];
 
-    console.log("🔄 [TURN_TRANSITION] endTurn called - PRE state:", {
-      timestamp: new Date().toISOString(),
-      currentPlayer: {
-        id: currentPlayer?.id,
-        name: currentPlayer?.name,
-        position: currentPlayer?.position
-      },
-      currentPlayerIndex,
-      gamePhase: state.gamePhase,
-      modal: state.modal,
-      stackTrace: new Error().stack?.split('\n').slice(1, 4).join(' -> ')
+
+    // Log all player positions before turn end with detailed info
+    console.log("📍 [BACKEND_SYNC] All player positions BEFORE endTurn (will send to server):");
+    players.forEach((p, index) => {
+      console.log(`  Player ${index}: ${p.name} (ID: ${p.id}) - Position: ${p.position}`);
     });
 
-    // Log all player positions before turn end
-    console.log("📍 [POSITION] All player positions before endTurn:", players.map(p => ({
-      playerId: p.id,
-      nickname: p.name,
-      position: p.position
-    })));
-
     if (gameId) {
-      console.log("📤 [WEBSOCKET] Sending TURN_SKIP:", {
-        destination: `/app/game/${gameId}/end-turn`,
-        type: "TURN_SKIP",
-        payload: {},
-        timestamp: new Date().toISOString()
-      });
       send(`/app/game/${gameId}/end-turn`, {
         type: "TURN_SKIP",
         payload: {},
@@ -243,26 +206,29 @@ export const createGameLogicHandlers = (
       gamePhase: "WAITING_FOR_TURN_END",
     });
 
-    console.log("🔄 [TURN_TRANSITION] endTurn completed - POST state:", {
-      timestamp: new Date().toISOString(),
-      gamePhase: "WAITING_FOR_TURN_END",
-      modal: { type: "NONE" }
-    });
 
     // Check for game over conditions after turn ends
     setTimeout(() => {
       get().checkGameOver();
     }, 500);
 
-    // Log positions again after state change
+    // Log positions again after state change with server response tracking
     setTimeout(() => {
       const postState = get();
-      console.log("📍 [POSITION] All player positions AFTER endTurn (delayed check):", postState.players.map(p => ({
-        playerId: p.id,
-        nickname: p.name,
-        position: p.position
-      })));
+      console.log("📍 [BACKEND_SYNC] All player positions AFTER endTurn (waiting for server response):");
+      postState.players.forEach((p, index) => {
+        console.log(`  Player ${index}: ${p.name} (ID: ${p.id}) - Position: ${p.position}`);
+      });
     }, 100);
+
+    // Additional delayed check to see if server has updated positions
+    setTimeout(() => {
+      const finalState = get();
+      console.log("📍 [BACKEND_SYNC] Final position check (after server response should have arrived):");
+      finalState.players.forEach((p, index) => {
+        console.log(`  Player ${index}: ${p.name} (ID: ${p.id}) - FINAL Position: ${p.position}`);
+      });
+    }, 2000);
   },
 
   checkGameOver: () => {

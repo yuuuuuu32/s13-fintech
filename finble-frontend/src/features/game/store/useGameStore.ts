@@ -13,74 +13,7 @@ export const useGameStore = create<GameState>()((set, get) => {
     const newState = typeof partial === 'function' ? partial(currentState) : partial;
     const timestamp = new Date().toISOString();
 
-    // Capture stack trace for all position changes
-    const fullStackTrace = new Error().stack;
-    const callChain = fullStackTrace?.split('\n').slice(1, 8).map(line => line.trim()).join(' → ');
 
-    // Track player position changes with comprehensive analysis
-    if (newState.players && currentState.players) {
-      const currentPlayers = Array.isArray(currentState.players) ? currentState.players : Object.values(currentState.players);
-      const newPlayers = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
-
-      newPlayers.forEach((newPlayer, index) => {
-        const currentPlayer = currentPlayers.find(p => p.id === newPlayer.id);
-        if (currentPlayer && currentPlayer.position !== newPlayer.position) {
-          console.log("📍 [POSITION_CHAIN] Store position change:", {
-            timestamp,
-            playerId: newPlayer.id,
-            playerName: newPlayer.name,
-            from: currentPlayer.position,
-            to: newPlayer.position,
-            source: 'GameStore.wrappedSet',
-            gamePhase: currentState.gamePhase,
-            currentPlayerIndex: currentState.currentPlayerIndex,
-            isCurrentPlayer: currentState.currentPlayerIndex === currentPlayers.findIndex(p => p.id === newPlayer.id),
-            callChain
-          });
-
-          // CRITICAL: Alert if position becomes 0 unexpectedly
-          if (newPlayer.position === 0 && currentPlayer.position !== 0) {
-            console.error("🚨 [CRITICAL_CHAIN] Player position reset to 0!", {
-              timestamp,
-              playerId: newPlayer.id,
-              playerName: newPlayer.name,
-              from: currentPlayer.position,
-              to: newPlayer.position,
-              gamePhase: currentState.gamePhase,
-              currentPlayerIndex: currentState.currentPlayerIndex,
-              modal: currentState.modal,
-              callChain,
-              fullStackTrace
-            });
-          }
-
-          // Detect position jumps (non-sequential moves)
-          const positionDiff = Math.abs(newPlayer.position - currentPlayer.position);
-          if (positionDiff > 12 && newPlayer.position !== 0) { // Large jumps might indicate teleportation
-            console.warn("⚠️ [POSITION_CHAIN] Large position jump detected:", {
-              timestamp,
-              playerId: newPlayer.id,
-              playerName: newPlayer.name,
-              from: currentPlayer.position,
-              to: newPlayer.position,
-              positionDiff,
-              gamePhase: currentState.gamePhase,
-              callChain
-            });
-          }
-        }
-      });
-    }
-
-    // Log all state changes that might affect positions
-    if (newState.gamePhase && newState.gamePhase !== currentState.gamePhase) {
-      console.log("🔄 [POSITION_CHAIN] Game phase change:", {
-        timestamp,
-        from: currentState.gamePhase,
-        to: newState.gamePhase,
-        callChain
-      });
-    }
 
     return set(partial);
   };

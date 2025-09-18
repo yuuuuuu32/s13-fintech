@@ -13,51 +13,38 @@ import TurnOrderSelection from '../components/TurnOrderSelection';
 
 export default function GameCanvas() {
   const players = useGameStore((state) => state.players)
+  const gamePhase = useGameStore((state) => state.gamePhase)
   const connect = useGameStore((state) => state.connect)
   const disconnect = useGameStore((state) => state.disconnect)
   const initializeGame = useGameStore((state) => state.initializeGame);
 
-  const { 
-    isWebSocketReady, 
-    initialGameState, 
-    setInitialGameState 
+  const {
+    isWebSocketReady,
+    initialGameState,
+    setInitialGameState,
+    gameInitialized,
+    setGameInitialized
   } = useWebSocketStore();
 
   const { gameId } = useParams<{ gameId: string }>();
 
-  // Component Lifecycle Tracking
-  useEffect(() => {
-    console.log("🎮 [LIFECYCLE] GameCanvas MOUNTED:", {
-      timestamp: new Date().toISOString(),
-      gameId,
-      isWebSocketReady,
-      hasInitialGameState: !!initialGameState,
-      playersCount: players.length,
-      stackTrace: new Error().stack?.split('\n').slice(1, 3).join(' -> ')
-    });
-
-    return () => {
-      console.log("🎮 [LIFECYCLE] GameCanvas UNMOUNTING:", {
-        timestamp: new Date().toISOString(),
-        gameId,
-        playersCount: players.length,
-        stackTrace: new Error().stack?.split('\n').slice(1, 3).join(' -> ')
-      });
-    };
-  }, []);
 
   useEffect(() => {
     if (initialGameState && isWebSocketReady) {
-        console.log("🎮 [LIFECYCLE] Initializing game from stored state:", {
-          timestamp: new Date().toISOString(),
-          initialGameState,
-          currentPlayersCount: players.length,
-          stackTrace: new Error().stack?.split('\n').slice(1, 3).join(' -> ')
-        });
-        initializeGame(initialGameState);
-        setInitialGameState(null); // Clear the state after using it
+
+        // 추가 체크: 게임이 이미 진행 중이면 초기화하지 않음
+        const hasPlayersWithPosition = players.some(p => p.position > 0);
+        const isGameInProgress = gamePhase !== "SELECTING_ORDER" && gamePhase !== "WAITING_FOR_ROLL" && players.length > 0;
+
+        if (gameInitialized || hasPlayersWithPosition || isGameInProgress) {
+          setInitialGameState(null); // Clear the state without calling initializeGame
+        } else {
+          initializeGame(initialGameState);
+          setGameInitialized(true); // Mark as initialized globally
+          setInitialGameState(null); // Clear the state after using it
+        }
     }
-  }, [initialGameState, isWebSocketReady, initializeGame, setInitialGameState]);
+  }, [initialGameState, isWebSocketReady, initializeGame, setInitialGameState, gameInitialized, setGameInitialized]);
 
   useEffect(() => {
     if (gameId && isWebSocketReady) { // WebSocket이 준비되었을 때만 connect 호출
@@ -68,7 +55,6 @@ export default function GameCanvas() {
     };
   }, [connect, disconnect, gameId, isWebSocketReady]); // isWebSocketReady를 의존성 배열에 추가
 
-  console.log('Players in GameCanvas:', players);
 
   // Convert players object to array if needed
   const playersArray = Array.isArray(players) ? players : Object.values(players || {});

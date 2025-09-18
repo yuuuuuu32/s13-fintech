@@ -30,29 +30,38 @@ export const createWebSocketHandlers = (
               modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
             };
 
-            // Check for game over after turn change
-            setTimeout(() => {
-              get().checkGameOver();
-            }, 1000);
+            // Note: checkGameOver will be called at the end of endTurn, no need to call here
 
             return newState;
           }
           return {};
         });
       } else {
-        // GAME_STATE_CHANGE should not update player positions to prevent snap-back
+        // GAME_STATE_CHANGE는 위치 업데이트하지 않음 - 게임 상태만
+        console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE without curPlayer - excluding players:", JSON.stringify(payload, null, 2));
         const { players, ...safePayload } = payload;
+        if (players) {
+          console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE BLOCKED player updates to prevent snap-back");
+        }
         get().updateGameState(safePayload);
       }
     });
 
     subscribeToTopic("START_GAME_OBSERVE", (message) => {
       console.log("📥 [WEBSOCKET] START_GAME_OBSERVE received:", message);
-      console.log("📥 [WEBSOCKET] START_GAME_OBSERVE payload detail:", JSON.stringify(message.payload, null, 2));
+      console.log("🔍 [BACKEND_DATA] START_GAME_OBSERVE payload:", JSON.stringify(message.payload, null, 2));
 
-      // START_GAME_OBSERVE should not update player positions to prevent snap-back
-      const { players, ...safePayload } = message.payload;
-      get().updateGameState(safePayload);
+      // START_GAME_OBSERVE는 게임 시작 시에만 플레이어 위치 초기화
+      // 게임 중에는 위치 업데이트 안함
+      const currentGamePhase = get().gamePhase;
+      if (currentGamePhase === "SELECTING_ORDER") {
+        console.log("🔍 [BACKEND_DATA] START_GAME_OBSERVE - Game initialization, allowing full update");
+        get().updateGameState(message.payload);
+      } else {
+        console.log("🔍 [BACKEND_DATA] START_GAME_OBSERVE - Game in progress, excluding players");
+        const { players, ...safePayload } = message.payload;
+        get().updateGameState(safePayload);
+      }
     });
 
     subscribeToTopic("TURN_CHANGE", (message) => {
@@ -95,27 +104,29 @@ export const createWebSocketHandlers = (
       const { payload } = message;
       if (payload.players) {
         const serverPlayersMap = payload.players;
-        console.log("📍 [POSITION] TRADE_LAND server positions:", Object.entries(serverPlayersMap).map(([id, player]) => ({
-          playerId: id,
-          nickname: player.nickname,
-          serverPosition: player.position
-        })));
+        console.log("📍 [POSITION] TRADE_LAND server positions:");
+        Object.entries(serverPlayersMap).forEach(([id, player]) => {
+          console.log(`  Server Player: ${player.nickname} (ID: ${id}) - Server Position: ${player.position}`);
+        });
 
         set((state) => {
-          console.log("📍 [POSITION] TRADE_LAND current client positions:", state.players.map(p => ({
-            playerId: p.id,
-            nickname: p.name,
-            clientPosition: p.position
-          })));
+          console.log("📍 [POSITION] TRADE_LAND current client positions:");
+          state.players.forEach((p, index) => {
+            console.log(`  Client Player ${index}: ${p.name} (ID: ${p.id}) - Client Position: ${p.position}`);
+          });
 
           const updatedPlayers = state.players.map(clientPlayer => {
             const serverPlayerState = serverPlayersMap[clientPlayer.id];
             if (serverPlayerState) {
+              console.log(`🔍 [BACKEND_DATA] TRADE_LAND updating player (EXCLUDING position): ${clientPlayer.name} (ID: ${clientPlayer.id})`);
+              console.log(`  Client Position: ${clientPlayer.position} -> Server Position: ${serverPlayerState.position} (BLOCKED)`);
+              console.log(`  Money: ${clientPlayer.money} -> ${serverPlayerState.money}`);
+
               return {
                 ...clientPlayer,
                 money: serverPlayerState.money,
                 properties: serverPlayerState.ownedProperties || [],
-                // position: serverPlayerState.position, // DO NOT UPDATE POSITION - This prevents snap-back bug
+                // position: serverPlayerState.position, // BLOCKED - TRADE_LAND는 위치 업데이트 안함
                 isInJail: serverPlayerState.inJail,
                 jailTurns: serverPlayerState.jailTurns,
               };
@@ -123,11 +134,10 @@ export const createWebSocketHandlers = (
             return clientPlayer;
           });
 
-          console.log("📍 [POSITION] TRADE_LAND after update positions:", updatedPlayers.map(p => ({
-            playerId: p.id,
-            nickname: p.name,
-            positionAfterUpdate: p.position
-          })));
+          console.log("📍 [POSITION] TRADE_LAND after update - final positions:");
+          updatedPlayers.forEach((p, index) => {
+            console.log(`  Final Player ${index}: ${p.name} (ID: ${p.id}) - Position: ${p.position}`);
+          });
 
           return { players: updatedPlayers };
         });
@@ -312,9 +322,17 @@ export const createWebSocketHandlers = (
         set((state) => {
           const updatedPlayers = state.players.map(player => {
             if (player.name === payload.nickname) {
+              console.log("🔍 [BACKEND_DATA] WORLD_TRAVEL_EVENT updating player position:", {
+                playerId: player.id,
+                nickname: player.name,
+                clientPosition: player.position,
+                serverEndLand: payload.endLand,
+                positionWillChange: player.position !== payload.endLand
+              });
+
               return {
                 ...player,
-                position: payload.endLand,
+                position: payload.endLand, // 백엔드 위치 데이터 추적
                 money: payload.travelerAsset ? payload.travelerAsset.money : player.money,
                 properties: payload.travelerAsset ? payload.travelerAsset.lands || [] : player.properties
               };
@@ -360,16 +378,10 @@ export const createWebSocketHandlers = (
   },
 
   initializeGame: (initialState: GameInitialState) => {
-    console.log("📍 [POSITION] initializeGame called - forcing all players to start position (0):", {
-      roomId: initialState.roomId,
-      playerOrder: initialState.playerOrder,
-      serverPlayers: Object.values(initialState.players).map(p => ({
-        userId: p.userId,
-        nickname: p.nickname,
-        serverPosition: p.position,
-        forcedPosition: 0
-      }))
-    });
+    const currentState = get();
+    const isGameInProgress = currentState.gamePhase !== "SELECTING_ORDER" && currentState.players.length > 0;
+
+
 
     const playerNicknamesOrder: string[] = initialState.playerOrder;
     const playersMap = initialState.players;
@@ -386,11 +398,19 @@ export const createWebSocketHandlers = (
           );
           return null;
         }
+
+        // 게임이 진행 중이면 현재 위치를 보존, 아니면 시작칸(0)으로 초기화
+        const existingPlayer = currentState.players.find(p => p.id === serverPlayer.userId);
+        const playerPosition = isGameInProgress && existingPlayer
+          ? existingPlayer.position
+          : 0; // 게임 시작 시에만 시작칸(0번)에 배치
+
+
         return {
           id: serverPlayer.userId,
           name: serverPlayer.nickname,
           money: serverPlayer.money,
-          position: 0, // 게임 시작 시 모든 플레이어를 시작칸(0번)에 배치
+          position: playerPosition,
           properties: serverPlayer.ownedProperties || [],
           isInJail: serverPlayer.inJail,
           jailTurns: serverPlayer.jailTurns,
@@ -424,27 +444,43 @@ export const createWebSocketHandlers = (
   },
 
   updateGameState: (newState: Partial<GameState>) => {
-    console.log("📍 [POSITION] updateGameState called:", {
+    console.log("🔍 [BACKEND_DATA] updateGameState called with full payload:", {
       hasPlayers: !!newState.players,
       newStateKeys: Object.keys(newState),
-      playersType: newState.players ? (Array.isArray(newState.players) ? 'array' : 'object') : 'none',
-      playerCount: newState.players ? (Array.isArray(newState.players) ? newState.players.length : Object.keys(newState.players).length) : 0
+      fullPayload: JSON.stringify(newState, null, 2)
     });
 
-    // 위치 업데이트를 방지하기 위해 players 필드를 제외한 안전한 상태만 업데이트
-    const { players, ...safeState } = newState;
-
-    if (players) {
-      console.log("📍 [POSITION] updateGameState BLOCKED player position updates to prevent snap-back:",
-        Array.isArray(players) ? players : Object.values(players).map(p => ({
-          playerId: p.id,
-          nickname: p.name,
-          blockedPosition: p.position
-        }))
-      );
+    if (newState.players) {
+      const players = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
+      console.log("🔍 [BACKEND_DATA] Received player positions from server:");
+      players.forEach((p, index) => {
+        console.log(`  Server Player ${index}: ${p.name} (ID: ${p.id}) - Position: ${p.position}`);
+      });
     }
 
-    console.log("📍 [POSITION] updateGameState applying safe state (no players):", Object.keys(safeState));
-    set(safeState);
+    // 위치는 제외하고 상태 업데이트 (위치는 USE_DICE와 찬스카드에서만)
+    const currentState = get();
+
+    if (newState.players) {
+      console.log("🚨 [CRITICAL] updateGameState called with players data - comparing positions:");
+      const newPlayers = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
+
+      currentState.players.forEach((currentPlayer, index) => {
+        const serverPlayer = newPlayers.find(p => p.id === currentPlayer.id);
+        if (serverPlayer && serverPlayer.position !== currentPlayer.position) {
+          console.log(`🚨 [CRITICAL] Position mismatch for ${currentPlayer.name}:`);
+          console.log(`  Current: ${currentPlayer.position} -> Server wants: ${serverPlayer.position}`);
+          console.log(`  This would cause SNAP-BACK if applied!`);
+        }
+      });
+
+      // 위치 제외한 안전한 업데이트
+      const { players, ...safeState } = newState;
+      console.log("🛡️ [SAFE_UPDATE] Applying state without player positions to prevent snap-back");
+      set(safeState);
+    } else {
+      console.log("✅ [SAFE_UPDATE] No players in state, applying full update");
+      set(newState);
+    }
   },
 });
