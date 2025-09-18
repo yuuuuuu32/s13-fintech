@@ -143,8 +143,8 @@ export const handleSpecialTile = (
 ) => {
   const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
 
-  switch (currentTile.name) {
-    case "감옥":
+  switch (currentTile.type) {
+    case "JAIL":
       set((state) => {
         const updatedPlayers = [...state.players];
         updatedPlayers[state.currentPlayerIndex] = {
@@ -162,7 +162,7 @@ export const handleSpecialTile = (
         };
       });
       break;
-    case "박람회": {
+    case "박람회": { 
       if (isMyTurn) {
         const ownedProperties = currentPlayer.properties.map((index) => ({
           name: board[index].name,
@@ -184,6 +184,7 @@ export const handleSpecialTile = (
       }
       break;
     }
+    case "AIRPLANE":
     case "세계여행":
       // 백엔드에 세계여행 이벤트 요청 전송
       if (send && isMyTurn) {
