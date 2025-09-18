@@ -396,9 +396,6 @@ public class EventService {
             gameRedisService.saveGameMapState(roomId, gameState);
         }
 
-        // 10. 타이머 시작 (턴을 즉시 종료하지 않음)
-        timerService.startTurnTimer(roomId, userId);
-
         // 10. 결과 메시지 전송 (찬스카드로 이동했을 수 있으므로 실제 플레이어 위치 사용)
         String nextTurnUserName = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
         UseDicePayload payload = UseDicePayload.builder()
