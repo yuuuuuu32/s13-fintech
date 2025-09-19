@@ -6,7 +6,6 @@ import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.NtsRequest;
-import com.ssafy.BlueMarble.domain.game.entity.EconomicHistoryPeriod;
 import com.ssafy.BlueMarble.domain.game.entity.EconomicEffect;
 import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
@@ -278,27 +277,10 @@ public class EventService {
         // 1. 게임 맵 정보
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
 
-        // 1.1 경제역사 시대 업데이트 및 가져오기
-        EconomicHistoryPeriod currentPeriod = economicHistoryService.calculateCurrentPeriod(gameState.getGameTurn().intValue());
-        boolean periodChanged = false;
-
-        // 경제 효과가 없거나 시대가 바뀌었으면 새로운 효과 생성
-        if (gameState.getCurrentEconomicEffect() == null ||
-            gameState.getCurrentEconomicPeriod() != currentPeriod) {
-
-            EconomicEffect newEffect = economicHistoryService.generateRandomEconomicEffect(currentPeriod);
-            gameState.setCurrentEconomicPeriod(currentPeriod);
-            gameState.setCurrentEconomicEffect(newEffect);
-            periodChanged = true;
-
-            // 경제역사 효과 업데이트를 Redis에 저장
-            gameRedisService.saveGameMapState(roomId, gameState);
-
-            log.info("🏛️ [ECONOMIC_HISTORY] 새로운 경제 시대 시작: {}", newEffect.getFullName());
-
-            // 경제 시대 변경 WebSocket 메시지 전송
-            sendEconomicHistoryUpdateMessage(roomId, newEffect, currentPeriod);
-        }
+        // 1.1 경제역사 효과는 이미 TimerService에서 턴 시작 시 적용됨
+        log.info("🎲 [DICE] 경제 효과 이미 적용됨: roomId={}, currentEffect={}",
+                roomId, gameState.getCurrentEconomicEffect() != null ?
+                gameState.getCurrentEconomicEffect().getFullEffectName() : "없음");
 
         // 2. 주사위 사용자 정보
         String userId = userRedisService.getUserIdByNickname(useDiceRequest.getUserName());
@@ -332,7 +314,7 @@ public class EventService {
         int salaryBonus = 0;
         if (newPosition < currentPosition) { // 시작점을 통과했는지 확인
             int baseSalary = 1000000; // 기본 월급
-            salaryBonus = economicHistoryService.applyEconomicEffectToSalary(baseSalary, gameState.getCurrentEconomicEffect());
+            salaryBonus = economicHistoryService.calculateSalaryWithEffect(roomId, baseSalary);
             player.setMoney(player.getMoney() + salaryBonus);
         }
 
@@ -355,10 +337,9 @@ public class EventService {
             // 일반땅인 경우에만 통행료 처리
             else if (targetCell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NORMAL) {
                 if (targetCell.getOwnerName() != null && !targetCell.getOwnerName().equals(useDiceRequest.getUserName())) {
-                    // 다른 플레이어의 땅 - 통행료 지불 (경제역사 효과 적용)
+                    // 다른 플레이어의 땅 - 통행료 지불 (기본 통행료 사용)
                     landOwner = targetCell.getOwnerName();
-                    int baseToll = targetCell.getToll();
-                    tollAmount = economicHistoryService.applyEconomicEffectToToll(baseToll, gameState.getCurrentEconomicEffect());
+                    tollAmount = targetCell.getToll();
 
                     // 8. 통행료 지불
                     if (player.getMoney() >= tollAmount) {
@@ -370,8 +351,8 @@ public class EventService {
                             CreateMapPayload.PlayerState owner = gameState.getPlayers().get(ownerUserId);
                             if (owner != null) {
                                 owner.setMoney(owner.getMoney() + tollAmount);
-                                log.info("통행료 지불: player={}, owner={}, amount={} (경제역사 효과 적용: {} -> {})",
-                                       useDiceRequest.getUserName(), landOwner, tollAmount, baseToll, tollAmount);
+                                log.info("통행료 지불: player={}, owner={}, amount={}",
+                                       useDiceRequest.getUserName(), landOwner, tollAmount);
                             }
                         }
                     } else {
@@ -431,18 +412,17 @@ public class EventService {
     /**
      * 경제역사 시대 변경 메시지 전송
      */
-    private void sendEconomicHistoryUpdateMessage(String roomId, EconomicEffect effect, EconomicHistoryPeriod period) {
+    private void sendEconomicHistoryUpdateMessage(String roomId, EconomicEffect effect, String period) {
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         int remainingTurns = economicHistoryService.getTurnsUntilNextPeriod(gameState.getGameTurn().intValue());
 
         EconomicHistoryPayload payload = EconomicHistoryPayload.builder()
-                .periodName(period.getDisplayName())
-                .effectName(effect.getName())
+                .periodName(getPeriodDisplayName(period))
+                .effectName(effect.getEffectName())
                 .description(effect.getDescription())
                 .isBoom(effect.isBoom())
-                .fullName(effect.getFullName())
+                .fullName(effect.getFullEffectName())
                 .salaryMultiplier(effect.getSalaryMultiplier())
-                .tollMultiplier(effect.getTollMultiplier())
                 .propertyPriceMultiplier(effect.getPropertyPriceMultiplier())
                 .buildingCostMultiplier(effect.getBuildingCostMultiplier())
                 .remainingTurns(remainingTurns)
@@ -453,6 +433,19 @@ public class EventService {
         sessionMessageService.sendMessageToRoom(roomId, message);
 
         log.info("🏛️ [ECONOMIC_HISTORY] WebSocket 메시지 전송: roomId={}, effect={}",
-                roomId, effect.getFullName());
+                roomId, effect.getFullEffectName());
+    }
+
+    /**
+     * 경제 시대 표시명 반환
+     */
+    private String getPeriodDisplayName(String period) {
+        switch (period) {
+            case "MODERN": return "근대사";
+            case "CONTEMPORARY": return "근현대사";
+            case "RECENT": return "현대사";
+            case "FUTURE": return "미래";
+            default: return "알 수 없음";
+        }
     }
 }
