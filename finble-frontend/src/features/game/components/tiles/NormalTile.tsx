@@ -55,6 +55,7 @@ export function NormalTile({ tile, tileIndex }: NormalTileProps) {
           maxWidth={TILE_WIDTH - 0.8}
           textAlign="center"
           font="/fonts/Galmuri14.ttf"
+          outlineWidth={0.015}  
         >
           {infoText}
         </Text>

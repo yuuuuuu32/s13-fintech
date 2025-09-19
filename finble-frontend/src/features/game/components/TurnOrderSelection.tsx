@@ -1,6 +1,8 @@
+// src/features/game/components/TurnOrderSelection.tsx
+
 import React from 'react';
 import { useGameStore } from '../store/useGameStore';
-import './TurnOrderSelection.css';
+import './TurnOrderSelection.css'; // ✅ CSS 파일을 여기에 import 합니다.
 
 const TurnOrderSelection: React.FC = () => {
   const { players, gamePhase } = useGameStore();
@@ -15,7 +17,8 @@ const TurnOrderSelection: React.FC = () => {
         <h2>플레이어 순서</h2>
         <div className="player-cards-container">
           {players.map((player, index) => (
-            <div key={player.id} className="turn-order-card-wrapper">
+            // ✅ 각 카드에 애니메이션 지연을 위한 인덱스 변수(--i)를 전달합니다.
+            <div key={player.id} className="turn-order-card-wrapper" style={{ '--i': index } as React.CSSProperties}>
               <div className="turn-order-card">
                 <div className="turn-order-card-inner">
                   <div className="turn-order-card-front">

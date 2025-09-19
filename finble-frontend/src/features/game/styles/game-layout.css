@@ -1,0 +1,73 @@
+/* === 전체 배경 & 레이아웃 === */
+.game-root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;            /* 캔버스 확대시 스크롤 방지 */
+  font-family: Galmuri14, sans-serif;
+}
+
+/* UI 안전영역(상단 HUD와 겹침 방지) */
+.game-safe-top {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 92px;               /* 상단 HUD 높이만큼 */
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* === 3D 캔버스 프레임 === */
+.canvas-stage {
+  position: absolute;
+  inset: 0;
+  /* 레퍼런스처럼 보드를 좀 더 크게, 화면 위쪽으로 살짝 올림 */
+  transform: translateY(-3vh) scale(1.18);
+  transform-origin: 50% 40%;
+  transition: transform .25s ease;
+  will-change: transform;
+}
+
+/* 화면이 낮거나 작은 경우 과한 확대를 완화 */
+@media (max-height: 820px) {
+  .canvas-stage {
+    transform: translateY(-2vh) scale(1.10);
+  }
+}
+@media (max-width: 1280px) {
+  .canvas-stage {
+    transform: translateY(-2vh) scale(1.08);
+  }
+}
+
+/* === 플로팅 비네트 & 그림자 === */
+.board-vignette {
+  position: absolute;
+  inset: 6vh 4vw 10vh 4vw; /* 안쪽 여백으로 중앙 집중 */
+  z-index: 2;
+  pointer-events: none;
+}
+.board-vignette::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: 28px;
+  box-shadow:
+    0 24px 70px rgba(0,0,0,.55),
+    0 4px 24px rgba(0,0,0,.35) inset;
+}
+
+/* 하단 글로우 바(플로팅 착시용) */
+.board-glow {
+  position: absolute;
+  left: 50%; bottom: 12vh;
+  width: min(520px, 58vw);
+  height: 14px;
+  transform: translateX(-50%);
+  background: radial-gradient(50% 140% at 50% 50%,
+              rgba(210,75,255,.22), rgba(71,216,255,.10) 55%, transparent 70%);
+  filter: blur(6px);
+  opacity: .85;
+  z-index: 1;
+  pointer-events: none;
+}

@@ -17,4 +17,5 @@ export interface TileData { // [수정] export 추가
   buildings?: {
       level: 0 | 1 | 2 | 3; // 0: 없음, 1: 주택, 2: 빌딩, 3: 호텔
   }
+  size?: { w: number; d: number }; // ✅ 선택 필드
 }

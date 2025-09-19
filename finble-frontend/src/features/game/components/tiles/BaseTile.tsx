@@ -1,9 +1,18 @@
+// src/features/game/components/tiles/BaseTile.tsx
+
 import { Text } from '@react-three/drei';
 import type { TileData } from '../../data/boardData.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
-import React, { useState } from 'react';
-import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
+import React from 'react';
+
+// ... (getPlayerColor 함수는 변경 없음)
+const getPlayerColor = (character: string) => {
+  const characterColors = {
+    'cone': '#4A90E2', 'sphere': '#E74C3C',
+    'box': '#F39C12', 'torus': '#9B59B6'
+  };
+  return characterColors[character] || '#FFFFFF';
+};
 
 interface BaseTileProps {
   tile: TileData;
@@ -11,138 +20,79 @@ interface BaseTileProps {
   position: [number, number, number];
   textRotationY: number;
   children: React.ReactNode;
+  width?: number;   // ✅ 추가
+  depth?: number;   // ✅ 추가
 }
 
-const getPlayerColor = (playerId: string) => {
-  if (playerId === 'player-1' || playerId === 'user-me') return 'royalblue';
-  if (playerId === 'player-2') return 'hotpink';
-  return 'white';
-};
-
-export function BaseTile({ tile, tileIndex, position, textRotationY, children }: BaseTileProps) {
+export function BaseTile({ tile, tileIndex, position, textRotationY, children, width, depth }: BaseTileProps) {
   const players = useGameStore(state => state.players);
   const gamePhase = useGameStore(state => state.gamePhase);
   const selectTravelDestination = useGameStore(state => state.selectTravelDestination);
-
-  const [isHovered, setIsHovered] = useState(false);
-  const [glowIntensity, setGlowIntensity] = useState(0);
-
   const owner = players.find(p => p.properties.includes(tileIndex));
+  
+  // 기존 상수 대체
+  const TILE_WIDTH = width ?? 4;   // ✅ 기존 4 고정 → 오버라이드
+  const TILE_DEPTH = depth ?? 6;   // ✅ 기존 6 고정 → 오버라이드
+  const TILE_BASE_HEIGHT = 0.4;
+  const TILE_TOP_HEIGHT = 0.1;
+  const TOTAL_HEIGHT = TILE_BASE_HEIGHT + TILE_TOP_HEIGHT;
 
-  const TILE_WIDTH = 3;
-  const TILE_DEPTH = 5;
-  const TILE_HEIGHT = 0.2;
-
-  const isWorldTravelMode = gamePhase === 'WORLD_TRAVEL_MOVE';
-
-  useFrame((state) => {
-    if (isWorldTravelMode) {
-      const time = state.clock.getElapsedTime();
-      setGlowIntensity(0.5 + 0.3 * Math.sin(time * 2));
-    }
-  });
-
+  const tileBaseColor = '#0f1a2b';
+  const tileTopColor = '#1a243d';
+  const worldTravelGlow = '#00ffff';
+  
   const handleTileClick = () => {
-    if (isWorldTravelMode) {
-      selectTravelDestination(tileIndex);
-    }
+    if (gamePhase === 'WORLD_TRAVEL_MOVE') selectTravelDestination(tileIndex);
   };
-
-  const handlePointerOver = () => {
-    if (isWorldTravelMode) {
-      setIsHovered(true);
-      document.body.style.cursor = 'pointer';
-    }
-  };
-
-  const handlePointerOut = () => {
-    setIsHovered(false);
-    document.body.style.cursor = 'auto';
-  };
-
-  const getTileColor = () => {
-    if (isWorldTravelMode) {
-      if (isHovered) {
-        return '#4fd1c7';
-      }
-      return `hsl(180, 70%, ${60 + glowIntensity * 20}%)`;
-    }
-
-    // Tile type based colors similar to 132.png
-    switch (tile.type) {
-      case 'city':
-      case 'NORMAL':
-        return "#f8f8f8"; // Light beige like the reference
-      case 'company':
-        return "#e8e0d0"; // Slightly darker beige
-      case 'chance':
-      case 'CHANCE':
-        return "#ff6b6b"; // Red for chance tiles
-      case 'special':
-      case 'SPECIAL':
-      case 'START':
-        return "#4ecdc4"; // Teal for special tiles
-      case 'JAIL':
-        return "#95a5a6"; // Gray for jail
-      case 'AIRPLANE':
-        return "#3498db"; // Blue for airport
-      default:
-        return "#f8f8f8";
-    }
-  };
-
+  
   return (
-    <group position={position} rotation={[0, textRotationY, 0]}
-           onClick={handleTileClick}
-           onPointerOver={handlePointerOver}
-           onPointerOut={handlePointerOut}>
-      <mesh castShadow receiveShadow>
-        <boxGeometry args={[TILE_WIDTH, TILE_HEIGHT, TILE_DEPTH]} />
-        <meshStandardMaterial
-          color={getTileColor()}
-          emissive={isWorldTravelMode ? new THREE.Color(0x004d4d).multiplyScalar(glowIntensity * 0.3) : undefined}
+    <group position={position} rotation={[0, textRotationY, 0]} onClick={handleTileClick}>
+      
+      <mesh position={[0, TILE_BASE_HEIGHT / 2, 0]}>
+        <boxGeometry args={[TILE_WIDTH, TILE_BASE_HEIGHT, TILE_DEPTH]} />
+        <meshStandardMaterial color={tileBaseColor} roughness={0.58} metalness={0.12} />
+      </mesh>
+
+      <mesh position={[0, TILE_BASE_HEIGHT + TILE_TOP_HEIGHT / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[TILE_WIDTH - 0.2, TILE_TOP_HEIGHT, TILE_DEPTH - 0.2]} />
+        <meshStandardMaterial color={tileTopColor} roughness={0.58} metalness={0.12} />
+      </mesh>
+      
+      {/* ✅ 타일 상판 네온 테두리 눈부심 완화 */}
+      <mesh position={[0, TOTAL_HEIGHT + 0.01, 0]}>
+        <boxGeometry args={[TILE_WIDTH - 0.2, 0.02, TILE_DEPTH - 0.2]} />
+        <meshStandardMaterial 
+          color={worldTravelGlow} 
+          emissive={worldTravelGlow} 
+          emissiveIntensity={gamePhase === 'WORLD_TRAVEL_MOVE' ? 0.8 : 0.2} // 강도 낮춤
+          // toneMapped={false} 속성 제거하여 자연스러운 빛 표현
         />
       </mesh>
-
-      {/* Tile border */}
-      <mesh position={[0, TILE_HEIGHT / 2 + 0.001, 0]}>
-        <boxGeometry args={[TILE_WIDTH + 0.02, 0.002, TILE_DEPTH + 0.02]} />
-        <meshStandardMaterial color="#333333" />
-      </mesh>
-
-      {isWorldTravelMode && (
-        <mesh position={[0, TILE_HEIGHT / 2 + 0.005, 0]}>
-          <boxGeometry args={[TILE_WIDTH + 0.1, 0.01, TILE_DEPTH + 0.1]} />
-          <meshStandardMaterial
-            color="#00ffff"
-            transparent
-            opacity={0.6 + glowIntensity * 0.4}
-            emissive={new THREE.Color(0x00ffff).multiplyScalar(0.2)}
-          />
-        </mesh>
-      )}
       
-      {/* Type-specific content will be rendered here */}
-      {children}
+      <group position={[0, TOTAL_HEIGHT, 0]}>
+        {children}
+      </group>
 
       <Text
-        position={[0, TILE_HEIGHT / 2 + 0.02, 0]}
+        position={[0, TOTAL_HEIGHT + 0.02, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={0.5}
-        color="black"
+        fontSize={0.6}
+        color="#FFFFFF"
         anchorX="center"
         anchorY="middle"
-        maxWidth={TILE_WIDTH - 0.6}
+        maxWidth={TILE_WIDTH - 0.8}
         textAlign="center"
-        lineHeight={1.2}
+        font="/fonts/Galmuri14.ttf"
+        outlineWidth={0.04}            // ✅ 외곽선 추가 (troika-text prop)
+        outlineColor="#000000"
       >
         {tile.name}
       </Text>
 
       {owner && (
-        <mesh position={[0, TILE_HEIGHT / 2 + 0.01, TILE_DEPTH / 2 - 0.5]}>
-          <boxGeometry args={[TILE_WIDTH - 0.2, 0.1, 0.5]} />
-          <meshStandardMaterial color={getPlayerColor(owner.id)} />
+        <mesh position={[0, TOTAL_HEIGHT + 0.01, TILE_DEPTH / 2 - 0.3]}>
+          <boxGeometry args={[TILE_WIDTH - 0.4, 0.05, 0.4]} />
+          <meshStandardMaterial color={getPlayerColor(owner.character)} emissive={getPlayerColor(owner.character)} emissiveIntensity={0.6}/>
         </mesh>
       )}
     </group>

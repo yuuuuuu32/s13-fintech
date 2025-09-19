@@ -1,3 +1,4 @@
+/* src/features/game/components/TurnOrderSelection.css */
 .turn-order-overlay {
   position: fixed;
   top: 0;
@@ -9,6 +10,7 @@
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  backdrop-filter: blur(5px);
 }
 
 .turn-order-container {
@@ -26,6 +28,7 @@ h2 {
   font-size: 2.5em;
   font-weight: bold;
   color: #ffc107;
+  font-family: 'Galmuri14', sans-serif;
 }
 
 .player-cards-container {
@@ -44,6 +47,7 @@ h2 {
   position: relative;
   transform-style: preserve-3d;
   animation: flip 2s forwards;
+  /* 각 카드마다 애니메이션 지연 시간 설정 */
   animation-delay: calc(0.5s * var(--i));
 }
 
@@ -74,6 +78,7 @@ h2 {
   align-items: center;
   border-radius: 10px;
   border: 2px solid #ffc107;
+  font-family: 'Galmuri14', sans-serif;
 }
 
 .turn-order-card-front {

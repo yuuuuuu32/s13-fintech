@@ -2,12 +2,12 @@ import type { TileData } from '../../data/boardData.ts';
 
 interface ChanceTileProps {
   tile: TileData;
+  width?: number;
+  depth?: number;
 }
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function ChanceTile({ tile }: ChanceTileProps) {
-  const TILE_WIDTH = 4;
-  const TILE_DEPTH = 6;
+export function ChanceTile({ tile, width, depth }: ChanceTileProps) {
+  const TILE_WIDTH = width ?? 4;
+  const TILE_DEPTH = depth ?? 6;
   const TILE_HEIGHT = 0.2;
 
   return (

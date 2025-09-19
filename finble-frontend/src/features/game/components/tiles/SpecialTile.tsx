@@ -2,12 +2,13 @@ import type { TileData } from '../../data/boardData.ts';
 
 interface SpecialTileProps {
   tile: TileData;
+  width?: number;
+  depth?: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function SpecialTile({ tile }: SpecialTileProps) {
-  const TILE_WIDTH = 4;
-  const TILE_DEPTH = 6;
+export function SpecialTile({ tile, width, depth }: SpecialTileProps) {
+  const TILE_WIDTH = width ?? 4;
+  const TILE_DEPTH = depth ?? 6;
   const TILE_HEIGHT = 0.2;
 
   return (
