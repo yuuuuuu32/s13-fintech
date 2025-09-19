@@ -37,6 +37,7 @@ public class CardService {
     private final CardRepository cardRepository;
     private final SessionMessageService sessionMessageService;
     private final UserRedisService userRedisService;
+    private final VictoryService victoryService;
     private final Random random = new Random();
 
     // 메모리에 로딩된 카드 리스트
@@ -260,6 +261,27 @@ public class CardService {
                 canBuyLand = resultHolder.result.isCanBuyLand() ? true : null;
             }
 
+            // 부동산 자산 정책 카드 효과 정보 계산
+            Integer assetChangeAmount = null;
+            Integer effectPercent = null;
+            Boolean isAssetIncrease = null;
+            Integer baseLandValue = null;
+            Integer ownedLandCount = null;
+
+            if (isFinancialPolicyCard(drawnCard) && "LAND_VALUE".equals(drawnCard.getEffectType())) {
+                effectPercent = drawnCard.getEffectValue();
+                isAssetIncrease = drawnCard.getName().contains("호황");
+                baseLandValue = 1000000; // 기본 땅 가치 100만원
+                ownedLandCount = player.getOwnedProperties() != null ? player.getOwnedProperties().size() : 0;
+
+                if (ownedLandCount > 0 && effectPercent != null) {
+                    assetChangeAmount = (ownedLandCount * baseLandValue * effectPercent) / 100;
+                    if (!isAssetIncrease) {
+                        assetChangeAmount = -assetChangeAmount;
+                    }
+                }
+            }
+
             DrawCardPayload.DrawCardResult result = DrawCardPayload.DrawCardResult.builder()
                     .userName(userName)
                     .cardName(drawnCard.getName())
@@ -272,6 +294,11 @@ public class CardService {
                     .tollAmount(tollAmount)
                     .landOwner(landOwner)
                     .canBuyLand(canBuyLand)
+                    .assetChangeAmount(assetChangeAmount)
+                    .effectPercent(effectPercent)
+                    .isAssetIncrease(isAssetIncrease)
+                    .baseLandValue(baseLandValue)
+                    .ownedLandCount(ownedLandCount)
                     .build();
 
             // 찬스 카드 결과 메시지 전송
@@ -286,8 +313,11 @@ public class CardService {
 
             log.info("찬스 카드 결과 메시지 전송 완료: userName={}, cardName={}", userName, drawnCard.getName());
 
+            // 찬스카드 사용 후 승리 조건 체크 (모든 승리 조건 통합 체크)
+            victoryService.checkAllVictoryConditions(roomId, gameMapState);
+
             return result;
-                    
+
         } catch (Exception e) {
             log.error("카드 뽑기 중 오류 발생: roomId={}, userName={}", roomId, userName, e);
             return null;
@@ -343,8 +373,8 @@ public class CardService {
                     log.info("금융정책 카드 효과 적용 - 전체 플레이어 돈 퍼센트: cardName={}, percent={}, description={}", card.getName(), effectValue, description);
                     break;
                 case "LAND_VALUE":
-                    applyLandValuePolicyEffect(roomId, card, gameMapState);
-                    log.info("금융정책 카드 효과 적용 - 토지 가치 변동: cardName={}, percent={}, description={}", card.getName(), effectValue, description);
+                    applyPropertyAssetPolicyEffect(roomId, card, gameMapState);
+                    log.info("금융정책 카드 효과 적용 - 부동산 자산 변동: cardName={}, percent={}, description={}", card.getName(), effectValue, description);
                     break;
                 default:
                     log.warn("지원되지 않는 효과 타입: cardName={}, effectType={}", card.getName(), effectType);
@@ -401,8 +431,8 @@ public class CardService {
 
         // 시작점 통과 여부 확인 및 월급 지급
         if (newPosition < currentPosition && move > 0) { // 시작점을 통과했는지 확인
-            player.setMoney(player.getMoney() + 1000); // 월급 지급
-            log.info("시작점 통과로 월급 지급: player={}, 월급=1000", player.getNickname());
+            player.setMoney(player.getMoney() + 1000000); // 월급 지급 (100만원)
+            log.info("시작점 통과로 월급 지급: player={}, 월급=1000000", player.getNickname());
         }
 
         // 위치 업데이트
@@ -461,8 +491,8 @@ public class CardService {
         // 시작점(0번)으로 이동하면 월급 지급 (EventService와 통일)
         if (position == 0) {
             int currentMoney = player.getMoney();
-            player.setMoney(currentMoney + 1000); // 월급 1,000원 (EventService와 동일)
-            log.info("시작점 도착으로 월급 지급: player={}, 월급=1000", player.getNickname());
+            player.setMoney(currentMoney + 1000000); // 월급 100만원 (EventService와 동일)
+            log.info("시작점 도착으로 월급 지급: player={}, 월급=1000000", player.getNickname());
         }
 
         // 도착한 땅 처리 (통행료/구매 가능 여부)
@@ -541,7 +571,7 @@ public class CardService {
             if (salary) {
                 // 시작점 이동 시 월급 지급
                 int currentMoney = player.getMoney();
-                player.setMoney(currentMoney + 1000); // 월급 1,000원 (EventService와 동일)
+                player.setMoney(currentMoney + 1000000); // 월급 100만원 (EventService와 동일)
             }
         } catch (Exception e) {
             log.error("위치 효과 적용 실패: effectData={}", effectData, e);
@@ -611,9 +641,9 @@ public class CardService {
     }
 
     /**
-     * 토지 가치 변동 정책 효과 적용 (즉시 모든 타일 가격 변경)
+     * 부동산 자산 변동 정책 효과 적용 (플레이어 총자산 증감, 소유 땅 개수 기반)
      */
-    private void applyLandValuePolicyEffect(String roomId, Card card, CreateMapPayload gameMapState) {
+    private void applyPropertyAssetPolicyEffect(String roomId, Card card, CreateMapPayload gameMapState) {
         try {
             // gameMapState는 매개변수로 받아서 사용 (Redis 재조회 안함)
             if (gameMapState == null) {
@@ -623,44 +653,31 @@ public class CardService {
 
             Integer effectValue = card.getEffectValue();
             if (effectValue == null) {
-                log.warn("토지 가치 정책 카드 효과값이 없음: cardName={}", card.getName());
+                log.warn("부동산 자산 정책 카드 효과값이 없음: cardName={}", card.getName());
                 return;
             }
 
             boolean isIncrease = card.getName().contains("호황");
             String changeType = isIncrease ? "상승" : "하락";
+            int baseLandValue = 1000000; // 기본 땅 가치 100만원
 
-            // 즉시 모든 타일의 가격을 변경
-            if (gameMapState.getCurrentMap() != null && gameMapState.getCurrentMap().getCells() != null) {
-                for (Tile cell : gameMapState.getCurrentMap().getCells()) {
-                    // 일반 타일만 가격 변동 적용 (특별칸 제외)
-                    if (cell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NORMAL) {
-                        int currentPrice = cell.getLandPrice();
-                        int change = (currentPrice * effectValue) / 100;
+            // 모든 플레이어에게 소유 땅 개수에 따른 자산 변동 적용
+            for (CreateMapPayload.PlayerState player : gameMapState.getPlayers().values()) {
+                if (player.isActive() && player.getOwnedProperties() != null) {
+                    int ownedLandCount = player.getOwnedProperties().size();
+                    if (ownedLandCount > 0) {
+                        // 소유 땅 개수 * 기본 땅 가치 * 효과 비율
+                        int assetChange = (ownedLandCount * baseLandValue * effectValue) / 100;
 
                         if (!isIncrease) {
-                            change = -change;
+                            assetChange = -assetChange;
                         }
 
-                        int newPrice = currentPrice + change;
-                        cell.setLandPrice(newPrice);
+                        int newMoney = Math.max(0, player.getMoney() + assetChange);
+                        player.setMoney(newMoney);
 
-                        // 건물 가격도 함께 변동
-                        if (cell.getHousePrice() > 0) {
-                            int newHousePrice = cell.getHousePrice() + (cell.getHousePrice() * change / currentPrice);
-                            cell.setHousePrice(newHousePrice);
-                        }
-                        if (cell.getBuildingPrice() > 0) {
-                            int newBuildingPrice = cell.getBuildingPrice() + (cell.getBuildingPrice() * change / currentPrice);
-                            cell.setBuildingPrice(newBuildingPrice);
-                        }
-                        if (cell.getHotelPrice() > 0) {
-                            int newHotelPrice = cell.getHotelPrice() + (cell.getHotelPrice() * change / currentPrice);
-                            cell.setHotelPrice(newHotelPrice);
-                        }
-
-                        log.info("토지 가격 변동: 타일={}, 기존가격={}, 새가격={}, 변동률={}%",
-                                cell.getName(), currentPrice, newPrice, effectValue);
+                        log.info("부동산 자산 변동 적용: player={}, ownedLands={}, assetChange={}, newMoney={}",
+                                player.getNickname(), ownedLandCount, assetChange, newMoney);
                     }
                 }
             }
@@ -668,10 +685,10 @@ public class CardService {
             // 변경된 게임 상태를 Redis에 저장
             gameRedisService.saveGameMapState(roomId, gameMapState);
 
-            log.info("토지 가치 정책 적용: cardName={}, 변동타입={}, 변동률={}%, roomId={}",
+            log.info("부동산 자산 정책 적용: cardName={}, 변동타입={}, 변동률={}%, roomId={}",
                     card.getName(), changeType, effectValue, roomId);
 
-            // 토지 가치 정책 적용 후 모든 플레이어에게 게임 상태 업데이트 메시지 전송
+            // 부동산 자산 정책 적용 후 모든 플레이어에게 게임 상태 업데이트 메시지 전송
             CreateMapPayload gameStateUpdate = CreateMapPayload.builder()
                     .players(gameMapState.getPlayers())
                     .currentMap(gameMapState.getCurrentMap())
@@ -687,10 +704,10 @@ public class CardService {
             );
 
             sessionMessageService.sendMessageToRoom(roomId, gameStateMessage);
-            log.info("토지 가치 정책 적용 및 게임 상태 업데이트 메시지 전송 완료: cardName={}, roomId={}", card.getName(), roomId);
+            log.info("부동산 자산 정책 적용 및 게임 상태 업데이트 메시지 전송 완료: cardName={}, roomId={}", card.getName(), roomId);
 
         } catch (Exception e) {
-            log.error("토지 가치 정책 효과 적용 실패: cardName={}, roomId={}", card.getName(), roomId, e);
+            log.error("부동산 자산 정책 효과 적용 실패: cardName={}, roomId={}", card.getName(), roomId, e);
         }
     }
 

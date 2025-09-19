@@ -17,7 +17,6 @@ public class EconomicHistoryPayload {
     private String fullName;          // 전체 이름 (예: "근대사 - 산업혁명 - 호황")
     private double salaryMultiplier;     // 월급 배수
     private double tollMultiplier;       // 통행료 배수
-    private double propertyPriceMultiplier; // 부동산 가격 배수
-    private double buildingCostMultiplier;  // 건물 건설 비용 배수
+    private double propertyAssetMultiplier; // 부동산 자산 가치 배수 (소유 땅 개수 기반)
     private int remainingTurns;       // 다음 시대까지 남은 턴 수
 }

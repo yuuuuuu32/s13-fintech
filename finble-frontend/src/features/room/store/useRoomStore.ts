@@ -211,22 +211,42 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   
       const exitUserSub = subscribeToTopic('EXIT_USER', (message) => {
         console.log('🏠 [ROOM] 유저 퇴장:', message);
-        const exitingPlayerId = message.payload.userId;
+        const exitingPlayerNickname = message.payload.userNickName;
+        const newOwnerNickname = message.payload.newOwnerNickName;
 
         const currentRoom = get().room;
         console.log('🏠 [ROOM] 퇴장 전 방 상태:', {
           roomId: currentRoom?.id,
           currentPlayerCount: currentRoom?.players.length,
-          exitingPlayer: exitingPlayerId
+          exitingPlayer: exitingPlayerNickname,
+          newOwner: newOwnerNickname
         });
 
-        get().removePlayer(exitingPlayerId);
+        // 닉네임으로 플레이어 찾아서 제거
+        const exitingPlayer = currentRoom?.players.find(p => p.name === exitingPlayerNickname);
+        if (exitingPlayer) {
+          get().removePlayer(exitingPlayer.id);
+        }
+
+        // 방장 위임 처리
+        if (newOwnerNickname && currentRoom) {
+          set((state) => {
+            if (!state.room) return {};
+            return {
+              room: {
+                ...state.room,
+                owner: newOwnerNickname,
+              },
+            };
+          });
+        }
 
         const updatedRoom = get().room;
         console.log('🏠 [ROOM] 퇴장 후 방 상태:', {
           roomId: updatedRoom?.id,
           playerCount: updatedRoom?.players.length,
-          players: updatedRoom?.players.map(p => ({ id: p.id, name: p.name }))
+          players: updatedRoom?.players.map(p => ({ id: p.id, name: p.name })),
+          newOwner: updatedRoom?.owner
         });
       });
 
@@ -242,10 +262,29 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
       // 게임 시작 메시지 구독
       const gameStartSub = subscribeToTopic('START_GAME_OBSERVE', (message) => {
-        // 1. 초기 게임 상태를 임시 저장소에 저장
+        const currentWebSocketState = useWebSocketStore.getState();
+        const isGameAlreadyInitialized = currentWebSocketState.initialGameState !== null;
+
+        console.log("🚨 [ROOM_STORE] START_GAME_OBSERVE received:", {
+          timestamp: new Date().toISOString(),
+          payload: message.payload,
+          gameState: message.payload?.gameState,
+          isGameAlreadyInitialized: isGameAlreadyInitialized,
+          currentInitialGameState: currentWebSocketState.initialGameState,
+          willSkipDueToAlreadyInitialized: isGameAlreadyInitialized
+        });
+
+        // 1. 게임이 이미 초기화되었다면 무시 (중복 START_GAME_OBSERVE 방지)
+        if (isGameAlreadyInitialized) {
+          console.log("🚫 [ROOM_STORE] Skipping START_GAME_OBSERVE - game already initialized");
+          return; // 완전히 무시
+        }
+
+        // 2. 처음 받는 START_GAME_OBSERVE만 처리
+        console.log("🎮 [ROOM_STORE] First START_GAME_OBSERVE - setting initial game state");
         useWebSocketStore.getState().setInitialGameState(message.payload);
 
-        // 2. 게임 상태를 'playing'으로 변경하여 페이지 이동 트리거
+        // 3. 게임 상태를 'playing'으로 변경하여 페이지 이동 트리거
         if (message.payload.gameState === 'PLAYING') {
           set((state) => {
             if (!state.room) return {};

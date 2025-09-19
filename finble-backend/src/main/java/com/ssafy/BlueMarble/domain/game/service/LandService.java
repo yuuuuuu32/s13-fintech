@@ -34,6 +34,8 @@ public class LandService {
     private final ObjectMapper objectMapper;
     private final SessionMessageService sessionMessageService;
     private final UserRedisService userRedisService;
+    private final EconomicHistoryService economicHistoryService;
+    private final VictoryService victoryService;
 
     /**
      * 땅 구매
@@ -60,7 +62,15 @@ public class LandService {
 
         // 4. 구매하려는 땅의 정보를 찾는다.
         Tile targetCell = mapData.getCells().get(tradeLandRequest.getLandNum());
-        log.info("[TRADE] targetCell: cellNumber={}, ownerName(before)={}, toll={}, type={}", targetCell.getCellNumber(), targetCell.getOwnerName(), targetCell.getToll(), targetCell.getType());
+
+        // 4.1 경제역사 효과를 적용한 실제 가격 계산
+        int basePrice = targetCell.getToll();
+        // 새로운 시스템: 부동산 가격 직접 변경 없이 기본 가격 사용
+        int actualPrice = basePrice;
+        log.info("[TRADE] 기본 가격 사용 (경제 효과는 플레이어 자산에 직접 적용): 가격={}", actualPrice);
+
+        log.info("[TRADE] targetCell: cellNumber={}, ownerName(before)={}, baseToll={}, actualPrice={}, type={}",
+                targetCell.getCellNumber(), targetCell.getOwnerName(), targetCell.getToll(), actualPrice, targetCell.getType());
         if (targetCell.getCellNumber() != tradeLandRequest.getLandNum()) {
             log.warn("[TRADE][WARN] landNum mismatch: req.landNum={}, cell.cellNumber={}", tradeLandRequest.getLandNum(), targetCell.getCellNumber());
         }
@@ -86,26 +96,25 @@ public class LandService {
                 throw new BusinessException(BusinessError.LAND_NOT_FOUND);
             }
 
-            // 구매자 잔액 확인
-            if (buyer.getMoney() < targetCell.getToll()) {
+            // 구매자 잔액 확인 (경제역사 효과 적용된 가격)
+            if (buyer.getMoney() < actualPrice) {
                 throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
             }
 
-            // 판매자의 자산 업데이트
-            int price = targetCell.getToll();
-            log.info("[TRADE] transfer price={}, from buyer {} to seller {}", price, buyer.getNickname(), seller.getNickname());
-            seller.setMoney(seller.getMoney() + targetCell.getToll());
+            // 판매자의 자산 업데이트 (경제역사 효과 적용된 가격)
+            log.info("[TRADE] transfer price={}, from buyer {} to seller {}", actualPrice, buyer.getNickname(), seller.getNickname());
+            seller.setMoney(seller.getMoney() + actualPrice);
             log.info("[TRADE] sellerMoney(after)={}, sellerOwnedProps(before)={}", seller.getMoney(), seller.getOwnedProperties());
             if (seller.getOwnedProperties() != null) {
                 seller.getOwnedProperties().remove(Integer.valueOf(targetCell.getCellNumber()));
                 log.info("[TRADE] sellerOwnedProps(after)={}", seller.getOwnedProperties());
             }
         } else {
-            // 소유되지 않은 땅인 경우, 땅 가격으로 구매
-            if (buyer.getMoney() < targetCell.getToll()) {
+            // 소유되지 않은 땅인 경우, 땅 가격으로 구매 (경제역사 효과 적용된 가격)
+            if (buyer.getMoney() < actualPrice) {
                 throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
             }
-            log.info("[TRADE] unowned land purchase, price={} (using toll)", targetCell.getToll());
+            log.info("[TRADE] unowned land purchase, basePrice={}, actualPrice={}", basePrice, actualPrice);
         }
 
         // 6. 땅 주인을 구매자로 변경
@@ -113,9 +122,9 @@ public class LandService {
         targetCell.setOwnerName(tradeLandRequest.getBuyerName());
         log.info("[TRADE] owner changed: {} -> {}", prevOwner, tradeLandRequest.getBuyerName());
 
-        // 7. 구매자의 자산 업데이트
-        buyer.setMoney(buyer.getMoney() - targetCell.getToll());
-        log.info("[TRADE] buyerMoney(after)={}", buyer.getMoney());
+        // 7. 구매자의 자산 업데이트 (경제역사 효과 적용된 가격)
+        buyer.setMoney(buyer.getMoney() - actualPrice);
+        log.info("[TRADE] buyerMoney(after)={}, paidAmount={}", buyer.getMoney(), actualPrice);
         if (buyer.getOwnedProperties() == null) {
             buyer.setOwnedProperties(new ArrayList<>());
         }
@@ -127,15 +136,22 @@ public class LandService {
         gameRedisService.saveGameMapState(roomId, gameState);
         log.info("[TRADE] saved game state. players snapshot={}", gameState.getPlayers());
 
-        // 9. 다른 플레이어들에게 땅 구매 알림 전송
+        // 9. 다른 플레이어들에게 땅 구매 알림 전송 (경제역사 효과 적용된 가격 정보 포함)
         TradeLandPayload payload = TradeLandPayload.builder()
                 .result(true)
                 .players(gameState.getPlayers())
+                .actualPrice(actualPrice)
+                .basePrice(basePrice)
+                .buyerName(tradeLandRequest.getBuyerName())
+                .landNum(tradeLandRequest.getLandNum())
                 .build();
         JsonNode payloadNode = objectMapper.valueToTree(payload);
         MessageDto message = new MessageDto(MessageType.TRADE_LAND, payloadNode);
         log.info("[TRADE] broadcast TRADE_LAND message sent to roomId={}", roomId);
         sessionMessageService.sendMessageToRoom(roomId, message);
+
+        // 10. 부동산 거래 후 승리 조건 체크 (모든 승리 조건 통합 체크)
+        victoryService.checkAllVictoryConditions(roomId, gameState);
     }
 
     /**
@@ -166,8 +182,14 @@ public class LandService {
         if(targetCell.getType().equals(Tile.TileType.SPECIAL)){
             throw new  BusinessException(BusinessError.SPECIAL_CANNOT_BUILD);
         }
-        //3.1 건설 자금이 충분한지
-        if (targetCell.getToll() * 10 > user.getMoney()) {
+
+        //3.0.1 기본 건설 비용 계산 (새로운 시스템에서는 건설비용에 경제효과 직접 적용 안함)
+        int baseBuildingCost = targetCell.getToll() * 10;
+        int actualBuildingCost = baseBuildingCost;
+        log.info("[CONSTRUCT] 기본 건설 비용 사용: 비용={}", actualBuildingCost);
+
+        //3.1 건설 자금이 충분한지 (경제역사 효과 적용된 비용)
+        if (actualBuildingCost > user.getMoney()) {
             throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
         }
         //3.1 이땅의 주인이 없는지 체크
@@ -193,9 +215,13 @@ public class LandService {
                 break;
         }
 
+        // 3.3 건설 비용 차감 (경제역사 효과 적용된 비용)
+        user.setMoney(user.getMoney() - actualBuildingCost);
+        log.info("[CONSTRUCT] 건설 비용 차감: 잔액={}, 차감액={}", user.getMoney(), actualBuildingCost);
+
         //4. 업데이트된 상태를 Redis에 저장
         gameRedisService.saveGameMapState(roomId, gameState);
-        //5. 메시지 전달
+        //5. 메시지 전달 (경제역사 효과 적용된 건설 비용 정보 포함)
         ConstructPayload payload = ConstructPayload.builder()
                 .result(true)
                 .nickname(constructRequest.getNickname())
@@ -207,6 +233,8 @@ public class LandService {
                                 .lands(user.getOwnedProperties())
                                 .build()
                 )
+                .actualBuildingCost(actualBuildingCost)
+                .baseBuildingCost(baseBuildingCost)
                 .build();
 
         JsonNode payloadNode = objectMapper.valueToTree(payload);

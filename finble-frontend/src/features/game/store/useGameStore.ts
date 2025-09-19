@@ -4,90 +4,19 @@ import type { GameState, Player } from "../types/gameTypes.ts";
 import { createWebSocketHandlers } from "../handlers/websocketHandlers.ts";
 import { createGameLogicHandlers } from "../handlers/gameLogicHandlers.ts";
 import { createPlayerActions } from "../handlers/playerHandlers.ts";
+import { createSpecialLandHandlers } from "../handlers/specialLandHandlers.ts";
 import { handleInsufficientFundsForToll } from "../handlers/tileHandlers.ts";
 
 export const useGameStore = create<GameState>()((set, get) => {
   // Wrap set function to track player position changes
   const wrappedSet = (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => {
-    const currentState = get();
-    const newState = typeof partial === 'function' ? partial(currentState) : partial;
-    const timestamp = new Date().toISOString();
-
-    // Capture stack trace for all position changes
-    const fullStackTrace = new Error().stack;
-    const callChain = fullStackTrace?.split('\n').slice(1, 8).map(line => line.trim()).join(' → ');
-
-    // Track player position changes with comprehensive analysis
-    if (newState.players && currentState.players) {
-      const currentPlayers = Array.isArray(currentState.players) ? currentState.players : Object.values(currentState.players);
-      const newPlayers = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
-
-      newPlayers.forEach((newPlayer, index) => {
-        const currentPlayer = currentPlayers.find(p => p.id === newPlayer.id);
-        if (currentPlayer && currentPlayer.position !== newPlayer.position) {
-          console.log("📍 [POSITION_CHAIN] Store position change:", {
-            timestamp,
-            playerId: newPlayer.id,
-            playerName: newPlayer.name,
-            from: currentPlayer.position,
-            to: newPlayer.position,
-            source: 'GameStore.wrappedSet',
-            gamePhase: currentState.gamePhase,
-            currentPlayerIndex: currentState.currentPlayerIndex,
-            isCurrentPlayer: currentState.currentPlayerIndex === currentPlayers.findIndex(p => p.id === newPlayer.id),
-            callChain
-          });
-
-          // CRITICAL: Alert if position becomes 0 unexpectedly
-          if (newPlayer.position === 0 && currentPlayer.position !== 0) {
-            console.error("🚨 [CRITICAL_CHAIN] Player position reset to 0!", {
-              timestamp,
-              playerId: newPlayer.id,
-              playerName: newPlayer.name,
-              from: currentPlayer.position,
-              to: newPlayer.position,
-              gamePhase: currentState.gamePhase,
-              currentPlayerIndex: currentState.currentPlayerIndex,
-              modal: currentState.modal,
-              callChain,
-              fullStackTrace
-            });
-          }
-
-          // Detect position jumps (non-sequential moves)
-          const positionDiff = Math.abs(newPlayer.position - currentPlayer.position);
-          if (positionDiff > 12 && newPlayer.position !== 0) { // Large jumps might indicate teleportation
-            console.warn("⚠️ [POSITION_CHAIN] Large position jump detected:", {
-              timestamp,
-              playerId: newPlayer.id,
-              playerName: newPlayer.name,
-              from: currentPlayer.position,
-              to: newPlayer.position,
-              positionDiff,
-              gamePhase: currentState.gamePhase,
-              callChain
-            });
-          }
-        }
-      });
-    }
-
-    // Log all state changes that might affect positions
-    if (newState.gamePhase && newState.gamePhase !== currentState.gamePhase) {
-      console.log("🔄 [POSITION_CHAIN] Game phase change:", {
-        timestamp,
-        from: currentState.gamePhase,
-        to: newState.gamePhase,
-        callChain
-      });
-    }
-
     return set(partial);
   };
 
   const websocketHandlers = createWebSocketHandlers(wrappedSet, get);
   const gameLogicHandlers = createGameLogicHandlers(wrappedSet, get);
   const playerActions = createPlayerActions(wrappedSet, get);
+  const specialLandHandlers = createSpecialLandHandlers(wrappedSet, get);
 
   return {
     // 초기 상태
@@ -106,6 +35,7 @@ export const useGameStore = create<GameState>()((set, get) => {
     serverDiceNum: null,
     serverCurrentPosition: null,
     isDiceRolled: false,
+    economicHistory: null,
 
     // 웹소켓 관련 메서드
     connect: websocketHandlers.connect,
@@ -137,6 +67,14 @@ export const useGameStore = create<GameState>()((set, get) => {
     cancelWorldTravel: playerActions.cancelWorldTravel,
     buildBuilding: playerActions.buildBuilding,
 
+    // 스페셜 땅 관련 메서드
+    isSpecialLand: specialLandHandlers.isSpecialLand,
+    buySpecialLand: specialLandHandlers.buySpecialLand,
+    paySpecialLandToll: specialLandHandlers.paySpecialLandToll,
+    checkSpecialLandMonopoly: specialLandHandlers.checkSpecialLandMonopoly,
+    handleSpecialLandInteraction: specialLandHandlers.handleSpecialLandInteraction,
+
+
     // 기타 유틸리티 메서드
     handleInsufficientFundsForToll: (
       requiredAmount: number,
@@ -158,6 +96,25 @@ export const useGameStore = create<GameState>()((set, get) => {
         tileIndex,
         toll
       );
+    },
+
+    // 경제역사 배수 적용 함수
+    applyEconomicMultiplier: (baseValue: number, multiplierType: keyof Pick<import("../types/gameTypes.ts").EconomicHistory, 'salaryMultiplier' | 'tollMultiplier' | 'propertyPriceMultiplier' | 'buildingCostMultiplier' | 'chanceCardBonusMultiplier' | 'chanceCardPenaltyMultiplier'>) => {
+      const economicHistory = get().economicHistory;
+
+      if (!economicHistory) {
+        return baseValue; // 경제역사 정보가 없으면 기본값 반환
+      }
+
+      const multiplier = economicHistory[multiplierType];
+
+      if (typeof multiplier !== 'number' || isNaN(multiplier)) {
+        console.error("❌ [ECONOMIC_MULTIPLIER] 잘못된 배수 값:", { multiplierType, multiplier });
+        return baseValue;
+      }
+
+      const result = Math.round(baseValue * multiplier);
+      return result;
     },
   };
 });

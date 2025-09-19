@@ -13,24 +13,17 @@ public class EconomicEffect {
     private final boolean isBoom; // 호황/불황 여부 (true: 호황, false: 불황)
     private final double salaryMultiplier;      // 월급 배수
     private final double tollMultiplier;        // 통행료 배수
-    private final double propertyPriceMultiplier; // 부동산 가격 배수
-    private final double buildingCostMultiplier; // 건물 건설 비용 배수
-    private final double chanceCardBonusMultiplier; // 찬스카드 보너스 배수
-    private final double chanceCardPenaltyMultiplier; // 찬스카드 페널티 배수
+    private final double propertyAssetMultiplier; // 부동산 자산 가치 배수 (소유 땅 개수에 따른 가중치)
 
     public EconomicEffect(EconomicHistoryPeriod period, String name, String description, boolean isBoom,
-                         double salaryMultiplier, double tollMultiplier, double propertyPriceMultiplier,
-                         double buildingCostMultiplier, double chanceCardBonusMultiplier, double chanceCardPenaltyMultiplier) {
+                         double salaryMultiplier, double tollMultiplier, double propertyAssetMultiplier) {
         this.period = period;
         this.name = name;
         this.description = description;
         this.isBoom = isBoom;
         this.salaryMultiplier = salaryMultiplier;
         this.tollMultiplier = tollMultiplier;
-        this.propertyPriceMultiplier = propertyPriceMultiplier;
-        this.buildingCostMultiplier = buildingCostMultiplier;
-        this.chanceCardBonusMultiplier = chanceCardBonusMultiplier;
-        this.chanceCardPenaltyMultiplier = chanceCardPenaltyMultiplier;
+        this.propertyAssetMultiplier = propertyAssetMultiplier;
     }
 
     /**
@@ -51,19 +44,17 @@ public class EconomicEffect {
         return (int) (baseToll * tollMultiplier);
     }
 
-    public int applyPropertyPriceMultiplier(int basePrice) {
-        return (int) (basePrice * propertyPriceMultiplier);
-    }
+    /**
+     * 부동산 자산 가치 변동 적용 (소유 땅 개수에 따른 금액 증감)
+     * @param ownedLandCount 소유 땅 개수
+     * @param baseLandValue 기본 땅 가치 (예: 100만원)
+     * @return 변동된 금액
+     */
+    public int applyPropertyAssetChange(int ownedLandCount, int baseLandValue) {
+        if (ownedLandCount <= 0) return 0;
 
-    public int applyBuildingCostMultiplier(int baseCost) {
-        return (int) (baseCost * buildingCostMultiplier);
-    }
-
-    public int applyChanceCardBonusMultiplier(int baseAmount) {
-        return (int) (baseAmount * chanceCardBonusMultiplier);
-    }
-
-    public int applyChanceCardPenaltyMultiplier(int baseAmount) {
-        return (int) (baseAmount * chanceCardPenaltyMultiplier);
+        // 소유 땅 개수 * 기본 땅 가치 * 배수
+        double totalChange = ownedLandCount * baseLandValue * (propertyAssetMultiplier - 1.0);
+        return (int) totalChange;
     }
 }

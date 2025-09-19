@@ -15,6 +15,7 @@ export type GamePhase =
 export type ModalType =
   | "NONE"
   | "BUY_PROPERTY"
+  | "BUY_SPECIAL_LAND"
   | "ACQUIRE_PROPERTY"
   | "CHANCE_CARD"
   | "INFO"
@@ -34,6 +35,21 @@ export interface Player {
   jailTurns: number;
   isTraveling: boolean;
   lapCount: number;
+}
+
+export interface EconomicHistory {
+  periodName: string;
+  effectName: string;
+  description: string;
+  isBoom: boolean;
+  fullName: string;
+  salaryMultiplier: number;
+  tollMultiplier: number;
+  propertyPriceMultiplier: number;
+  buildingCostMultiplier: number;
+  chanceCardBonusMultiplier: number;
+  chanceCardPenaltyMultiplier: number;
+  remainingTurns: number;
 }
 
 export interface GameInitialState {
@@ -79,6 +95,7 @@ export interface GameState {
   serverDiceNum: number | null;
   serverCurrentPosition: number | null;
   isDiceRolled: boolean;
+  economicHistory: EconomicHistory | null;
   initializeGame: (initialState: GameInitialState) => void;
   setDicePower: (power: number) => void;
   rollDice: () => void;
@@ -111,4 +128,5 @@ export interface GameState {
   disconnect: () => void;
   send: (destination: string, body: Record<string, unknown>) => void;
   updateGameState: (newState: Partial<GameState>) => void;
+  applyEconomicMultiplier: (baseValue: number, multiplierType: keyof Pick<EconomicHistory, 'salaryMultiplier' | 'tollMultiplier' | 'propertyPriceMultiplier' | 'buildingCostMultiplier' | 'chanceCardBonusMultiplier' | 'chanceCardPenaltyMultiplier'>) => number;
 }
