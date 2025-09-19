@@ -12,4 +12,8 @@ import java.util.Map;
 public class TradeLandPayload {
     private Boolean result;
     private Map<String , CreateMapPayload.PlayerState> players;
+    private Integer actualPrice;        // 경제역사 효과가 적용된 실제 지불 가격
+    private Integer basePrice;          // 기본 가격
+    private String buyerName;           // 구매자 이름
+    private Integer landNum;            // 토지 번호
 }
