@@ -74,11 +74,6 @@ export const useGameStore = create<GameState>()((set, get) => {
     checkSpecialLandMonopoly: specialLandHandlers.checkSpecialLandMonopoly,
     handleSpecialLandInteraction: specialLandHandlers.handleSpecialLandInteraction,
 
-    // 경제 승수 적용 함수
-    applyEconomicMultiplier: (baseValue: number, multiplierType: string) => {
-      // 경제 승수가 구현되지 않았으므로 기본값 반환
-      return baseValue;
-    },
 
     // 기타 유틸리티 메서드
     handleInsufficientFundsForToll: (
