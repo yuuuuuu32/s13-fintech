@@ -211,22 +211,42 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   
       const exitUserSub = subscribeToTopic('EXIT_USER', (message) => {
         console.log('🏠 [ROOM] 유저 퇴장:', message);
-        const exitingPlayerId = message.payload.userId;
+        const exitingPlayerNickname = message.payload.userNickName;
+        const newOwnerNickname = message.payload.newOwnerNickName;
 
         const currentRoom = get().room;
         console.log('🏠 [ROOM] 퇴장 전 방 상태:', {
           roomId: currentRoom?.id,
           currentPlayerCount: currentRoom?.players.length,
-          exitingPlayer: exitingPlayerId
+          exitingPlayer: exitingPlayerNickname,
+          newOwner: newOwnerNickname
         });
 
-        get().removePlayer(exitingPlayerId);
+        // 닉네임으로 플레이어 찾아서 제거
+        const exitingPlayer = currentRoom?.players.find(p => p.name === exitingPlayerNickname);
+        if (exitingPlayer) {
+          get().removePlayer(exitingPlayer.id);
+        }
+
+        // 방장 위임 처리
+        if (newOwnerNickname && currentRoom) {
+          set((state) => {
+            if (!state.room) return {};
+            return {
+              room: {
+                ...state.room,
+                owner: newOwnerNickname,
+              },
+            };
+          });
+        }
 
         const updatedRoom = get().room;
         console.log('🏠 [ROOM] 퇴장 후 방 상태:', {
           roomId: updatedRoom?.id,
           playerCount: updatedRoom?.players.length,
-          players: updatedRoom?.players.map(p => ({ id: p.id, name: p.name }))
+          players: updatedRoom?.players.map(p => ({ id: p.id, name: p.name })),
+          newOwner: updatedRoom?.owner
         });
       });
 

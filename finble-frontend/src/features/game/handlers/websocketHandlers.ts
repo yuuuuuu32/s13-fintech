@@ -22,10 +22,9 @@ export const createWebSocketHandlers = (
         set((state) => {
           const nextPlayerIndex = state.players.findIndex(p => p.name === payload.curPlayer);
           if (nextPlayerIndex !== -1) {
-            const newTurn = payload.gameTurn ?? state.currentTurn;
             const newState = {
               currentPlayerIndex: nextPlayerIndex,
-              currentTurn: newTurn,
+              currentTurn: payload.gameTurn ?? state.currentTurn,
               gamePhase: "WAITING_FOR_ROLL",
               isDiceRolled: false, // Ensure dice state is reset
               // 찬스카드 모달이 떠있으면 유지
@@ -61,6 +60,7 @@ export const createWebSocketHandlers = (
         get().updateGameState(message.payload);
       } else {
         console.log("🔍 [BACKEND_DATA] START_GAME_OBSERVE - Game in progress, excluding players");
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { players, ...safePayload } = message.payload;
         get().updateGameState(safePayload);
       }
@@ -72,22 +72,14 @@ export const createWebSocketHandlers = (
       if (payload.currentPlayerIndex !== undefined) {
         console.log("🔄 Turn changing to player index:", payload.currentPlayerIndex);
         console.log("🎮 Setting gamePhase to WAITING_FOR_ROLL");
-        const newTurn = payload.currentTurn || get().currentTurn;
         set((state) => ({
           currentPlayerIndex: payload.currentPlayerIndex,
-          currentTurn: newTurn,
+          currentTurn: payload.currentTurn || get().currentTurn,
           gamePhase: "WAITING_FOR_ROLL",
           isDiceRolled: false, // Reset for the next turn
           // 찬스카드 모달이 떠있으면 유지
           modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
         }));
-
-        // Update economic history when turn changes
-        setTimeout(() => {
-          get().updateEconomicHistory(newTurn);
-        }, 100);
-
-        console.log("✅ Turn change completed. New player index:", payload.currentPlayerIndex);
       }
     });
 
@@ -95,10 +87,37 @@ export const createWebSocketHandlers = (
       console.log("📥 [WEBSOCKET] USE_DICE received:", message);
       const { payload } = message;
 
-      const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn } = payload;
+      const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn, userName, updatedAsset } = payload;
 
-      set(() => {
+      console.log("💰 [USE_DICE] 서버에서 받은 업데이트된 자산:", {
+        userName,
+        updatedAsset,
+        economicHistoryApplied: "서버에서 이미 경제역사 효과 적용됨"
+      });
+
+      set((state) => {
+        // 서버에서 업데이트된 자산 정보를 플레이어에게 적용
+        const updatedPlayers = state.players.map(player => {
+          if (player.name === userName && updatedAsset) {
+            console.log("💰 [USE_DICE] 플레이어 자산 업데이트:", {
+              playerName: player.name,
+              previousMoney: player.money,
+              newMoney: updatedAsset.money,
+              moneyChange: updatedAsset.money - player.money,
+              properties: updatedAsset.lands
+            });
+
+            return {
+              ...player,
+              money: updatedAsset.money, // 서버에서 경제역사 효과가 적용된 머니
+              properties: updatedAsset.lands || player.properties
+            };
+          }
+          return player;
+        });
+
         return {
+          players: updatedPlayers,
           dice: [diceNum1, diceNum2],
           serverDiceNum: diceNumSum,
           serverCurrentPosition: currentPosition,
@@ -194,22 +213,9 @@ export const createWebSocketHandlers = (
           if (player.name === userName) {
             const updatedPlayer = { ...player };
 
-            // 돈 변화 적용 (경제역사 효과 적용)
+            // 돈 변화 적용
             if (moneyChange !== undefined && moneyChange !== null) {
-              let adjustedMoneyChange = moneyChange;
-
-              // 돈을 받는 경우 (양수) - 보너스 배수 적용
-              if (moneyChange > 0) {
-                adjustedMoneyChange = get().applyEconomicMultiplier(moneyChange, 'chanceCardBonusMultiplier');
-              }
-              // 돈을 내는 경우 (음수) - 페널티 배수 적용
-              else if (moneyChange < 0) {
-                const absMoneyChange = Math.abs(moneyChange);
-                const adjustedPenalty = get().applyEconomicMultiplier(absMoneyChange, 'chanceCardPenaltyMultiplier');
-                adjustedMoneyChange = -adjustedPenalty;
-              }
-
-              updatedPlayer.money += adjustedMoneyChange;
+              updatedPlayer.money += moneyChange;
             }
 
             // 위치 변화 적용
@@ -233,12 +239,26 @@ export const createWebSocketHandlers = (
           type: "CHANCE_CARD" as const,
           text: `${cardName}: ${effectDescription}`,
           onConfirm: () => {
-            console.log("🎲 [MODAL] 찬스카드 모달 확인 버튼 클릭");
+            console.log("🎲 [CHANCE_CARD] 찬스카드 모달 확인 버튼 클릭");
             set({ modal: { type: "NONE" as const } });
+
             // 위치가 변경되었다면 다시 타일 액션 처리
             if (newPosition !== undefined && newPosition !== null) {
-              console.log("🎲 [MODAL] 위치 변경으로 인한 타일 액션 처리");
+              console.log("🎲 [CHANCE_CARD] 위치 변경됨 - 새 위치에서 타일 액션 처리:", {
+                userName,
+                previousPosition: "unknown",
+                newPosition,
+                willTriggerTileAction: true
+              });
               get().handleTileAction();
+            } else {
+              // 위치 변경이 없으면 턴 종료
+              console.log("🎲 [CHANCE_CARD] 위치 변경 없음 - 바로 턴 종료:", {
+                userName,
+                moneyChange,
+                turnEnding: true
+              });
+              get().endTurn();
             }
           }
         };
@@ -264,6 +284,44 @@ export const createWebSocketHandlers = (
 
     subscribeToTopic("DRAW_CARD", handleChanceCard);
     subscribeToTopic("CHANCE_CARD", handleChanceCard);
+
+    // 경제역사 업데이트 구독
+    subscribeToTopic("ECONOMIC_HISTORY_UPDATE", (message) => {
+      const { payload } = message;
+
+      if (!payload) {
+        console.error("❌ [ECONOMIC_HISTORY] payload가 없습니다!");
+        return;
+      }
+
+      const economicHistory = {
+        periodName: payload.periodName,
+        effectName: payload.effectName,
+        description: payload.description,
+        isBoom: payload.isBoom,
+        fullName: payload.fullName,
+        salaryMultiplier: payload.salaryMultiplier,
+        tollMultiplier: payload.tollMultiplier,
+        propertyPriceMultiplier: payload.propertyPriceMultiplier,
+        buildingCostMultiplier: payload.buildingCostMultiplier,
+        chanceCardBonusMultiplier: payload.isBoom ? 1.2 : 0.8,
+        chanceCardPenaltyMultiplier: payload.isBoom ? 0.8 : 1.2,
+        remainingTurns: payload.remainingTurns
+      };
+
+      set({ economicHistory });
+
+      // 경제역사 변경 알림 모달 표시
+      if (payload.periodName && payload.effectName) {
+        set({
+          modal: {
+            type: "INFO" as const,
+            text: `📈 ${economicHistory.fullName}\n\n${payload.description}\n\n남은 턴: ${payload.remainingTurns}턴`,
+            onConfirm: () => set({ modal: { type: "NONE" as const } })
+          }
+        });
+      }
+    });
 
     // CONSTRUCT_BUILDING 메시지 처리
     subscribeToTopic("CONSTRUCT_BUILDING", (message) => {
@@ -337,37 +395,73 @@ export const createWebSocketHandlers = (
 
     // WORLD_TRAVEL_EVENT 메시지 처리
     subscribeToTopic("WORLD_TRAVEL_EVENT", (message) => {
-      console.log("📥 [WEBSOCKET] WORLD_TRAVEL_EVENT received:", message);
+      console.log("✈️ [WORLD_TRAVEL_RESPONSE] 서버 응답 수신:", {
+        message,
+        timestamp: new Date().toISOString()
+      });
+
       const { payload } = message;
 
+      if (!payload) {
+        console.error("❌ [WORLD_TRAVEL] payload 없음!");
+        return;
+      }
+
       if (payload.result) {
+        console.log("✅ [WORLD_TRAVEL] 세계여행 성공, 모든 클라이언트 동기화 시작:", {
+          travelerNickname: payload.nickname,
+          destination: payload.endLand,
+          travelerAsset: payload.travelerAsset,
+          landOwner: payload.landOwner,
+          ownerAsset: payload.ownerAsset
+        });
+
         set((state) => {
           const updatedPlayers = state.players.map(player => {
             if (player.name === payload.nickname) {
-              console.log("🔍 [BACKEND_DATA] WORLD_TRAVEL_EVENT updating player position:", {
+              console.log("🎯 [WORLD_TRAVEL_SYNC] 여행자 위치 업데이트:", {
                 playerId: player.id,
                 nickname: player.name,
-                clientPosition: player.position,
-                serverEndLand: payload.endLand,
-                positionWillChange: player.position !== payload.endLand
+                oldPosition: player.position,
+                newPosition: payload.endLand,
+                positionChanged: player.position !== payload.endLand,
+                oldMoney: player.money,
+                newMoney: payload.travelerAsset ? payload.travelerAsset.money : player.money
               });
 
               return {
                 ...player,
-                position: payload.endLand, // 백엔드 위치 데이터 추적
+                position: payload.endLand,
+                isTraveling: false, // 여행 완료
                 money: payload.travelerAsset ? payload.travelerAsset.money : player.money,
                 properties: payload.travelerAsset ? payload.travelerAsset.lands || [] : player.properties
               };
             }
+
             // 땅 소유자 자산 업데이트
             if (payload.landOwner && player.name === payload.landOwner && payload.ownerAsset) {
+              console.log("💰 [WORLD_TRAVEL_SYNC] 땅 소유자 자산 업데이트:", {
+                ownerName: player.name,
+                oldMoney: player.money,
+                newMoney: payload.ownerAsset.money,
+                oldProperties: player.properties.length,
+                newProperties: payload.ownerAsset.lands?.length || 0
+              });
+
               return {
                 ...player,
                 money: payload.ownerAsset.money,
                 properties: payload.ownerAsset.lands || []
               };
             }
+
             return player;
+          });
+
+          console.log("🔄 [WORLD_TRAVEL_COMPLETE] 세계여행 완료, 게임 상태 업데이트:", {
+            allPlayersUpdated: true,
+            gamePhase: "TILE_ACTION",
+            modalClosed: true
           });
 
           return {
@@ -375,6 +469,17 @@ export const createWebSocketHandlers = (
             gamePhase: "TILE_ACTION",
             modal: { type: "NONE" }
           };
+        });
+      } else {
+        console.error("❌ [WORLD_TRAVEL] 세계여행 실패:", payload);
+
+        // 실패 시 로딩 모달 제거
+        set({
+          modal: {
+            type: "INFO" as const,
+            text: "세계여행에 실패했습니다. 다시 시도해주세요.",
+            onConfirm: () => set({ modal: { type: "NONE" as const } })
+          }
         });
       }
     });
@@ -487,7 +592,7 @@ export const createWebSocketHandlers = (
       console.log("🚨 [CRITICAL] updateGameState called with players data - comparing positions:");
       const newPlayers = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
 
-      currentState.players.forEach((currentPlayer, index) => {
+      currentState.players.forEach((currentPlayer) => {
         const serverPlayer = newPlayers.find(p => p.id === currentPlayer.id);
         if (serverPlayer && serverPlayer.position !== currentPlayer.position) {
           console.log(`🚨 [CRITICAL] Position mismatch for ${currentPlayer.name}:`);
@@ -497,6 +602,7 @@ export const createWebSocketHandlers = (
       });
 
       // 위치 제외한 안전한 업데이트
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { players, ...safeState } = newState;
       console.log("🛡️ [SAFE_UPDATE] Applying state without player positions to prevent snap-back");
       set(safeState);

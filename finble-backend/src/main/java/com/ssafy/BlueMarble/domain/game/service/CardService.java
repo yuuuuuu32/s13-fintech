@@ -37,6 +37,7 @@ public class CardService {
     private final CardRepository cardRepository;
     private final SessionMessageService sessionMessageService;
     private final UserRedisService userRedisService;
+    private final VictoryService victoryService;
     private final Random random = new Random();
 
     // 메모리에 로딩된 카드 리스트
@@ -286,8 +287,11 @@ public class CardService {
 
             log.info("찬스 카드 결과 메시지 전송 완료: userName={}, cardName={}", userName, drawnCard.getName());
 
+            // 찬스카드 사용 후 승리 조건 체크 (모든 승리 조건 통합 체크)
+            victoryService.checkAllVictoryConditions(roomId, gameMapState);
+
             return result;
-                    
+
         } catch (Exception e) {
             log.error("카드 뽑기 중 오류 발생: roomId={}, userName={}", roomId, userName, e);
             return null;

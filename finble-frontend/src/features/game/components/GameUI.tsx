@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { BuildingType } from '../data/boardData.ts';
 import type { TileData } from '../data/boardData.ts';
 import { useUserStore } from '../../../stores/useUserStore';
-import { Modal, Box, Typography, Button, Card, CardContent, Grid, LinearProgress, List, ListItem, ListItemButton, ListItemText, Checkbox, FormControlLabel, FormGroup } from '@mui/material';
+import { Modal, Box, Typography, Button, Card, CardContent, LinearProgress, List, ListItem, ListItemButton, ListItemText, Checkbox, FormControlLabel, FormGroup } from '@mui/material';
 
 const BAIL_AMOUNT = 500000; 
 
@@ -41,7 +41,7 @@ const calculateTotalAssets = (player, board: TileData[]) => {
 };
 
 // BuyPropertyModalContent
-const BuyPropertyModalContent = ({ modal, buyProperty, buyPropertyWithItems, endTurn, currentPlayer }) => {
+const BuyPropertyModalContent = ({ modal, buyPropertyWithItems, endTurn, currentPlayer }) => {
   const [selectedItems, setSelectedItems] = useState({
     land: false, // 땅도 선택사항
     house: false,
@@ -273,24 +273,24 @@ const ExpoModalContent = ({ modal, selectExpoProperty }) => (
 );
 
 // ManagePropertyModalContent
-const ManagePropertyModalContent = ({ modal, buildBuilding, endTurn, currentPlayer, board }) => (
+const ManagePropertyModalContent = ({ modal, buildBuilding, endTurn, board }) => (
   <>
     <Typography variant="h5" component="h2">{modal.tile?.name} 관리</Typography>
     <Typography sx={{ mt: 2 }}>건물을 건설하여 통행료를 올릴 수 있습니다.</Typography>
     <Typography sx={{ mt: 1, color: 'blue' }}>다음 건설: {BuildingType[(modal.tile?.buildings?.level ?? 0) + 1] || '최대 레벨'}</Typography>
     <Typography sx={{ mt: 1 }}>비용: {modal.tile?.buildingPrice?.toLocaleString()}원</Typography>
     <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-      <Button 
-        variant="contained" 
+      <Button
+        variant="contained"
         onClick={() => buildBuilding(board.findIndex(t => t.name === modal.tile?.name))}
-        disabled={(currentPlayer?.lapCount || 0) <= (modal.tile?.buildings?.level ?? 0) || (modal.tile?.buildings?.level ?? 0) >= 3}
+        disabled={(modal.tile?.buildings?.level ?? 0) >= 3}
       >
         건설
       </Button>
       <Button variant="outlined" onClick={endTurn}>다음에</Button>
     </Box>
     <Typography sx={{ mt: 2, fontSize: '0.8rem', color: 'gray' }}>
-      (필요 랩 수: {(modal.tile?.buildings?.level ?? 0) + 1} / 현재 랩 수: {currentPlayer?.lapCount || 0})
+      건물 레벨: {modal.tile?.buildings?.level ?? 0} / 3 (최대)
     </Typography>
   </>
 );
@@ -343,15 +343,55 @@ const BuySpecialLandModalContent = ({ modal, buySpecialLand, endTurn, currentPla
 };
 
 // GameOverModalContent
-const GameOverModalContent = ({ winner, handleGoToLobby, modalStyle }) => ( // modalStyle added to props
-  <Box sx={modalStyle}>
-    <Typography variant="h4" component="h2">게임 종료!</Typography>
-    <Typography sx={{ mt: 2, fontSize: '1.5rem' }}>
-      {winner ? `${winner.name}님이 최종 승리했습니다!` : '승자 없이 게임이 종료되었습니다.'}
-    </Typography>
-    <Button sx={{ mt: 3 }} variant="contained" size="large" onClick={handleGoToLobby}>로비로 돌아가기</Button>
-  </Box>
-);
+const GameOverModalContent = ({
+  winner,
+  handleGoToLobby,
+  modalStyle,
+  players,
+  board,
+  shouldShowGameOverByTurns
+}) => {
+  // 승자가 없고 턴 제한으로 게임이 끝난 경우 fallback 승자 결정
+  let finalWinner = winner;
+  let gameEndReason = '';
+
+  if (!winner && shouldShowGameOverByTurns) {
+    const alivePlayers = players.filter(p => p.money >= 0);
+    if (alivePlayers.length > 0) {
+      finalWinner = alivePlayers.reduce((prev, current) => {
+        const prevAssets = calculateTotalAssets(prev, board);
+        const currentAssets = calculateTotalAssets(current, board);
+        return prevAssets > currentAssets ? prev : current;
+      });
+      gameEndReason = '턴 제한으로 인한 자산 기준 승리';
+    }
+  } else if (winner) {
+    gameEndReason = '게임 진행 중 승리';
+  }
+
+
+  return (
+    <Box sx={modalStyle}>
+      <Typography variant="h4" component="h2">🎉 게임 종료!</Typography>
+      <Typography sx={{ mt: 2, fontSize: '1.5rem', fontWeight: 'bold' }}>
+        {finalWinner ? `${finalWinner.name}님이 최종 승리했습니다!` : '승자 없이 게임이 종료되었습니다.'}
+      </Typography>
+      {gameEndReason && (
+        <Typography sx={{ mt: 1, fontSize: '1rem', color: 'text.secondary' }}>
+          {gameEndReason}
+        </Typography>
+      )}
+      {finalWinner && (
+        <Typography sx={{ mt: 1, fontSize: '1.2rem' }}>
+          🏆 총 자산: {calculateTotalAssets(finalWinner, board).toLocaleString()}원
+        </Typography>
+      )}
+      <Button sx={{ mt: 3 }} variant="contained" size="large" onClick={handleGoToLobby}>
+        로비로 돌아가기
+      </Button>
+    </Box>
+  );
+};
 
 export function GameUI() {
   const { userInfo } = useUserStore();
@@ -387,6 +427,10 @@ export function GameUI() {
   const isGameOver = gamePhase === 'GAME_OVER';
   const currentPlayer = players[currentPlayerIndex];
   const isMyTurn = currentPlayer?.id === userInfo?.userId;
+
+  // 게임 종료 조건 fallback 체크 (20턴 초과 시)
+  const shouldShowGameOverByTurns = currentTurn >= totalTurns;
+  const shouldShowGameOver = isGameOver || shouldShowGameOverByTurns;
 
   useEffect(() => {
     console.log("🎮 GameUI useEffect triggered - isMyTurn:", isMyTurn, "currentPlayerIndex:", currentPlayerIndex, "gamePhase:", gamePhase);
@@ -458,13 +502,21 @@ export function GameUI() {
     color: 'black',
     borderRadius: 2,
     textAlign: 'center' as const,
+    fontFamily: 'Galmuri14, sans-serif',
+  };
+
+  const mainButtonSx = {
+    width: 250,
+    height: 60,
+    fontSize: '1.2rem',
+    fontFamily: 'Galmuri14'
   };
 
   return (
-    <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', color: 'white', fontFamily: 'Arial, sans-serif', zIndex: 999 }}>
+    <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', color: 'white', zIndex: 999 }}>
       <Box sx={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', p: '10px 20px', bgcolor: 'rgba(0,0,0,0.7)', borderRadius: '10px' }}>
-        <Typography variant="h5" fontWeight="bold">{currentTurn} / {totalTurns} 턴</Typography>
-        {isMyTurn && timeLeft > 5 && <Typography variant="h6">남은 시간: {timeLeft}초</Typography>}
+        <Typography variant="h5" fontWeight="bold" sx={{ fontFamily: 'Galmuri14' }}>{currentTurn} / {totalTurns} 턴</Typography>
+        {isMyTurn && timeLeft > 5 && <Typography variant="h6" sx={{ fontFamily: 'Galmuri14' }}>남은 시간: {timeLeft}초</Typography>}
       </Box>
 
       {/* Player Cards in Corner Positions */}
@@ -518,19 +570,19 @@ export function GameUI() {
                     boxShadow: '0 0 4px rgba(0,0,0,0.5)'
                   }}
                 />
-                <Typography variant="subtitle1" component="div" fontWeight="bold" sx={{ fontSize: '0.9rem' }}>
+                <Typography variant="subtitle1" component="div" fontWeight="bold" sx={{ fontSize: '0.9rem', fontFamily: 'Galmuri14' }}>
                   {player.name} {isMyPlayer ? '(나)' : ''}
                   {player.money < 0 && <span style={{ color: '#ff6b6b' }}> (파산)</span>}
                   {player.isInJail && <span style={{ color: '#ffa726' }}> 🔒</span>}
                 </Typography>
               </Box>
-              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2, fontFamily: 'Galmuri14' }}>
                 💰 {player.money.toLocaleString()}원
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2, fontFamily: 'Galmuri14' }}>
                 📊 총 {totalAssets.toLocaleString()}원
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2, fontFamily: 'Galmuri14' }}>
                 🏘️ {player.properties.length}개 도시
               </Typography>
               {index === currentPlayerIndex && !isGameOver && (
@@ -562,7 +614,7 @@ export function GameUI() {
           onMouseUp={handleChargeEnd}
           onMouseLeave={handleChargeEnd}
           disabled={gamePhase !== 'WAITING_FOR_ROLL' || !isMyTurn}
-          sx={{ width: 250, height: 60, fontSize: '1.2rem' }}
+          sx={mainButtonSx}
         >
           {currentPlayer?.isInJail ? '감옥...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
         </Button>
@@ -573,7 +625,7 @@ export function GameUI() {
             color="primary"
             size="large"
             onClick={endTurn}
-            sx={{ width: 250, height: 60, fontSize: '1.2rem' }}
+            sx={mainButtonSx}
           >
             턴 종료
           </Button>
@@ -635,7 +687,7 @@ export function GameUI() {
           </Box>
       )}
 
-      <Modal open={modal.type !== 'NONE' || isGameOver} sx={{ pointerEvents: 'all' }}>
+      <Modal open={modal.type !== 'NONE' || shouldShowGameOver} sx={{ pointerEvents: 'all' }}>
         <Box sx={modalStyle}>
           {modal.type === 'BUY_PROPERTY' && (
             <BuyPropertyModalContent modal={modal} buyProperty={buyProperty} buyPropertyWithItems={buyPropertyWithItems} endTurn={endTurn} currentPlayer={currentPlayer} />
@@ -659,10 +711,17 @@ export function GameUI() {
             <ExpoModalContent modal={modal} selectExpoProperty={selectExpoProperty} />
           )}
            {modal.type === 'MANAGE_PROPERTY' && (
-            <ManagePropertyModalContent modal={modal} buildBuilding={buildBuilding} endTurn={endTurn} currentPlayer={currentPlayer} board={board} />
+            <ManagePropertyModalContent modal={modal} buildBuilding={buildBuilding} endTurn={endTurn} board={board} />
           )}
-          {isGameOver && (
-             <GameOverModalContent winner={winner} handleGoToLobby={handleGoToLobby} modalStyle={modalStyle} />
+          {shouldShowGameOver && (
+             <GameOverModalContent
+               winner={winner}
+               handleGoToLobby={handleGoToLobby}
+               modalStyle={modalStyle}
+               players={players}
+               board={board}
+               shouldShowGameOverByTurns={shouldShowGameOverByTurns}
+             />
           )}
         </Box>
       </Modal>

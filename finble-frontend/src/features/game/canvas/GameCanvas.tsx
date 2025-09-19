@@ -6,10 +6,11 @@ import { Board } from '../components/Board.tsx'
 import { Player } from '../components/Player.tsx'
 import { GameUI } from '../components/GameUI.tsx'
 import { Dice } from '../components/Dice.tsx'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { useWebSocketStore } from '../../../stores/useWebSocketStore'
 import TurnOrderSelection from '../components/TurnOrderSelection';
+import bgImage from '../../../assets/game_background.png';
 
 export default function GameCanvas() {
   const players = useGameStore((state) => state.players)
@@ -28,47 +29,75 @@ export default function GameCanvas() {
 
   const { gameId } = useParams<{ gameId: string }>();
 
+  // players가 객체/배열 어느 형태든 안전하게 변환
+  const playersArray = useMemo(
+    () => (Array.isArray(players) ? players : Object.values(players || {})),
+    [players]
+  );
 
   useEffect(() => {
     if (initialGameState && isWebSocketReady) {
+      const hasPlayersWithPosition = playersArray.some(p => p.position > 0);
+      const isGameInProgress = gamePhase !== "SELECTING_ORDER" && gamePhase !== "WAITING_FOR_ROLL" && playersArray.length > 0;
 
-        // 추가 체크: 게임이 이미 진행 중이면 초기화하지 않음
-        const hasPlayersWithPosition = players.some(p => p.position > 0);
-        const isGameInProgress = gamePhase !== "SELECTING_ORDER" && gamePhase !== "WAITING_FOR_ROLL" && players.length > 0;
-
-        if (gameInitialized || hasPlayersWithPosition || isGameInProgress) {
-          setInitialGameState(null); // Clear the state without calling initializeGame
-        } else {
-          initializeGame(initialGameState);
-          setGameInitialized(true); // Mark as initialized globally
-          setInitialGameState(null); // Clear the state after using it
-        }
+      if (gameInitialized || hasPlayersWithPosition || isGameInProgress) {
+        setInitialGameState(null);
+      } else {
+        initializeGame(initialGameState);
+        setGameInitialized(true);
+        setInitialGameState(null);
+      }
     }
-  }, [initialGameState, isWebSocketReady, initializeGame, setInitialGameState, gameInitialized, setGameInitialized]);
+  }, [
+    initialGameState, isWebSocketReady, initializeGame, setInitialGameState,
+    gameInitialized, setGameInitialized, playersArray, gamePhase
+  ]);
 
   useEffect(() => {
-    if (gameId && isWebSocketReady) { // WebSocket이 준비되었을 때만 connect 호출
+    if (gameId && isWebSocketReady) {
       connect(gameId);
     }
     return () => {
       disconnect();
     };
-  }, [connect, disconnect, gameId, isWebSocketReady]); // isWebSocketReady를 의존성 배열에 추가
+  }, [connect, disconnect, gameId, isWebSocketReady]);
 
-
-  // Convert players object to array if needed
-  const playersArray = Array.isArray(players) ? players : Object.values(players || {});
-
-  if (playersArray.length === 0) {
-    return <div>Loading game...</div>; // 데이터가 로드될 때까지 로딩 상태를 표시
-  }
+  const isLoading = playersArray.length === 0;
 
   return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+    <div style={{
+      position: 'relative',
+      width: '100vw',
+      height: '100vh',
+      backgroundImage: `url(${bgImage})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      fontFamily: 'Galmuri14, sans-serif'
+    }}>
+      {/* 로딩 오버레이: 배경은 유지 */}
+      {isLoading && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.35)',
+          zIndex: 50, // UI 위로
+          backdropFilter: 'blur(2px)',
+          color: '#fff', fontSize: 20, fontWeight: 600
+        }}>
+          Loading game...
+        </div>
+      )}
+
       <TurnOrderSelection />
       <GameUI />
-      <Canvas camera={{ position: [0, 40, 50], fov: 50 }} shadows>
-        <Sky sunPosition={[100, 20, 100]} />
+
+      <Canvas
+        camera={{ position: [0, 40, 50], fov: 50 }}
+        shadows
+        gl={{ alpha: true }}
+        style={{ background: 'transparent' }}
+      >
         <ambientLight intensity={1.5} />
         <directionalLight
           position={[0, 10, 5]}
@@ -80,18 +109,15 @@ export default function GameCanvas() {
 
         <Physics>
           <group scale={1.2}>
-              <Board />
-              {playersArray.map((player) => (
-                <Player key={player.id} player={player} />
-              ))}
-              <Dice />
-            </group>
+            <Board />
+            {playersArray.map((player) => (
+              <Player key={player.id} player={player} />
+            ))}
+            <Dice />
+          </group>
         </Physics>
 
-        <OrbitControls 
-          target={[0, 0, 0]}
-          makeDefault
-        />
+        <OrbitControls target={[0, 0, 0]} makeDefault />
       </Canvas>
     </div>
   )
