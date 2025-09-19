@@ -94,10 +94,37 @@ export const createWebSocketHandlers = (
       console.log("📥 [WEBSOCKET] USE_DICE received:", message);
       const { payload } = message;
 
-      const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn } = payload;
+      const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn, userName, updatedAsset } = payload;
 
-      set(() => {
+      console.log("💰 [USE_DICE] 서버에서 받은 업데이트된 자산:", {
+        userName,
+        updatedAsset,
+        economicHistoryApplied: "서버에서 이미 경제역사 효과 적용됨"
+      });
+
+      set((state) => {
+        // 서버에서 업데이트된 자산 정보를 플레이어에게 적용
+        const updatedPlayers = state.players.map(player => {
+          if (player.name === userName && updatedAsset) {
+            console.log("💰 [USE_DICE] 플레이어 자산 업데이트:", {
+              playerName: player.name,
+              previousMoney: player.money,
+              newMoney: updatedAsset.money,
+              moneyChange: updatedAsset.money - player.money,
+              properties: updatedAsset.lands
+            });
+
+            return {
+              ...player,
+              money: updatedAsset.money, // 서버에서 경제역사 효과가 적용된 머니
+              properties: updatedAsset.lands || player.properties
+            };
+          }
+          return player;
+        });
+
         return {
+          players: updatedPlayers,
           dice: [diceNum1, diceNum2],
           serverDiceNum: diceNumSum,
           serverCurrentPosition: currentPosition,
@@ -238,6 +265,10 @@ export const createWebSocketHandlers = (
             if (newPosition !== undefined && newPosition !== null) {
               console.log("🎲 [MODAL] 위치 변경으로 인한 타일 액션 처리");
               get().handleTileAction();
+            } else {
+              // 위치 변경이 없으면 턴 종료
+              console.log("🎲 [MODAL] 찬스카드 처리 완료, 턴 종료");
+              get().endTurn();
             }
           }
         };
@@ -263,6 +294,52 @@ export const createWebSocketHandlers = (
 
     subscribeToTopic("DRAW_CARD", handleChanceCard);
     subscribeToTopic("CHANCE_CARD", handleChanceCard);
+
+    // 경제역사 업데이트 구독
+    subscribeToTopic("ECONOMIC_HISTORY_UPDATE", (message) => {
+      console.log("🏛️ [ECONOMIC_HISTORY] 경제역사 업데이트:", message);
+      const { payload } = message;
+
+      if (payload) {
+        const economicHistory = {
+          periodName: payload.periodName,
+          effectName: payload.effectName,
+          description: payload.description,
+          isBoom: payload.isBoom,
+          fullName: payload.fullName,
+          salaryMultiplier: payload.salaryMultiplier,
+          tollMultiplier: payload.tollMultiplier,
+          propertyPriceMultiplier: payload.propertyPriceMultiplier,
+          buildingCostMultiplier: payload.buildingCostMultiplier,
+          chanceCardBonusMultiplier: payload.isBoom ? 1.2 : 0.8, // 호황시 보너스 20% 증가, 불황시 20% 감소
+          chanceCardPenaltyMultiplier: payload.isBoom ? 0.8 : 1.2, // 호황시 페널티 20% 감소, 불황시 20% 증가
+          remainingTurns: payload.remainingTurns
+        };
+
+        console.log("🏛️ [ECONOMIC_HISTORY] 새로운 경제역사 적용:", economicHistory);
+        console.log("📊 [ECONOMIC_HISTORY] 적용될 배수들:", {
+          salaryMultiplier: economicHistory.salaryMultiplier,
+          tollMultiplier: economicHistory.tollMultiplier,
+          propertyPriceMultiplier: economicHistory.propertyPriceMultiplier,
+          buildingCostMultiplier: economicHistory.buildingCostMultiplier,
+          chanceCardBonusMultiplier: economicHistory.chanceCardBonusMultiplier,
+          chanceCardPenaltyMultiplier: economicHistory.chanceCardPenaltyMultiplier
+        });
+
+        set({ economicHistory });
+
+        // 경제역사 변경 알림 모달 표시 (선택사항)
+        if (payload.periodName && payload.effectName) {
+          set({
+            modal: {
+              type: "INFO" as const,
+              text: `📈 ${economicHistory.fullName}\n\n${payload.description}\n\n남은 턴: ${payload.remainingTurns}턴`,
+              onConfirm: () => set({ modal: { type: "NONE" as const } })
+            }
+          });
+        }
+      }
+    });
 
     // CONSTRUCT_BUILDING 메시지 처리
     subscribeToTopic("CONSTRUCT_BUILDING", (message) => {

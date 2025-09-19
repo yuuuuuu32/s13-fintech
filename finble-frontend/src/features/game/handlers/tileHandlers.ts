@@ -12,7 +12,19 @@ export const handleCityCompanyTile = (
   const owner = players.find((p) =>
     p.properties.includes(currentPlayer.position)
   );
-  const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
+  const currentUserId = useUserStore.getState().userInfo?.userId;
+  const isMyTurn = currentPlayer.id === currentUserId;
+
+  console.log("🎮 [CITY/COMPANY] 턴 체크:", {
+    currentPlayerId: currentPlayer.id,
+    currentPlayerName: currentPlayer.name,
+    currentUserId: currentUserId,
+    isMyTurn: isMyTurn,
+    tileType: currentTile?.type,
+    tileName: currentTile?.name,
+    hasOwner: !!owner,
+    ownerName: owner?.name
+  });
 
   if (!owner) {
     const baseLandPrice = (currentTile as any).landPrice ?? currentTile.price ?? 0;
@@ -102,7 +114,17 @@ export const handleChanceTile = (
   currentPlayer: Player,
   chanceCards: { text: string; action: (player: Player) => Player }[]
 ) => {
-  const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
+  const currentUserId = useUserStore.getState().userInfo?.userId;
+  const isMyTurn = currentPlayer.id === currentUserId;
+
+  console.log("🎲 [CHANCE] 턴 체크:", {
+    currentPlayerId: currentPlayer.id,
+    currentPlayerName: currentPlayer.name,
+    currentUserId: currentUserId,
+    isMyTurn: isMyTurn,
+    tileType: currentTile?.type,
+    tileName: currentTile?.name
+  });
   const randomCard =
     chanceCards[Math.floor(Math.random() * chanceCards.length)];
 
@@ -146,7 +168,17 @@ export const handleSpecialTile = (
   board: TileData[],
   send?: (destination: string, body: Record<string, unknown>) => void
 ) => {
-  const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
+  const currentUserId = useUserStore.getState().userInfo?.userId;
+  const isMyTurn = currentPlayer.id === currentUserId;
+
+  console.log("🏛️ [SPECIAL] 턴 체크:", {
+    currentPlayerId: currentPlayer.id,
+    currentPlayerName: currentPlayer.name,
+    currentUserId: currentUserId,
+    isMyTurn: isMyTurn,
+    tileType: currentTile?.type,
+    tileName: currentTile?.name
+  });
 
   switch (currentTile.type) {
     case "JAIL":

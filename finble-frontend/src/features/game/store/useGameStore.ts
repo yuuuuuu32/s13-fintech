@@ -39,6 +39,7 @@ export const useGameStore = create<GameState>()((set, get) => {
     serverDiceNum: null,
     serverCurrentPosition: null,
     isDiceRolled: false,
+    economicHistory: null,
 
     // 웹소켓 관련 메서드
     connect: websocketHandlers.connect,
@@ -91,6 +92,33 @@ export const useGameStore = create<GameState>()((set, get) => {
         tileIndex,
         toll
       );
+    },
+
+    // 경제역사 배수 적용 함수
+    applyEconomicMultiplier: (baseValue: number, multiplierType: keyof Pick<import("../types/gameTypes.ts").EconomicHistory, 'salaryMultiplier' | 'tollMultiplier' | 'propertyPriceMultiplier' | 'buildingCostMultiplier' | 'chanceCardBonusMultiplier' | 'chanceCardPenaltyMultiplier'>) => {
+      const economicHistory = get().economicHistory;
+      if (!economicHistory) {
+        console.log("⚠️ [ECONOMIC_MULTIPLIER] 경제역사 정보 없음, 기본값 사용:", {
+          baseValue,
+          multiplierType,
+          result: baseValue
+        });
+        return baseValue; // 경제역사 정보가 없으면 기본값 반환
+      }
+
+      const multiplier = economicHistory[multiplierType];
+      const result = Math.round(baseValue * multiplier);
+
+      console.log("📊 [ECONOMIC_MULTIPLIER] 경제역사 배수 적용:", {
+        baseValue,
+        multiplierType,
+        multiplier,
+        result,
+        economicPeriod: economicHistory.fullName,
+        isBoom: economicHistory.isBoom
+      });
+
+      return result;
     },
   };
 });

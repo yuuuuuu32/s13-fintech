@@ -111,18 +111,15 @@ export const createGameLogicHandlers = (
   },
 
   movePlayer: (diceValues: [number, number]) => {
-    const { players, currentPlayerIndex, board, applyEconomicMultiplier } = get();
+    const { players, currentPlayerIndex, board } = get();
     const currentPlayer = players[currentPlayerIndex];
     const diceSum = diceValues[0] + diceValues[1];
 
     const newPosition = currentPlayer.position + diceSum;
-    let updatedMoney = currentPlayer.money;
     let lapCount = currentPlayer.lapCount;
 
+    // 시작점 통과 시 lapCount만 증가 (월급은 서버에서 이미 처리됨)
     if (newPosition >= board.length) {
-      const baseSalary = 200000;
-      const adjustedSalary = applyEconomicMultiplier(baseSalary, 'salaryMultiplier');
-      updatedMoney += adjustedSalary;
       lapCount += 1;
     }
 
@@ -131,9 +128,18 @@ export const createGameLogicHandlers = (
     updatedPlayers[currentPlayerIndex] = {
       ...currentPlayer,
       position: finalPosition,
-      money: updatedMoney,
       lapCount,
+      // money는 서버에서 업데이트된 값을 사용 (월급 포함)
     };
+
+    console.log("🏃 [MOVE_PLAYER] 클라이언트 이동 처리:", {
+      currentPosition: currentPlayer.position,
+      diceSum,
+      newPosition,
+      finalPosition,
+      lapCountUpdated: lapCount,
+      note: "월급은 서버에서 이미 처리됨"
+    });
 
     set({
       players: updatedPlayers,
@@ -166,8 +172,9 @@ export const createGameLogicHandlers = (
 
       case "chance":
       case "CHANCE":
-        // 찬스카드는 서버에서 처리되므로 별도 액션 없음
-        get().endTurn();
+        // 찬스카드는 서버에서 처리되며, DRAW_CARD 메시지를 기다림
+        console.log("🎲 [CHANCE] 찬스 타일 도착, 서버 응답 대기 중");
+        set({ gamePhase: "TILE_ACTION" });
         break;
 
       case "special":
