@@ -454,13 +454,21 @@ export function GameUI() {
     color: 'black',
     borderRadius: 2,
     textAlign: 'center' as const,
+    fontFamily: 'Galmuri14, sans-serif',
+  };
+
+  const mainButtonSx = {
+    width: 250,
+    height: 60,
+    fontSize: '1.2rem',
+    fontFamily: 'Galmuri14'
   };
 
   return (
-    <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', color: 'white', fontFamily: 'Arial, sans-serif', zIndex: 999 }}>
+    <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', color: 'white', zIndex: 999 }}>
       <Box sx={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', p: '10px 20px', bgcolor: 'rgba(0,0,0,0.7)', borderRadius: '10px' }}>
-        <Typography variant="h5" fontWeight="bold">{currentTurn} / {totalTurns} 턴</Typography>
-        {isMyTurn && timeLeft > 5 && <Typography variant="h6">남은 시간: {timeLeft}초</Typography>}
+        <Typography variant="h5" fontWeight="bold" sx={{ fontFamily: 'Galmuri14' }}>{currentTurn} / {totalTurns} 턴</Typography>
+        {isMyTurn && timeLeft > 5 && <Typography variant="h6" sx={{ fontFamily: 'Galmuri14' }}>남은 시간: {timeLeft}초</Typography>}
       </Box>
 
       {/* Player Cards in Corner Positions */}
@@ -514,19 +522,19 @@ export function GameUI() {
                     boxShadow: '0 0 4px rgba(0,0,0,0.5)'
                   }}
                 />
-                <Typography variant="subtitle1" component="div" fontWeight="bold" sx={{ fontSize: '0.9rem' }}>
+                <Typography variant="subtitle1" component="div" fontWeight="bold" sx={{ fontSize: '0.9rem', fontFamily: 'Galmuri14' }}>
                   {player.name} {isMyPlayer ? '(나)' : ''}
                   {player.money < 0 && <span style={{ color: '#ff6b6b' }}> (파산)</span>}
                   {player.isInJail && <span style={{ color: '#ffa726' }}> 🔒</span>}
                 </Typography>
               </Box>
-              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2, fontFamily: 'Galmuri14' }}>
                 💰 {player.money.toLocaleString()}원
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2, fontFamily: 'Galmuri14' }}>
                 📊 총 {totalAssets.toLocaleString()}원
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2, fontFamily: 'Galmuri14' }}>
                 🏘️ {player.properties.length}개 도시
               </Typography>
               {index === currentPlayerIndex && !isGameOver && (
@@ -558,7 +566,7 @@ export function GameUI() {
           onMouseUp={handleChargeEnd}
           onMouseLeave={handleChargeEnd}
           disabled={gamePhase !== 'WAITING_FOR_ROLL' || !isMyTurn}
-          sx={{ width: 250, height: 60, fontSize: '1.2rem' }}
+          sx={mainButtonSx}
         >
           {currentPlayer?.isInJail ? '감옥...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
         </Button>
@@ -569,7 +577,7 @@ export function GameUI() {
             color="primary"
             size="large"
             onClick={endTurn}
-            sx={{ width: 250, height: 60, fontSize: '1.2rem' }}
+            sx={mainButtonSx}
           >
             턴 종료
           </Button>

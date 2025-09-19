@@ -259,10 +259,7 @@ export const createPlayerActions = (
           modal: {
             type: "INFO" as const,
             text: `감옥 탈출까지 ${newJailTurns}턴 남았습니다.`,
-            onConfirm: () => {
-              set({ modal: { type: "NONE" as const } });
-              get().endTurn();
-            },
+            onConfirm: () => set({ modal: { type: "NONE" as const } }),
           },
         };
       }
@@ -386,7 +383,7 @@ export const createPlayerActions = (
   buildBuilding: (tileIndex: number) => {
     // Optimistic update
     set((state) => {
-      const { players, currentPlayerIndex, board, applyEconomicMultiplier } = state;
+      const { players, currentPlayerIndex, board } = state;
       const currentPlayer = players[currentPlayerIndex];
       const tile = board[tileIndex];
 
@@ -400,9 +397,7 @@ export const createPlayerActions = (
         };
       }
 
-      const adjustedBuildingPrice = applyEconomicMultiplier(tile.buildingPrice, 'buildingCostMultiplier');
-
-      if (currentPlayer.money < adjustedBuildingPrice) {
+      if (currentPlayer.money < tile.buildingPrice) {
         return {
           modal: {
             type: "INFO" as const,
@@ -427,7 +422,7 @@ export const createPlayerActions = (
       const updatedPlayers = [...players];
       updatedPlayers[currentPlayerIndex] = {
         ...currentPlayer,
-        money: currentPlayer.money - adjustedBuildingPrice,
+        money: currentPlayer.money - tile.buildingPrice,
       };
 
       const newBoard = board.map((t, index) => {

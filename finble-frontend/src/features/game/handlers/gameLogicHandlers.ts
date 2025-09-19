@@ -120,6 +120,7 @@ export const createGameLogicHandlers = (
 
     // 시작점 통과 시 lapCount만 증가 (월급은 서버에서 이미 처리됨)
     if (newPosition >= board.length) {
+      updatedMoney += 200000;
       lapCount += 1;
     }
 

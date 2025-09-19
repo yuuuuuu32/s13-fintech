@@ -31,9 +31,7 @@ export const handleCityCompanyTile = (
     const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
     if (currentPlayer.money >= adjustedLandPrice) {
       if (isMyTurn) {
-        // 조정된 가격으로 모달 표시
-        const adjustedTile = { ...currentTile, price: adjustedLandPrice };
-        set({ modal: { type: "BUY_PROPERTY", tile: adjustedTile } });
+        set({ modal: { type: "BUY_PROPERTY", tile: currentTile } });
       } else {
         // 다른 플레이어의 턴: 모달 표시하지 않음
         set({ modal: { type: "NONE" as const } });

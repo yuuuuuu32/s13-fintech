@@ -4,6 +4,7 @@ import { BaseTile } from './tiles/BaseTile';
 import { NormalTile } from './tiles/NormalTile';
 import { ChanceTile } from './tiles/ChanceTile';
 import { SpecialTile } from './tiles/SpecialTile';
+import '../styles/board-theme.css' 
 
 const getPosition = (index: number): [number, number, number] => {
   const TILE_WIDTH = 3;

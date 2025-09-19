@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.service.GameRedisService;
 import com.ssafy.BlueMarble.domain.game.service.MapService;
+import com.ssafy.BlueMarble.domain.game.service.VictoryService;
 import com.ssafy.BlueMarble.domain.user.service.UserService;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
@@ -26,6 +27,7 @@ public class BankruptcyService {
     private final UserService userService;
     private final ObjectMapper objectMapper;
     private final MapService mapService;
+    private final VictoryService victoryService;
 
     public void handleBankruptcy(CreateMapPayload state) {
         // roomId
@@ -42,8 +44,8 @@ public class BankruptcyService {
             }
         });
 
-        // 게임 종료 조건 체크 (모든 플레이어가 파산했는지)
-        checkGameEndCondition(roomId, state);
+        // 파산 후 승리 조건 체크 (VictoryService 통합 승리 조건 사용)
+        victoryService.checkAllVictoryConditions(roomId, state);
     }
 
     private void sendGameRetiredMessage(String roomId, String nickname) {
@@ -59,29 +61,6 @@ public class BankruptcyService {
         log.info("GAME_RETIRED 메시지 전송: roomId={}, nickname={}", roomId, nickname);
     }
 
-    private void checkGameEndCondition(String roomId, CreateMapPayload gameState) {
-        //TODO : 게임 종료 로직 실행
-
-        List<CreateMapPayload.PlayerState> activePlayers = gameState.getPlayers().values().stream()
-                .filter(CreateMapPayload.PlayerState::isActive)
-                .toList();
-
-        // 플레이어가 한명 남았거나 or 게임의 턴수는 최대 20까지
-        if (activePlayers.size() <= 1 || gameState.getGameTurn() > 20) {
-            String winnerName = activePlayers.isEmpty() ? "No Winner" : activePlayers.get(0).getNickname();
-            EndGamePayload payload = EndGamePayload.builder()
-                    .winnerName(winnerName)
-                    .build();
-
-            JsonNode payloadNode = objectMapper.valueToTree(payload);
-            MessageDto message = new MessageDto(MessageType.GAME_END, payloadNode);
-            sessionMessageService.sendMessageToRoom(roomId, message);
-
-            // 게임 종료 처리 (타이머 정리 포함)
-            mapService.endGame(roomId);
-
-            // 게임정보 모두 삭제
-            mapService.deleteGameMapState(roomId);
-        }
-    }
+    // 기존 checkGameEndCondition 메서드는 VictoryService로 통합되어 제거됨
+    // VictoryService.checkAllVictoryConditions()가 모든 승리 조건을 처리함
 }
