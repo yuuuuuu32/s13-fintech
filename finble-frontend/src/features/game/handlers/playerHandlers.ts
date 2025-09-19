@@ -234,10 +234,7 @@ export const createPlayerActions = (
           modal: {
             type: "INFO" as const,
             text: `감옥 탈출까지 ${newJailTurns}턴 남았습니다.`,
-            onConfirm: () => {
-              set({ modal: { type: "NONE" as const } });
-              get().endTurn();
-            },
+            onConfirm: () => set({ modal: { type: "NONE" as const } }),
           },
         };
       }
