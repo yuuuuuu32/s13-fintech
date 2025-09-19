@@ -4,6 +4,7 @@ interface ChanceTileProps {
   tile: TileData;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ChanceTile({ tile }: ChanceTileProps) {
   const TILE_WIDTH = 4;
   const TILE_DEPTH = 6;

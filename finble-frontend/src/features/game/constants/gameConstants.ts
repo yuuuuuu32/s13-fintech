@@ -1,4 +1,3 @@
-import type { Player } from "../types/gameTypes.ts";
 
 export const BAIL_AMOUNT = 500000;
 
