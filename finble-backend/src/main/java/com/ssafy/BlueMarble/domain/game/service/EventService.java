@@ -46,6 +46,7 @@ public class EventService {
     private final UserRedisService userRedisService;
     private final TimerService timerService;
     private final EconomicHistoryService economicHistoryService;
+    private final VictoryService victoryService;
     private final Random random = new Random();
 
     // 찬스 칸 위치 정의 (data.sql 참고)
@@ -420,6 +421,9 @@ public class EventService {
         JsonNode payloadNode = objectMapper.valueToTree(payload);
         MessageDto message = new MessageDto(MessageType.USE_DICE, payloadNode);
         sessionMessageService.sendMessageToRoom(roomId, message);
+
+        // 11. 주사위 사용 후 승리 조건 체크 (모든 승리 조건 통합 체크)
+        victoryService.checkAllVictoryConditions(roomId, gameState);
     }
 
     /**
