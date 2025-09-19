@@ -124,6 +124,8 @@ public class EventService {
                 .turns(remainingTurns)
                 .build();
 
+        log.info("payload={}", payload);
+
         JsonNode payloadNode = objectMapper.valueToTree(payload);
         MessageDto message = new MessageDto(MessageType.JAIL_EVENT, payloadNode);
         sessionMessageService.sendMessageToRoom(roomId, message);

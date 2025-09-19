@@ -1,5 +1,7 @@
 package com.ssafy.BlueMarble.global.common.game.Aspect;
 
+import com.ssafy.BlueMarble.domain.game.entity.GameState;
+import com.ssafy.BlueMarble.domain.game.service.VictoryService;
 import com.ssafy.BlueMarble.global.common.game.service.BankruptcyService;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import java.util.Map;
 public class BankruptcyCheckAspect {
 
     private final BankruptcyService bankruptcyService;
+    private final VictoryService victoryService;
 
     @After("execution(* com.ssafy.BlueMarble.domain.game.service.GameRedisService.saveGameMapState(..))")
     public void checkBankruptcyAfterSave(JoinPoint joinPoint) {
@@ -29,7 +32,7 @@ public class BankruptcyCheckAspect {
             log.debug("AOP 파산 & 종료조건 체크 시작: roomId={}", roomId);
 
             // 모든 플레이어의 자산 체크
-            if (state.getPlayers() != null) {
+            if (state.getGameState().equals(GameState.PLAYING)) {
                 for (Map.Entry<String, CreateMapPayload.PlayerState> entry : state.getPlayers().entrySet()) {
                     String userId = entry.getKey();
                     CreateMapPayload.PlayerState player = entry.getValue();
@@ -42,6 +45,8 @@ public class BankruptcyCheckAspect {
                         bankruptcyService.handleBankruptcy(state);
                     }
                 }
+                // 파산 후 승리 조건 체크 (VictoryService 통합 승리 조건 사용)
+                victoryService.checkAllVictoryConditions(roomId, state);
             }
 
         } catch (Exception e) {

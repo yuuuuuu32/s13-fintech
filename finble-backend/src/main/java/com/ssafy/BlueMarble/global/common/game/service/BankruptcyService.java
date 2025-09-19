@@ -26,8 +26,6 @@ public class BankruptcyService {
     private final SessionMessageService sessionMessageService;
     private final UserService userService;
     private final ObjectMapper objectMapper;
-    private final MapService mapService;
-    private final VictoryService victoryService;
 
     public void handleBankruptcy(CreateMapPayload state) {
         // roomId
@@ -44,8 +42,6 @@ public class BankruptcyService {
             }
         });
 
-        // 파산 후 승리 조건 체크 (VictoryService 통합 승리 조건 사용)
-        victoryService.checkAllVictoryConditions(roomId, state);
     }
 
     private void sendGameRetiredMessage(String roomId, String nickname) {
@@ -60,7 +56,4 @@ public class BankruptcyService {
 
         log.info("GAME_RETIRED 메시지 전송: roomId={}, nickname={}", roomId, nickname);
     }
-
-    // 기존 checkGameEndCondition 메서드는 VictoryService로 통합되어 제거됨
-    // VictoryService.checkAllVictoryConditions()가 모든 승리 조건을 처리함
 }
