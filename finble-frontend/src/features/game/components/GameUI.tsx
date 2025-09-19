@@ -295,9 +295,56 @@ const ManagePropertyModalContent = ({ modal, buildBuilding, endTurn, currentPlay
   </>
 );
 
+// BuySpecialLandModalContent
+const BuySpecialLandModalContent = ({ modal, buySpecialLand, endTurn, currentPlayer }) => {
+  const tile = modal.tile;
+  const landPrice = modal.landPrice || (tile as any)?.landPrice || tile?.price || 0;
+  const canAfford = currentPlayer?.money >= landPrice;
+
+  const handlePurchase = () => {
+    buySpecialLand(tile, landPrice);
+    endTurn();
+  };
+
+  return (
+    <>
+      <Typography variant="h5" component="h2" fontWeight="bold">{tile?.name}</Typography>
+      <Typography sx={{ mt: 2, mb: 3 }} color="primary">
+        🏛️ SSAFY 특별 땅
+      </Typography>
+      <Typography sx={{ mb: 2 }}>
+        이 땅은 건물 건설이 불가능하며, 땅만 구매할 수 있습니다.
+      </Typography>
+
+      <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+        <Typography variant="h6">
+          구매 가격: {landPrice.toLocaleString()}원
+        </Typography>
+        <Typography variant="body2" color={canAfford ? 'success.main' : 'error.main'}>
+          보유 현금: {currentPlayer?.money.toLocaleString()}원
+          {!canAfford && ' (현금 부족)'}
+        </Typography>
+      </Box>
+
+      <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+        <Button
+          variant="contained"
+          onClick={handlePurchase}
+          disabled={!canAfford}
+        >
+          구매 ({landPrice.toLocaleString()}원)
+        </Button>
+        <Button variant="outlined" onClick={endTurn}>
+          구매하지 않음
+        </Button>
+      </Box>
+    </>
+  );
+};
+
 // GameOverModalContent
 const GameOverModalContent = ({ winner, handleGoToLobby, modalStyle }) => ( // modalStyle added to props
-  <Box sx={modalStyle}> 
+  <Box sx={modalStyle}>
     <Typography variant="h4" component="h2">게임 종료!</Typography>
     <Typography sx={{ mt: 2, fontSize: '1.5rem' }}>
       {winner ? `${winner.name}님이 최종 승리했습니다!` : '승자 없이 게임이 종료되었습니다.'}
@@ -327,6 +374,7 @@ export function GameUI() {
   const selectExpoProperty = useGameStore(state => state.selectExpoProperty);
   const buildBuilding = useGameStore(state => state.buildBuilding);
   const cancelWorldTravel = useGameStore(state => state.cancelWorldTravel);
+  const buySpecialLand = useGameStore(state => state.buySpecialLand);
 
   const navigate = useNavigate();
 
@@ -591,6 +639,9 @@ export function GameUI() {
         <Box sx={modalStyle}>
           {modal.type === 'BUY_PROPERTY' && (
             <BuyPropertyModalContent modal={modal} buyProperty={buyProperty} buyPropertyWithItems={buyPropertyWithItems} endTurn={endTurn} currentPlayer={currentPlayer} />
+          )}
+          {modal.type === 'BUY_SPECIAL_LAND' && (
+            <BuySpecialLandModalContent modal={modal} buySpecialLand={buySpecialLand} endTurn={endTurn} currentPlayer={currentPlayer} />
           )}
           {modal.type === 'ACQUIRE_PROPERTY' && (
             <AcquirePropertyModalContent modal={modal} acquireProperty={acquireProperty} payToll={payToll} currentPlayer={currentPlayer} endTurn={endTurn} />

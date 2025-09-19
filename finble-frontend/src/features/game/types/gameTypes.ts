@@ -15,6 +15,7 @@ export type GamePhase =
 export type ModalType =
   | "NONE"
   | "BUY_PROPERTY"
+  | "BUY_SPECIAL_LAND"
   | "ACQUIRE_PROPERTY"
   | "CHANCE_CARD"
   | "INFO"

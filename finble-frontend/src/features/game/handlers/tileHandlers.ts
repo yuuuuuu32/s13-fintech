@@ -14,6 +14,17 @@ export const handleCityCompanyTile = (
   );
   const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
 
+  console.log("🏢 [NORMAL_TILE] Debug info:", {
+    position: currentPlayer.position,
+    tileName: currentTile?.name,
+    tileType: currentTile?.type,
+    hasOwner: !!owner,
+    ownerName: owner?.name,
+    isMyTurn,
+    playerMoney: currentPlayer.money,
+    landPrice: (currentTile as any).landPrice ?? currentTile.price ?? 0
+  });
+
   if (!owner) {
     const baseLandPrice = (currentTile as any).landPrice ?? currentTile.price ?? 0;
     const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
@@ -149,6 +160,16 @@ export const handleSpecialTile = (
   const isMyTurn = currentPlayer.id === useUserStore.getState().userInfo?.userId;
 
   switch (currentTile.type) {
+    case "SPECIAL":
+      // 스페셜 땅 처리 - 핸들러에 위임
+      if (isMyTurn) {
+        const { handleSpecialLandInteraction } = get();
+        handleSpecialLandInteraction(currentPlayer.position, currentTile);
+      } else {
+        set({ modal: { type: "NONE" as const } });
+      }
+      break;
+
     case "JAIL":
       set((state) => {
         const updatedPlayers = [...state.players];
