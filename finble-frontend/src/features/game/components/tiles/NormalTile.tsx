@@ -54,6 +54,7 @@ export function NormalTile({ tile, tileIndex }: NormalTileProps) {
           anchorY="middle"
           maxWidth={TILE_WIDTH - 0.8}
           textAlign="center"
+          font="/fonts/Galmuri14.ttf"
         >
           {infoText}
         </Text>
