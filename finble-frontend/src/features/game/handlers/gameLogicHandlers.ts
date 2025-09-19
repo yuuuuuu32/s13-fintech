@@ -111,7 +111,7 @@ export const createGameLogicHandlers = (
   },
 
   movePlayer: (diceValues: [number, number]) => {
-    const { players, currentPlayerIndex, board, applyEconomicMultiplier } = get();
+    const { players, currentPlayerIndex, board } = get();
     const currentPlayer = players[currentPlayerIndex];
     const diceSum = diceValues[0] + diceValues[1];
 
@@ -120,9 +120,7 @@ export const createGameLogicHandlers = (
     let lapCount = currentPlayer.lapCount;
 
     if (newPosition >= board.length) {
-      const baseSalary = 200000;
-      const adjustedSalary = applyEconomicMultiplier(baseSalary, 'salaryMultiplier');
-      updatedMoney += adjustedSalary;
+      updatedMoney += 200000;
       lapCount += 1;
     }
 

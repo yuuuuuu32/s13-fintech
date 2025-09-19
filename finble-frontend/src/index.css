@@ -1,3 +1,10 @@
+@font-face {
+  font-family: 'Galmuri14';
+  src: url('/fonts/Galmuri14.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
