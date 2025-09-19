@@ -4,6 +4,7 @@ import type { GameState, Player } from "../types/gameTypes.ts";
 import { createWebSocketHandlers } from "../handlers/websocketHandlers.ts";
 import { createGameLogicHandlers } from "../handlers/gameLogicHandlers.ts";
 import { createPlayerActions } from "../handlers/playerHandlers.ts";
+import { createSpecialLandHandlers } from "../handlers/specialLandHandlers.ts";
 import { handleInsufficientFundsForToll } from "../handlers/tileHandlers.ts";
 
 export const useGameStore = create<GameState>()((set, get) => {
@@ -15,6 +16,7 @@ export const useGameStore = create<GameState>()((set, get) => {
   const websocketHandlers = createWebSocketHandlers(wrappedSet, get);
   const gameLogicHandlers = createGameLogicHandlers(wrappedSet, get);
   const playerActions = createPlayerActions(wrappedSet, get);
+  const specialLandHandlers = createSpecialLandHandlers(wrappedSet, get);
 
   return {
     // 초기 상태
@@ -64,6 +66,19 @@ export const useGameStore = create<GameState>()((set, get) => {
     selectTravelDestination: playerActions.selectTravelDestination,
     cancelWorldTravel: playerActions.cancelWorldTravel,
     buildBuilding: playerActions.buildBuilding,
+
+    // 스페셜 땅 관련 메서드
+    isSpecialLand: specialLandHandlers.isSpecialLand,
+    buySpecialLand: specialLandHandlers.buySpecialLand,
+    paySpecialLandToll: specialLandHandlers.paySpecialLandToll,
+    checkSpecialLandMonopoly: specialLandHandlers.checkSpecialLandMonopoly,
+    handleSpecialLandInteraction: specialLandHandlers.handleSpecialLandInteraction,
+
+    // 경제 승수 적용 함수
+    applyEconomicMultiplier: (baseValue: number, multiplierType: string) => {
+      // 경제 승수가 구현되지 않았으므로 기본값 반환
+      return baseValue;
+    },
 
     // 기타 유틸리티 메서드
     handleInsufficientFundsForToll: (
