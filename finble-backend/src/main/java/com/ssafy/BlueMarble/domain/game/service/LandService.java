@@ -65,12 +65,9 @@ public class LandService {
 
         // 4.1 경제역사 효과를 적용한 실제 가격 계산
         int basePrice = targetCell.getToll();
+        // 새로운 시스템: 부동산 가격 직접 변경 없이 기본 가격 사용
         int actualPrice = basePrice;
-        if (gameState.getCurrentEconomicPeriod() != null) {
-            actualPrice = economicHistoryService.applyEconomicEffectToPropertyPrice(basePrice, gameState.getCurrentEconomicPeriod());
-            log.info("[TRADE] 경제역사 효과 적용: 기본가격={}, 적용가격={}, 시대={}",
-                    basePrice, actualPrice, gameState.getCurrentEconomicPeriod().getDisplayName());
-        }
+        log.info("[TRADE] 기본 가격 사용 (경제 효과는 플레이어 자산에 직접 적용): 가격={}", actualPrice);
 
         log.info("[TRADE] targetCell: cellNumber={}, ownerName(before)={}, baseToll={}, actualPrice={}, type={}",
                 targetCell.getCellNumber(), targetCell.getOwnerName(), targetCell.getToll(), actualPrice, targetCell.getType());
@@ -153,7 +150,7 @@ public class LandService {
         log.info("[TRADE] broadcast TRADE_LAND message sent to roomId={}", roomId);
         sessionMessageService.sendMessageToRoom(roomId, message);
 
-        // 10. 토지 거래 후 승리 조건 체크 (모든 승리 조건 통합 체크)
+        // 10. 부동산 거래 후 승리 조건 체크 (모든 승리 조건 통합 체크)
         victoryService.checkAllVictoryConditions(roomId, gameState);
     }
 
@@ -186,14 +183,10 @@ public class LandService {
             throw new  BusinessException(BusinessError.SPECIAL_CANNOT_BUILD);
         }
 
-        //3.0.1 경제역사 효과를 적용한 건설 비용 계산
+        //3.0.1 기본 건설 비용 계산 (새로운 시스템에서는 건설비용에 경제효과 직접 적용 안함)
         int baseBuildingCost = targetCell.getToll() * 10;
         int actualBuildingCost = baseBuildingCost;
-        if (gameState.getCurrentEconomicPeriod() != null) {
-            actualBuildingCost = economicHistoryService.applyEconomicEffectToBuildingCost(baseBuildingCost, gameState.getCurrentEconomicPeriod());
-            log.info("[CONSTRUCT] 경제역사 효과 적용: 기본건설비용={}, 적용건설비용={}, 시대={}",
-                    baseBuildingCost, actualBuildingCost, gameState.getCurrentEconomicPeriod().getDisplayName());
-        }
+        log.info("[CONSTRUCT] 기본 건설 비용 사용: 비용={}", actualBuildingCost);
 
         //3.1 건설 자금이 충분한지 (경제역사 효과 적용된 비용)
         if (actualBuildingCost > user.getMoney()) {

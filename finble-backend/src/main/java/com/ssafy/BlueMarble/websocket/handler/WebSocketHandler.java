@@ -13,13 +13,10 @@ import com.ssafy.BlueMarble.websocket.service.WebSocketCardService;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 
-import com.ssafy.BlueMarble.global.common.exception.BusinessError;
-import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.domain.game.dto.request.TradeLandRequest;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.UseCardPayload;
-import com.ssafy.BlueMarble.websocket.dto.payload.game.DrawCardPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.CreateRoomPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.EnterRoomPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.KickRoomPayload;
@@ -33,7 +30,6 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-import java.util.Map;
 
 
 /**
@@ -124,6 +120,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 roomService.enterRoom(session, enterRoomPayload);
                 break;
             case EXIT_ROOM:
+                roomService.exitRoom(session);
                 session.close();
                 break;
             case KICK:
@@ -177,8 +174,14 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
     //     roomId와 uid가 필요한 메시지 타입들을 체크하는 헬퍼 메서드
     private boolean needsRoomIdAndUserId(MessageType messageType) {
-//        return messageType == MessageType.NIGHT_VOTE ||
-        return true;
+        return messageType == MessageType.TRADE_LAND ||
+               messageType == MessageType.CONSTRUCT_BUILDING ||
+               messageType == MessageType.JAIL_EVENT ||
+               messageType == MessageType.WORLD_TRAVEL_EVENT ||
+               messageType == MessageType.USE_DICE ||
+               messageType == MessageType.USE_CARD ||
+               messageType == MessageType.ANGEL_DEFENSE ||
+               messageType == MessageType.TURN_SKIP;
     }
 
     private boolean needsRoomId(MessageType messageType) {

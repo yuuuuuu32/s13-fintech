@@ -38,10 +38,7 @@ public class EconomicHistoryService {
                 true,
                 1.6,  // 월급 60% 증가 (공업화로 임금 상승)
                 1.4,  // 통행료 40% 증가 (철도·운하 건설)
-                1.8,  // 부동산 가격 80% 증가 (도시화 가속)
-                0.8,  // 건물 건설 비용 20% 감소 (대량생산 시작)
-                1.0,
-                1.0
+                1.8   // 부동산 자산 80% 증가 (도시화 가속)
         ));
         modernEffects.put(false, new EconomicEffect( // 불황 - 장기불황
                 EconomicHistoryPeriod.MODERN,
@@ -50,10 +47,7 @@ public class EconomicHistoryService {
                 false,
                 0.6,  // 월급 40% 감소 (대량 해고)
                 0.7,  // 통행료 30% 감소 (무역 위축)
-                0.5,  // 부동산 가격 50% 감소 (자산가치 폭락)
-                1.2,  // 건물 건설 비용 20% 증가 (자재 부족)
-                1.0,
-                1.0
+                0.5   // 부동산 자산 50% 감소 (자산가치 폭락)
         ));
         effects.put("MODERN", modernEffects);
 
@@ -66,10 +60,7 @@ public class EconomicHistoryService {
                 true,
                 2.5,  // 월급 150% 증가 (대량생산 임금상승)
                 1.8,  // 통행료 80% 증가 (자동차·항공 발달)
-                3.0,  // 부동산 가격 200% 증가 (투기 열풍)
-                1.3,  // 건물 건설 비용 30% 증가 (고급 자재 수요)
-                1.0,
-                1.0
+                3.0   // 부동산 자산 200% 증가 (투기 열풍)
         ));
         contemporaryEffects.put(false, new EconomicEffect( // 불황 - 대공황
                 EconomicHistoryPeriod.CONTEMPORARY,
@@ -78,10 +69,7 @@ public class EconomicHistoryService {
                 false,
                 0.3,  // 월급 70% 감소 (25% 실업률)
                 0.4,  // 통행료 60% 감소 (경제활동 마비)
-                0.2,  // 부동산 가격 80% 감소 (자산가치 붕괴)
-                0.6,  // 건물 건설 비용 40% 감소 (공사 중단, 디플레이션)
-                1.0,
-                1.0
+                0.2   // 부동산 자산 80% 감소 (자산가치 붕괴)
         ));
         effects.put("CONTEMPORARY", contemporaryEffects);
 
@@ -94,10 +82,7 @@ public class EconomicHistoryService {
                 true,
                 2.0,  // 월급 100% 증가 (IT붐, 금융업 급성장)
                 1.3,  // 통행료 30% 증가 (글로벌 물류 확대)
-                2.2,  // 부동산 가격 120% 증가 (도시 집중화)
-                1.4,  // 건물 건설 비용 40% 증가 (첨단 건축 기술)
-                1.0,
-                1.0
+                2.2   // 부동산 자산 120% 증가 (도시 집중화)
         ));
         recentEffects.put(false, new EconomicEffect( // 불황 - 금융위기
                 EconomicHistoryPeriod.RECENT,
@@ -106,10 +91,7 @@ public class EconomicHistoryService {
                 false,
                 0.7,  // 월급 30% 감소 (대량 구조조정)
                 0.8,  // 통행료 20% 감소 (경기침체)
-                0.6,  // 부동산 가격 40% 감소 (서브프라임 모기지)
-                0.9,  // 건물 건설 비용 10% 감소 (건설업 침체)
-                1.0,
-                1.0
+                0.6   // 부동산 자산 40% 감소 (서브프라임 모기지)
         ));
         effects.put("RECENT", recentEffects);
 
@@ -122,10 +104,7 @@ public class EconomicHistoryService {
                 true,
                 3.0,  // 월급 200% 증가 (AI·바이오 고급인력)
                 0.5,  // 통행료 50% 감소 (자율주행, 효율화)
-                2.5,  // 부동산 가격 150% 증가 (메타버스·스마트시티)
-                0.6,  // 건물 건설 비용 40% 감소 (3D프린팅, 로봇건설)
-                1.0,
-                1.0
+                2.5   // 부동산 자산 150% 증가 (메타버스·스마트시티)
         ));
         futureEffects.put(false, new EconomicEffect( // 불황 - 기후위기
                 EconomicHistoryPeriod.FUTURE,
@@ -134,10 +113,7 @@ public class EconomicHistoryService {
                 false,
                 0.5,  // 월급 50% 감소 (에너지·식량 위기)
                 1.5,  // 통행료 50% 증가 (자원 부족, 운송비 급등)
-                0.4,  // 부동산 가격 60% 감소 (기후 재해 리스크)
-                1.8,  // 건물 건설 비용 80% 증가 (친환경 건축 의무화)
-                1.0,
-                1.0
+                0.4   // 부동산 자산 60% 감소 (기후 재해 리스크)
         ));
         effects.put("FUTURE", futureEffects);
 
@@ -194,62 +170,4 @@ public class EconomicHistoryService {
         return adjustedToll;
     }
 
-    /**
-     * 부동산 가격에 경제역사 효과 적용
-     */
-    public int applyEconomicEffectToPropertyPrice(int basePrice, EconomicHistoryPeriod period) {
-        EconomicEffect effect = getCurrentEffect(period);
-        int adjustedPrice = effect.applyPropertyPriceMultiplier(basePrice);
-
-        log.info("💼 [ECONOMIC_HISTORY] 부동산 가격에 효과 적용: period={}, basePrice={}, adjustedPrice={}, multiplier={}",
-                period.getDisplayName(), basePrice, adjustedPrice, effect.getPropertyPriceMultiplier());
-
-        return adjustedPrice;
-    }
-
-    /**
-     * 건물 건설 비용에 경제역사 효과 적용
-     */
-    public int applyEconomicEffectToBuildingCost(int baseCost, EconomicHistoryPeriod period) {
-        EconomicEffect effect = getCurrentEffect(period);
-        int adjustedCost = effect.applyBuildingCostMultiplier(baseCost);
-
-        log.info("💼 [ECONOMIC_HISTORY] 건물 건설 비용에 효과 적용: period={}, baseCost={}, adjustedCost={}, multiplier={}",
-                period.getDisplayName(), baseCost, adjustedCost, effect.getBuildingCostMultiplier());
-
-        return adjustedCost;
-    }
-
-    /**
-     * 찬스카드 보너스에 경제역사 효과 적용
-     */
-    public int applyEconomicEffectToChanceBonus(int baseAmount, EconomicHistoryPeriod period) {
-        EconomicEffect effect = getCurrentEffect(period);
-        int adjustedAmount = effect.applyChanceCardBonusMultiplier(baseAmount);
-
-        log.info("💼 [ECONOMIC_HISTORY] 찬스카드 보너스에 효과 적용: period={}, baseAmount={}, adjustedAmount={}, multiplier={}",
-                period.getDisplayName(), baseAmount, adjustedAmount, effect.getChanceCardBonusMultiplier());
-
-        return adjustedAmount;
-    }
-
-    /**
-     * 찬스카드 페널티에 경제역사 효과 적용
-     */
-    public int applyEconomicEffectToChancePenalty(int baseAmount, EconomicHistoryPeriod period) {
-        EconomicEffect effect = getCurrentEffect(period);
-        int adjustedAmount = effect.applyChanceCardPenaltyMultiplier(baseAmount);
-
-        log.info("💼 [ECONOMIC_HISTORY] 찬스카드 페널티에 효과 적용: period={}, baseAmount={}, adjustedAmount={}, multiplier={}",
-                period.getDisplayName(), baseAmount, adjustedAmount, effect.getChanceCardPenaltyMultiplier());
-
-        return adjustedAmount;
-    }
-
-    /**
-     * 현재 시대의 경제 효과 가져오기 (랜덤 생성)
-     */
-    private EconomicEffect getCurrentEffect(EconomicHistoryPeriod period) {
-        return generateRandomEconomicEffect(period);
-    }
 }

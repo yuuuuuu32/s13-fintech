@@ -280,23 +280,13 @@ public class EventService {
         EconomicHistoryPeriod currentPeriod = economicHistoryService.calculateCurrentPeriod(gameState.getGameTurn().intValue());
         boolean periodChanged = false;
 
-        // 경제 효과가 없거나 시대가 바뀌었으면 새로운 효과 생성
-        if (gameState.getCurrentEconomicEffect() == null ||
-            gameState.getCurrentEconomicPeriod() != currentPeriod) {
+        // 경제 시대 변경 시 WebSocket 메시지 전송 (GameState에 저장하지 않음)
+        EconomicEffect currentEffect = economicHistoryService.generateRandomEconomicEffect(currentPeriod);
 
-            EconomicEffect newEffect = economicHistoryService.generateRandomEconomicEffect(currentPeriod);
-            gameState.setCurrentEconomicPeriod(currentPeriod);
-            gameState.setCurrentEconomicEffect(newEffect);
-            periodChanged = true;
+        log.info("🏛️ [ECONOMIC_HISTORY] 현재 경제 시대: {}", currentEffect.getFullName());
 
-            // 경제역사 효과 업데이트를 Redis에 저장
-            gameRedisService.saveGameMapState(roomId, gameState);
-
-            log.info("🏛️ [ECONOMIC_HISTORY] 새로운 경제 시대 시작: {}", newEffect.getFullName());
-
-            // 경제 시대 변경 WebSocket 메시지 전송
-            sendEconomicHistoryUpdateMessage(roomId, newEffect, currentPeriod);
-        }
+        // 경제 시대 변경 WebSocket 메시지 전송
+        sendEconomicHistoryUpdateMessage(roomId, currentEffect, currentPeriod);
 
         // 2. 주사위 사용자 정보
         String userId = userRedisService.getUserIdByNickname(useDiceRequest.getUserName());
@@ -330,7 +320,7 @@ public class EventService {
         int salaryBonus = 0;
         if (newPosition < currentPosition) { // 시작점을 통과했는지 확인
             int baseSalary = 1000000; // 기본 월급
-            salaryBonus = economicHistoryService.applyEconomicEffectToSalary(baseSalary, gameState.getCurrentEconomicEffect());
+            salaryBonus = economicHistoryService.applyEconomicEffectToSalary(baseSalary, currentEffect);
             player.setMoney(player.getMoney() + salaryBonus);
         }
 
@@ -356,7 +346,7 @@ public class EventService {
                     // 다른 플레이어의 땅 - 통행료 지불 (경제역사 효과 적용)
                     landOwner = targetCell.getOwnerName();
                     int baseToll = targetCell.getToll();
-                    tollAmount = economicHistoryService.applyEconomicEffectToToll(baseToll, gameState.getCurrentEconomicEffect());
+                    tollAmount = economicHistoryService.applyEconomicEffectToToll(baseToll, currentEffect);
 
                     // 8. 통행료 지불
                     if (player.getMoney() >= tollAmount) {
@@ -441,8 +431,7 @@ public class EventService {
                 .fullName(effect.getFullName())
                 .salaryMultiplier(effect.getSalaryMultiplier())
                 .tollMultiplier(effect.getTollMultiplier())
-                .propertyPriceMultiplier(effect.getPropertyPriceMultiplier())
-                .buildingCostMultiplier(effect.getBuildingCostMultiplier())
+                .propertyAssetMultiplier(effect.getPropertyAssetMultiplier())
                 .remainingTurns(remainingTurns)
                 .build();
 
