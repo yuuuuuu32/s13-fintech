@@ -4,6 +4,7 @@ interface SpecialTileProps {
   tile: TileData;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function SpecialTile({ tile }: SpecialTileProps) {
   const TILE_WIDTH = 4;
   const TILE_DEPTH = 6;

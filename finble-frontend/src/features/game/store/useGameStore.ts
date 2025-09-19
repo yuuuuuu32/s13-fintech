@@ -9,12 +9,6 @@ import { handleInsufficientFundsForToll } from "../handlers/tileHandlers.ts";
 export const useGameStore = create<GameState>()((set, get) => {
   // Wrap set function to track player position changes
   const wrappedSet = (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => {
-    const currentState = get();
-    const newState = typeof partial === 'function' ? partial(currentState) : partial;
-    const timestamp = new Date().toISOString();
-
-
-
     return set(partial);
   };
 
@@ -97,27 +91,19 @@ export const useGameStore = create<GameState>()((set, get) => {
     // 경제역사 배수 적용 함수
     applyEconomicMultiplier: (baseValue: number, multiplierType: keyof Pick<import("../types/gameTypes.ts").EconomicHistory, 'salaryMultiplier' | 'tollMultiplier' | 'propertyPriceMultiplier' | 'buildingCostMultiplier' | 'chanceCardBonusMultiplier' | 'chanceCardPenaltyMultiplier'>) => {
       const economicHistory = get().economicHistory;
+
       if (!economicHistory) {
-        console.log("⚠️ [ECONOMIC_MULTIPLIER] 경제역사 정보 없음, 기본값 사용:", {
-          baseValue,
-          multiplierType,
-          result: baseValue
-        });
         return baseValue; // 경제역사 정보가 없으면 기본값 반환
       }
 
       const multiplier = economicHistory[multiplierType];
+
+      if (typeof multiplier !== 'number' || isNaN(multiplier)) {
+        console.error("❌ [ECONOMIC_MULTIPLIER] 잘못된 배수 값:", { multiplierType, multiplier });
+        return baseValue;
+      }
+
       const result = Math.round(baseValue * multiplier);
-
-      console.log("📊 [ECONOMIC_MULTIPLIER] 경제역사 배수 적용:", {
-        baseValue,
-        multiplierType,
-        multiplier,
-        result,
-        economicPeriod: economicHistory.fullName,
-        isBoom: economicHistory.isBoom
-      });
-
       return result;
     },
   };

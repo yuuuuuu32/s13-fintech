@@ -4,19 +4,19 @@ import { useUserStore } from "../../../stores/useUserStore.ts";
 import type { TileData } from "../data/boardData.ts";
 
 // Calculate total assets (money + property values + building values)
-const calculateTotalAssets = (player: any, board: TileData[]) => {
+const calculateTotalAssets = (player: { properties: number[]; money: number }, board: TileData[]) => {
   const propertyValue = player.properties.reduce((sum: number, index: number) => {
     const tile = board[index];
     if (!tile) return sum;
 
     // 서버 데이터 구조에 맞게 landPrice 사용
-    let value = (tile as any)?.landPrice || tile.price || 0;
+    let value = (tile as TileData & { landPrice?: number })?.landPrice || tile.price || 0;
 
     // 건물 가치 추가
     if (tile.buildings && tile.buildings.level > 0) {
-      const housePrice = (tile as any)?.housePrice || 0;
-      const buildingPrice = (tile as any)?.buildingPrice || 0;
-      const hotelPrice = (tile as any)?.hotelPrice || 0;
+      const housePrice = (tile as TileData & { housePrice?: number })?.housePrice || 0;
+      const buildingPrice = (tile as TileData & { buildingPrice?: number })?.buildingPrice || 0;
+      const hotelPrice = (tile as TileData & { hotelPrice?: number })?.hotelPrice || 0;
 
       switch (tile.buildings.level) {
         case 1: // 주택
@@ -47,7 +47,7 @@ export const createGameLogicHandlers = (
         const { serverCurrentPosition, players, currentPlayerIndex, board } = state;
         if (serverCurrentPosition === null) return {};
 
-        const currentPlayer = players[currentPlayerIndex];
+        // const currentPlayer = players[currentPlayerIndex];
         const finalPosition = Math.max(0, Math.min(serverCurrentPosition, board.length - 1));
 
 
@@ -157,6 +157,16 @@ export const createGameLogicHandlers = (
 
     const currentTile = board[currentPlayer.position];
 
+    console.log("🎯 [TILE_ACTION] 타일 액션 처리 시작:", {
+      playerName: currentPlayer.name,
+      position: currentPlayer.position,
+      tileName: currentTile?.name,
+      tileType: currentTile?.type,
+      isMyTurn,
+      gamePhase: "TILE_ACTION",
+      calledFrom: "찬스카드 이동 후 또는 일반 이동 후"
+    });
+
     if (currentPlayer.money < 0) {
       console.log("💸 [BANKRUPTCY] Player went bankrupt:", currentPlayer.name);
       get().checkGameOver();
@@ -193,8 +203,8 @@ export const createGameLogicHandlers = (
 
   endTurn: () => {
     const state = get();
-    const { gameId, send, players, currentPlayerIndex } = state;
-    const currentPlayer = players[currentPlayerIndex];
+    const { gameId, send, players } = state;
+    // const currentPlayer = players[currentPlayerIndex];
 
 
     // Log all player positions before turn end with detailed info
@@ -244,14 +254,6 @@ export const createGameLogicHandlers = (
     const { players, currentTurn, totalTurns, board } = get();
     const alivePlayers = players.filter((p) => p.money >= 0);
 
-    console.log("🏁 [GAME_OVER] checkGameOver called:", {
-      currentTurn,
-      totalTurns,
-      turnExceeded: currentTurn >= totalTurns,
-      alivePlayersCount: alivePlayers.length,
-      allPlayers: players.map(p => ({ id: p.id, name: p.name, money: p.money, assets: calculateTotalAssets(p, board) }))
-    });
-
     let winner = null;
     if (alivePlayers.length <= 1) {
       winner = alivePlayers[0] ?? null;
@@ -274,12 +276,6 @@ export const createGameLogicHandlers = (
     }
 
     if (winner || alivePlayers.length === 0 || currentTurn >= totalTurns) {
-      console.log("🏁 [GAME_OVER] Game ending:", {
-        reason: winner ? 'winner found' : alivePlayers.length === 0 ? 'no alive players' : 'turn limit reached',
-        winnerId: winner?.id,
-        winnerName: winner?.name
-      });
-
       set({
         gamePhase: "GAME_OVER",
         winnerId: winner?.id ?? null,

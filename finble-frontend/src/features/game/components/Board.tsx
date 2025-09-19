@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { RigidBody } from '@react-three/rapier';
 import { useGameStore } from '../store/useGameStore.ts';
 import { BaseTile } from './tiles/BaseTile';

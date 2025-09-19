@@ -1,5 +1,4 @@
-import type { GameState, Player } from "../types/gameTypes.ts";
-import type { TileData } from "../data/boardData.ts";
+import type { GameState } from "../types/gameTypes.ts";
 import { BuildingType } from "../data/boardData.ts";
 import { BAIL_AMOUNT } from "../constants/gameConstants.ts";
 import { handleInsufficientFundsForToll } from "./tileHandlers.ts";
@@ -22,7 +21,25 @@ export const createPlayerActions = (
           money: currentPlayer.money - modal.tile.price,
           properties: [...currentPlayer.properties, tileIndex],
         };
-        return { players: updatedPlayers };
+
+        // 보드에서 건물 초기화
+        const updatedBoard = [...board];
+        if (updatedBoard[tileIndex]) {
+          updatedBoard[tileIndex] = {
+            ...updatedBoard[tileIndex],
+            buildings: { level: 0 },
+          };
+
+          console.log("🏠 [SIMPLE_PURCHASE] 땅 구매 후 건물 초기화:", {
+            tileName: updatedBoard[tileIndex].name,
+            hasBuildings: !!updatedBoard[tileIndex].buildings
+          });
+        }
+
+        return {
+          players: updatedPlayers,
+          board: updatedBoard
+        };
       }
       return {
         modal: { type: "INFO" as const, text: "자산이 부족하여 구매할 수 없습니다." },
@@ -30,7 +47,7 @@ export const createPlayerActions = (
     });
   },
 
-  buyPropertyWithItems: (purchaseData: { selectedItems: any; totalCost: number; tile: any }) => {
+  buyPropertyWithItems: (purchaseData: { selectedItems: Record<string, boolean>; totalCost: number; tile: Record<string, unknown> }) => {
     const { gameId, send, players, currentPlayerIndex, board } = get();
     const currentPlayer = players[currentPlayerIndex];
 
@@ -64,11 +81,19 @@ export const createPlayerActions = (
       if (purchaseData.selectedItems.building) buildingLevel = 2;
       if (purchaseData.selectedItems.hotel) buildingLevel = 3;
 
-      if (updatedBoard[tileIndex] && buildingLevel > 0) {
+      // 땅을 구매했다면 항상 buildings 객체를 초기화
+      if (updatedBoard[tileIndex] && purchaseData.selectedItems.land) {
         updatedBoard[tileIndex] = {
           ...updatedBoard[tileIndex],
           buildings: { level: buildingLevel as 0 | 1 | 2 | 3 },
         };
+
+        console.log("🏠 [LAND_PURCHASE] 땅 구매 후 건물 초기화:", {
+          tileName: updatedBoard[tileIndex].name,
+          buildingLevel,
+          hasBuildings: !!updatedBoard[tileIndex].buildings,
+          selectedItems: purchaseData.selectedItems
+        });
       }
 
       return {
@@ -255,6 +280,14 @@ export const createPlayerActions = (
           isInJail: false,
           jailTurns: 0,
         };
+
+        console.log("💰 [BAIL] 보석금 지불 완료:", {
+          playerName: currentPlayer.name,
+          bailAmount: BAIL_AMOUNT,
+          remainingMoney: currentPlayer.money - BAIL_AMOUNT,
+          isInJail: false
+        });
+
         return {
           players: updatedPlayers,
           modal: { type: "NONE" as const },
@@ -264,6 +297,12 @@ export const createPlayerActions = (
         return { modal: { type: "INFO" as const, text: "보석금이 부족합니다." } };
       }
     });
+
+    // 보석금 지불 후 턴 종료
+    setTimeout(() => {
+      console.log("🔄 [BAIL] 보석금 지불 후 턴 종료");
+      get().endTurn();
+    }, 100);
   },
 
   selectExpoProperty: (propertyIndex: number) => {
@@ -294,6 +333,13 @@ export const createPlayerActions = (
     const { send, players, currentPlayerIndex } = get();
     const currentPlayer = players[currentPlayerIndex];
 
+    console.log("✈️ [WORLD_TRAVEL] 세계여행 목적지 선택:", {
+      playerName: currentPlayer.name,
+      currentPosition: currentPlayer.position,
+      destinationPosition: tileIndex,
+      willSendToServer: !!send
+    });
+
     // 백엔드에 세계여행 목적지 전송
     if (send) {
       send('/app/game/world-travel', {
@@ -306,21 +352,35 @@ export const createPlayerActions = (
       });
     }
 
-    set((state) => {
-      const { players, currentPlayerIndex } = state;
-      const updatedPlayers = [...players];
-      updatedPlayers[currentPlayerIndex] = {
-        ...updatedPlayers[currentPlayerIndex],
-        position: tileIndex,
-        isTraveling: false,
-      };
-      return {
-        players: updatedPlayers,
-        gamePhase: "PLAYER_MOVING" as const,
-        dice: [0, 0] as [number, number],
-        modal: { type: "NONE" as const },
-      };
+    // 서버 응답을 기다리는 동안 로딩 상태로 설정
+    set({
+      gamePhase: "TILE_ACTION" as const,
+      modal: {
+        type: "INFO" as const,
+        text: "세계여행 중입니다... 잠시만 기다려주세요.",
+      },
     });
+
+    console.log("✈️ [WORLD_TRAVEL] 서버 응답 대기 중...");
+
+    // 타임아웃 처리: 10초 후에도 서버 응답이 없으면 오류 처리
+    setTimeout(() => {
+      const currentState = get();
+      if (currentState.modal?.text === "세계여행 중입니다... 잠시만 기다려주세요.") {
+        console.error("⚠️ [WORLD_TRAVEL] 서버 응답 타임아웃");
+        set({
+          gamePhase: "WAITING_FOR_ROLL" as const,
+          modal: {
+            type: "INFO" as const,
+            text: "세계여행 중 오류가 발생했습니다. 다시 시도해주세요.",
+            onConfirm: () => {
+              set({ modal: { type: "NONE" as const } });
+              get().endTurn();
+            }
+          }
+        });
+      }
+    }, 10000);
   },
 
   buildBuilding: (tileIndex: number) => {
