@@ -71,7 +71,10 @@ export const handleCityCompanyTile = (
         modal: { type: "ACQUIRE_PROPERTY", tile: currentTile, acquireCost, toll },
       });
     } else {
-      // 다른 플레이어의 턴: 통행료 자동 지불
+      // 다른 플레이어의 턴: 통행료 자동 지불 (서버 동기화)
+      const { gameId, send } = get();
+
+      // 낙관적 업데이트
       set((state) => {
         const updatedPlayers = [...state.players];
         const currentPlayerIndex = state.currentPlayerIndex;
@@ -94,6 +97,19 @@ export const handleCityCompanyTile = (
           modal: { type: "NONE" as const }
         };
       });
+
+      // 서버에 동기화 메시지 전송
+      if (gameId && send) {
+        send(`/app/game/${gameId}/trade-land`, {
+          type: "TRADE_LAND",
+          payload: {
+            buyerName: currentPlayer.name,
+            landNum: currentPlayer.position,
+            isTollPayment: true,
+            tollAmount: toll
+          },
+        });
+      }
     }
   } else {
     // 자신의 땅에 도착한 경우
