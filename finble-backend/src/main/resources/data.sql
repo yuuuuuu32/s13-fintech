@@ -50,7 +50,7 @@ VALUES
 -- 게임 진행 시 EconomicHistoryService에서 시대별로 랜덤 선택됩니다.
 
 -- 📌 근대사 (18세기 후반 ~ 19세기 말) 효과들
-INSERT IGNORE INTO room_economic_effects (
+INSERT IGNORE INTO economic_effects (
     room_id, current_period, effect_name, description, is_boom,
     salary_multiplier, property_price_multiplier, building_cost_multiplier,
     game_turn, remaining_turns
