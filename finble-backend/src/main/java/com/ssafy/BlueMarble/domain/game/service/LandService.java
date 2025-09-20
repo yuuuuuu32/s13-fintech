@@ -65,12 +65,9 @@ public class LandService {
 
         // 4.1 경제역사 효과를 적용한 실제 가격 계산
         int basePrice = targetCell.getToll();
-        int actualPrice = basePrice;
-        if (gameState.getCurrentEconomicPeriod() != null) {
-            actualPrice = economicHistoryService.applyEconomicEffectToPropertyPrice(basePrice, gameState.getCurrentEconomicPeriod());
-            log.info("[TRADE] 경제역사 효과 적용: 기본가격={}, 적용가격={}, 시대={}",
-                    basePrice, actualPrice, gameState.getCurrentEconomicPeriod().getDisplayName());
-        }
+        int actualPrice = economicHistoryService.calculatePropertyPriceWithEffect(roomId, basePrice);
+        log.info("[TRADE] 경제역사 효과 적용: 기본가격={}, 적용가격={}",
+                basePrice, actualPrice);
 
         log.info("[TRADE] targetCell: cellNumber={}, ownerName(before)={}, baseToll={}, actualPrice={}, type={}",
                 targetCell.getCellNumber(), targetCell.getOwnerName(), targetCell.getToll(), actualPrice, targetCell.getType());
@@ -188,12 +185,9 @@ public class LandService {
 
         //3.0.1 경제역사 효과를 적용한 건설 비용 계산
         int baseBuildingCost = targetCell.getToll() * 10;
-        int actualBuildingCost = baseBuildingCost;
-        if (gameState.getCurrentEconomicPeriod() != null) {
-            actualBuildingCost = economicHistoryService.applyEconomicEffectToBuildingCost(baseBuildingCost, gameState.getCurrentEconomicPeriod());
-            log.info("[CONSTRUCT] 경제역사 효과 적용: 기본건설비용={}, 적용건설비용={}, 시대={}",
-                    baseBuildingCost, actualBuildingCost, gameState.getCurrentEconomicPeriod().getDisplayName());
-        }
+        int actualBuildingCost = economicHistoryService.calculateBuildingCostWithEffect(roomId, baseBuildingCost);
+        log.info("[CONSTRUCT] 경제역사 효과 적용: 기본건설비용={}, 적용건설비용={}",
+                baseBuildingCost, actualBuildingCost);
 
         //3.1 건설 자금이 충분한지 (경제역사 효과 적용된 비용)
         if (actualBuildingCost > user.getMoney()) {
