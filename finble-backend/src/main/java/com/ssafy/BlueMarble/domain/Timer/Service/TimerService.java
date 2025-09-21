@@ -6,7 +6,7 @@ import com.ssafy.BlueMarble.domain.Timer.dto.TurnInfoDto;
 import com.ssafy.BlueMarble.domain.game.service.GameRedisService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.domain.game.service.EconomicHistoryService;
-import com.ssafy.BlueMarble.domain.game.entity.EconomicEffect;
+import com.ssafy.BlueMarble.domain.game.entity.RoomEconomicState;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.EconomicHistoryPayload;
@@ -144,27 +144,37 @@ public class TimerService {
                 return;
             }
 
-//            // 🏛️ 1단계: 턴 시작 시 경제 효과 체크 및 적용
-//            String currentPeriod = economicHistoryService.calculateCurrentPeriod(gameState.getGameTurn().intValue());
-//            boolean economicEffectChanged = false;
-//
-//            // 경제 효과가 없거나 시대가 바뀌었으면 새로운 효과 생성
-//            if (gameState.getCurrentEconomicEffect() == null ||
-//                !currentPeriod.equals(gameState.getCurrentEconomicPeriod())) {
-//
-//                EconomicEffect newEffect = economicHistoryService.initializeRoomEconomicEffect(roomId, gameState.getGameTurn());
-//                gameState.setCurrentEconomicPeriod(currentPeriod);
-//                gameState.setCurrentEconomicEffect(newEffect);
-//                economicEffectChanged = true;
-//
-//                log.info("🏛️ [TIMER] 턴 시작 시 경제 효과 적용: roomId={}, effect={}", roomId, newEffect.getFullEffectName());
-//
-//                // 경제 효과를 타일과 플레이어에게 실제 적용
-//                economicHistoryService.applyAndSaveEconomicEffectsForAllPlayers(roomId, gameState);
-//
-//                // 경제 시대 변경 WebSocket 메시지 전송
-//                sendEconomicHistoryUpdateMessage(roomId, newEffect, currentPeriod);
-//            }
+            // 🏛️ 1단계: 턴 시작 시 경제 효과 체크 및 적용
+            boolean economicEffectChanged = false;
+
+            // 게임방의 경제 상태 확인 및 업데이트
+            RoomEconomicState roomState = economicHistoryService.getRoomEconomicState(roomId);
+            if (roomState == null) {
+                // 경제 상태가 없으면 새로 초기화
+                roomState = economicHistoryService.initializeRoomEconomicState(roomId, gameState.getGameTurn());
+                economicEffectChanged = true;
+                
+                log.info("🏛️ [TIMER] 턴 시작 시 경제 효과 초기화: roomId={}, effect={}", 
+                        roomId, roomState.getFullEffectName());
+            } else {
+                // 기존 상태에서 턴 업데이트 (시대 변경 체크 포함)
+                RoomEconomicState updatedState = economicHistoryService.updateRoomEconomicState(roomId, gameState.getGameTurn());
+                if (!updatedState.getCurrentTemplate().equals(roomState.getCurrentTemplate())) {
+                    economicEffectChanged = true;
+                    roomState = updatedState;
+                    
+                    log.info("🏛️ [TIMER] 턴 시작 시 경제 시대 변경: roomId={}, effect={}", 
+                            roomId, roomState.getFullEffectName());
+                }
+            }
+
+            // 경제 효과를 타일과 플레이어에게 실제 적용
+            economicHistoryService.applyAndSaveEconomicEffectsForAllPlayers(roomId, gameState);
+
+            // 경제 효과가 변경되었으면 WebSocket 메시지 전송
+            if (economicEffectChanged) {
+                sendEconomicHistoryUpdateMessage(roomId, roomState);
+            }
 
             // 게임 상태 저장 (경제 효과 적용 완료)
             gameRedisService.saveGameMapState(roomId, gameState);
@@ -179,8 +189,8 @@ public class TimerService {
             MessageDto message = new MessageDto(MessageType.GAME_STATE_CHANGE, payloadNode);
             sessionMessageService.sendMessageToRoom(roomId, message);
 
-//            log.info("턴 시작 알림 전송: roomId={}, player={}, economicChanged={}",
-//                    roomId, currentPlayer.getNickname(), economicEffectChanged);
+            log.info("턴 시작 알림 전송: roomId={}, player={}, economicChanged={}",
+                    roomId, currentPlayer.getNickname(), economicEffectChanged);
         } catch (Exception e) {
             log.error("턴 시작 알림 전송 실패: roomId={}", roomId, e);
         }
@@ -189,19 +199,19 @@ public class TimerService {
     /**
      * 경제역사 시대 변경 메시지 전송
      */
-    private void sendEconomicHistoryUpdateMessage(String roomId, EconomicEffect effect, String period) {
+    private void sendEconomicHistoryUpdateMessage(String roomId, RoomEconomicState roomState) {
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         int remainingTurns = economicHistoryService.getTurnsUntilNextPeriod(gameState.getGameTurn().intValue());
 
         EconomicHistoryPayload payload = EconomicHistoryPayload.builder()
-                .periodName(getPeriodDisplayName(period))
-                .effectName(effect.getEffectName())
-                .description(effect.getDescription())
-                .isBoom(effect.isBoom())
-                .fullName(effect.getFullEffectName())
-                .salaryMultiplier(effect.getSalaryMultiplier())
-                .propertyPriceMultiplier(effect.getPropertyPriceMultiplier())
-                .buildingCostMultiplier(effect.getBuildingCostMultiplier())
+                .periodName(roomState.getCurrentPeriodDisplayName())
+                .effectName(roomState.getEffectName())
+                .description(roomState.getDescription())
+                .isBoom(roomState.isBoom())
+                .fullName(roomState.getFullEffectName())
+                .salaryMultiplier(roomState.getSalaryMultiplier())
+                .propertyPriceMultiplier(roomState.getPropertyPriceMultiplier())
+                .buildingCostMultiplier(roomState.getBuildingCostMultiplier())
                 .remainingTurns(remainingTurns)
                 .build();
 
@@ -210,19 +220,7 @@ public class TimerService {
         sessionMessageService.sendMessageToRoom(roomId, message);
 
         log.info("🏛️ [TIMER] 경제 효과 WebSocket 메시지 전송: roomId={}, effect={}",
-                roomId, effect.getFullEffectName());
+                roomId, roomState.getFullEffectName());
     }
 
-    /**
-     * 경제 시대 표시명 반환
-     */
-    private String getPeriodDisplayName(String period) {
-        switch (period) {
-            case "MODERN": return "근대사";
-            case "CONTEMPORARY": return "근현대사";
-            case "RECENT": return "현대사";
-            case "FUTURE": return "미래";
-            default: return "알 수 없음";
-        }
-    }
 }

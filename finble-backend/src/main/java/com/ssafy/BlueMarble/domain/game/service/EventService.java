@@ -6,7 +6,7 @@ import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.NtsRequest;
-import com.ssafy.BlueMarble.domain.game.entity.EconomicEffect;
+import com.ssafy.BlueMarble.domain.game.entity.RoomEconomicState;
 import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.Timer.Service.TimerService;
@@ -278,9 +278,9 @@ public class EventService {
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
 
         // 1.1 경제역사 효과는 이미 TimerService에서 턴 시작 시 적용됨
+        RoomEconomicState roomState = economicHistoryService.getRoomEconomicState(roomId);
         log.info("🎲 [DICE] 경제 효과 이미 적용됨: roomId={}, currentEffect={}",
-                roomId, gameState.getCurrentEconomicEffect() != null ?
-                gameState.getCurrentEconomicEffect().getFullEffectName() : "없음");
+                roomId, roomState != null ? roomState.getFullEffectName() : "없음");
 
         // 2. 주사위 사용자 정보
         String userId = userRedisService.getUserIdByNickname(useDiceRequest.getUserName());
@@ -412,19 +412,19 @@ public class EventService {
     /**
      * 경제역사 시대 변경 메시지 전송
      */
-    private void sendEconomicHistoryUpdateMessage(String roomId, EconomicEffect effect, String period) {
+    private void sendEconomicHistoryUpdateMessage(String roomId, RoomEconomicState roomState) {
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         int remainingTurns = economicHistoryService.getTurnsUntilNextPeriod(gameState.getGameTurn().intValue());
 
         EconomicHistoryPayload payload = EconomicHistoryPayload.builder()
-                .periodName(getPeriodDisplayName(period))
-                .effectName(effect.getEffectName())
-                .description(effect.getDescription())
-                .isBoom(effect.isBoom())
-                .fullName(effect.getFullEffectName())
-                .salaryMultiplier(effect.getSalaryMultiplier())
-                .propertyPriceMultiplier(effect.getPropertyPriceMultiplier())
-                .buildingCostMultiplier(effect.getBuildingCostMultiplier())
+                .periodName(roomState.getCurrentPeriodDisplayName())
+                .effectName(roomState.getEffectName())
+                .description(roomState.getDescription())
+                .isBoom(roomState.isBoom())
+                .fullName(roomState.getFullEffectName())
+                .salaryMultiplier(roomState.getSalaryMultiplier())
+                .propertyPriceMultiplier(roomState.getPropertyPriceMultiplier())
+                .buildingCostMultiplier(roomState.getBuildingCostMultiplier())
                 .remainingTurns(remainingTurns)
                 .build();
 
@@ -433,7 +433,7 @@ public class EventService {
         sessionMessageService.sendMessageToRoom(roomId, message);
 
         log.info("🏛️ [ECONOMIC_HISTORY] WebSocket 메시지 전송: roomId={}, effect={}",
-                roomId, effect.getFullEffectName());
+                roomId, roomState.getFullEffectName());
     }
 
     /**

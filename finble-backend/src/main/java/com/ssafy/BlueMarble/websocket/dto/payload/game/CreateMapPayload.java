@@ -3,7 +3,6 @@ package com.ssafy.BlueMarble.websocket.dto.payload.game;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.ssafy.BlueMarble.domain.game.dto.GameMap;
 import com.ssafy.BlueMarble.domain.game.entity.GameState;
-import com.ssafy.BlueMarble.domain.game.entity.EconomicEffect;
 import lombok.Builder;
 import lombok.Data;
 
@@ -21,8 +20,7 @@ public class CreateMapPayload {
     private List<String> playerOrder;            // 플레이어 순서
     private Map<String , PlayerState> players;    // 플레이어별 상태
     private int currentPlayerIndex;               // 현재 플레이어 인덱스
-    private String currentEconomicPeriod; // 현재 경제역사 시대
-    private EconomicEffect currentEconomicEffect; // 현재 적용 중인 경제 효과 (호황/불황 포함)
+    private String currentEconomicPeriod; // 현재 경제역사 시대 (deprecated: RoomEconomicState로 대체됨)
     // private boolean angelCardInDeck;             // 천사카드가 덱에 있는지 여부 (비활성화됨)
 
     @Data
