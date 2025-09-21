@@ -24,7 +24,7 @@ public class EconomicHistoryService {
     /**
      * 게임방의 현재 경제 효과 템플릿 조회 또는 초기화
      */
-    public EconomicEffectTemplate getCurrentEconomicEffect(String roomId, Long gameTurn) {
+    public EconomicEffectTemplate getCurrentEconomicEffect(Long gameTurn) {
         EconomicEffectTemplate.EconomicPeriod currentPeriod = EconomicEffectTemplate.calculatePeriodFromTurn(gameTurn.intValue());
         boolean isBoom = random.nextBoolean();
         return EconomicEffectTemplate.getRandomTemplate(currentPeriod, isBoom);
@@ -34,7 +34,7 @@ public class EconomicHistoryService {
      * 게임방의 경제 효과가 반영된 가격들을 플레이어에게 적용
      */
     public void applyAndSaveEconomicEffectsForAllPlayers(String roomId, CreateMapPayload gameState) {
-        EconomicEffectTemplate currentEffect = getCurrentEconomicEffect(roomId, gameState.getGameTurn());
+        EconomicEffectTemplate currentEffect = getCurrentEconomicEffect(gameState.getGameTurn());
 
         // 모든 플레이어에게 경제 효과 실제 적용
         applyEconomicEffectsToAllPlayers(gameState, currentEffect);
@@ -47,24 +47,24 @@ public class EconomicHistoryService {
     /**
      * 특정 효과로 월급 계산
      */
-    public int calculateSalaryWithEffect(String roomId, int baseSalary) {
-        EconomicEffectTemplate currentEffect = getCurrentEconomicEffect(roomId, 0L); // gameTurn은 임시로 0 사용
+    public int calculateSalaryWithEffect(int baseSalary) {
+        EconomicEffectTemplate currentEffect = getCurrentEconomicEffect(0L); // gameTurn은 임시로 0 사용
         return currentEffect.applySalaryMultiplier(baseSalary);
     }
 
     /**
      * 특정 효과로 부동산 가격 계산
      */
-    public int calculatePropertyPriceWithEffect(String roomId, int basePrice) {
-        EconomicEffectTemplate currentEffect = getCurrentEconomicEffect(roomId, 0L); // gameTurn은 임시로 0 사용
+    public int calculatePropertyPriceWithEffect(int basePrice) {
+        EconomicEffectTemplate currentEffect = getCurrentEconomicEffect(0L); // gameTurn은 임시로 0 사용
         return currentEffect.applyPropertyPriceMultiplier(basePrice);
     }
 
     /**
      * 특정 효과로 건물 건설 비용 계산
      */
-    public int calculateBuildingCostWithEffect(String roomId, int baseCost) {
-        EconomicEffectTemplate currentEffect = getCurrentEconomicEffect(roomId, 0L); // gameTurn은 임시로 0 사용
+    public int calculateBuildingCostWithEffect(int baseCost) {
+        EconomicEffectTemplate currentEffect = getCurrentEconomicEffect(0L); // gameTurn은 임시로 0 사용
         return currentEffect.applyBuildingCostMultiplier(baseCost);
     }
 
