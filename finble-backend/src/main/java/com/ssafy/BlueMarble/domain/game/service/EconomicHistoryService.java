@@ -114,8 +114,8 @@ public class EconomicHistoryService {
         gameRedisService.saveAffectedPrices(roomId, roomState);
         gameRedisService.updatePlayerAffectedPrices(roomId, gameState, roomState);
 
-        // 변경된 게임 상태를 Redis에 저장
-        gameRedisService.saveGameMapState(roomId, gameState);
+        // 변경된 게임 상태를 Redis에 저장 (경제 효과 정보 포함)
+        gameRedisService.saveGameMapStateWithEconomicEffect(roomId, gameState, roomState);
 
         log.info("🎯 [ECONOMIC_EFFECT] 모든 플레이어에게 경제 효과 적용 완료: roomId={}, effect={}",
                 roomId, roomState.getFullEffectName());

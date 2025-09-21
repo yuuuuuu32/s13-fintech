@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.dto.GameMap;
 import com.ssafy.BlueMarble.domain.game.entity.GameState;
+import com.ssafy.BlueMarble.domain.game.entity.RoomEconomicState;
 import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.game.repository.TileRepository;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
@@ -37,6 +38,7 @@ public class MapService {
     private final UserRedisService userRedisService;
     private final RedisTemplate<String, String> redisTemplate;
     private final TimerService timerService;
+    private final EconomicHistoryService economicHistoryService;
 
     private static final int MAP_SIZE = 32;
     private static final Random random = new Random(System.nanoTime());
@@ -118,10 +120,16 @@ public class MapService {
                 // .angelCardInDeck(true) // 게임 시작 시 천사카드는 덱에 포함 (비활성화됨)
                 .build();
 
-        // Redis에 저장
-        gameRedisService.saveGameMapState(roomId, gameState);
+        // 게임 시작 시 경제 효과 초기화
+        RoomEconomicState roomState = economicHistoryService.initializeRoomEconomicState(roomId, 0L);
+        
+        // 경제 효과를 타일과 플레이어에게 실제 적용
+        economicHistoryService.applyAndSaveEconomicEffectsForAllPlayers(roomId, gameState);
+        
+        // Redis에 저장 (경제 효과 정보 포함)
+        gameRedisService.saveGameMapStateWithEconomicEffect(roomId, gameState, roomState);
 
-        // 웹소켓
+        // 웹소켓 (경제 효과가 적용된 맵 정보 전송)
         JsonNode mapState = objectMapper.valueToTree(gameState);
         MessageDto message = new MessageDto(MessageType.START_GAME_OBSERVE, mapState);
         sessionMessageService.sendMessageToRoom(roomId, message);

@@ -9,7 +9,6 @@ import com.ssafy.BlueMarble.domain.game.service.EconomicHistoryService;
 import com.ssafy.BlueMarble.domain.game.entity.RoomEconomicState;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
-import com.ssafy.BlueMarble.websocket.dto.payload.game.EconomicHistoryPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
 import lombok.RequiredArgsConstructor;
@@ -171,13 +170,18 @@ public class TimerService {
             // 경제 효과를 타일과 플레이어에게 실제 적용
             economicHistoryService.applyAndSaveEconomicEffectsForAllPlayers(roomId, gameState);
 
-            // 경제 효과가 변경되었으면 WebSocket 메시지 전송
-            if (economicEffectChanged) {
-                sendEconomicHistoryUpdateMessage(roomId, roomState);
-            }
-
             // 게임 상태 저장 (경제 효과 적용 완료)
-            gameRedisService.saveGameMapState(roomId, gameState);
+            gameRedisService.saveGameMapStateWithEconomicEffect(roomId, gameState, roomState);
+
+            // 경제 효과가 변경되었을 때만 전체 맵 정보 전송
+            if (economicEffectChanged) {
+                JsonNode mapState = objectMapper.valueToTree(gameState);
+                MessageDto mapMessage = new MessageDto(MessageType.START_GAME_OBSERVE, mapState);
+                sessionMessageService.sendMessageToRoom(roomId, mapMessage);
+                
+                log.info("🏛️ [TIMER] 경제 효과 변경으로 전체 맵 정보 전송: roomId={}, effect={}",
+                        roomId, roomState.getFullEffectName());
+            }
 
             TurnInfoDto payload = TurnInfoDto.builder()
                     .roomId(roomId)
@@ -196,31 +200,5 @@ public class TimerService {
         }
     }
 
-    /**
-     * 경제역사 시대 변경 메시지 전송
-     */
-    private void sendEconomicHistoryUpdateMessage(String roomId, RoomEconomicState roomState) {
-        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-        int remainingTurns = economicHistoryService.getTurnsUntilNextPeriod(gameState.getGameTurn().intValue());
-
-        EconomicHistoryPayload payload = EconomicHistoryPayload.builder()
-                .periodName(roomState.getCurrentPeriodDisplayName())
-                .effectName(roomState.getEffectName())
-                .description(roomState.getDescription())
-                .isBoom(roomState.isBoom())
-                .fullName(roomState.getFullEffectName())
-                .salaryMultiplier(roomState.getSalaryMultiplier())
-                .propertyPriceMultiplier(roomState.getPropertyPriceMultiplier())
-                .buildingCostMultiplier(roomState.getBuildingCostMultiplier())
-                .remainingTurns(remainingTurns)
-                .build();
-
-        JsonNode payloadNode = objectMapper.valueToTree(payload);
-        MessageDto message = new MessageDto(MessageType.ECONOMIC_HISTORY_UPDATE, payloadNode);
-        sessionMessageService.sendMessageToRoom(roomId, message);
-
-        log.info("🏛️ [TIMER] 경제 효과 WebSocket 메시지 전송: roomId={}, effect={}",
-                roomId, roomState.getFullEffectName());
-    }
 
 }

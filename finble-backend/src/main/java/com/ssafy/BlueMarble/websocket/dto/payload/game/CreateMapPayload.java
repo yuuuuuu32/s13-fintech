@@ -20,7 +20,14 @@ public class CreateMapPayload {
     private List<String> playerOrder;            // 플레이어 순서
     private Map<String , PlayerState> players;    // 플레이어별 상태
     private int currentPlayerIndex;               // 현재 플레이어 인덱스
-    private String currentEconomicPeriod; // 현재 경제역사 시대 (deprecated: RoomEconomicState로 대체됨)
+    // 경제 효과 정보 (간결하게 정리)
+    private String economicPeriodName;    // 경제 시대명 (예: "근대사")
+    private String economicEffectName;    // 경제 효과명 (예: "산업혁명")
+    private String economicDescription;   // 경제 효과 설명
+    private String economicFullName;      // 전체 효과명 (예: "산업혁명 - 호황")
+    private boolean isBoom;               // 호황/불황 여부
+    private int remainingTurns;           // 다음 시대까지 남은 턴 수
+    
     // private boolean angelCardInDeck;             // 천사카드가 덱에 있는지 여부 (비활성화됨)
 
     @Data

@@ -43,6 +43,29 @@ public class GameRedisService {
             log.error("게임 맵 상태 저장 실패: roomId={}", roomId, e);
         }
     }
+
+    /**
+     * 경제 효과 정보를 포함한 게임 맵 상태 저장
+     */
+    public void saveGameMapStateWithEconomicEffect(String roomId, CreateMapPayload gameState, RoomEconomicState roomState) {
+        try {
+            // 경제 효과 정보를 gameState에 추가
+            if (roomState != null) {
+                gameState.setEconomicPeriodName(roomState.getCurrentPeriodDisplayName());
+                gameState.setEconomicEffectName(roomState.getEffectName());
+                gameState.setEconomicDescription(roomState.getDescription());
+                gameState.setEconomicFullName(roomState.getFullEffectName());
+                gameState.setBoom(roomState.isBoom());
+                gameState.setRemainingTurns(roomState.getRemainingTurns());
+            }
+            
+            saveGameMapState(roomId, gameState);
+            log.info("경제 효과 포함 게임 맵 상태 저장 완료: roomId={}, effect={}", 
+                    roomId, roomState != null ? roomState.getFullEffectName() : "없음");
+        } catch (Exception e) {
+            log.error("경제 효과 포함 게임 맵 상태 저장 실패: roomId={}", roomId, e);
+        }
+    }
     
     /**
      * 방의 게임 맵 상태 조회
