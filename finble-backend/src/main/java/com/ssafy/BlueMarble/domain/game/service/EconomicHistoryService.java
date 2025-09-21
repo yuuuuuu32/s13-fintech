@@ -19,25 +19,13 @@ public class EconomicHistoryService {
     private final Random random = new Random();
     private final GameRedisService gameRedisService;
 
-    /**
-     * 턴 기반으로 경제역사 시대 계산
-     */
-    public EconomicEffectTemplate.EconomicPeriod calculateCurrentPeriod(int gameTurn) {
-        return EconomicEffectTemplate.calculatePeriodFromTurn(gameTurn);
-    }
 
-    /**
-     * 다음 시대까지 남은 턴 수 계산
-     */
-    public int getTurnsUntilNextPeriod(int gameTurn) {
-        return EconomicEffectTemplate.getTurnsUntilNextPeriod(gameTurn);
-    }
 
     /**
      * 게임방의 현재 경제 효과 템플릿 조회 또는 초기화
      */
     public EconomicEffectTemplate getCurrentEconomicEffect(String roomId, Long gameTurn) {
-        EconomicEffectTemplate.EconomicPeriod currentPeriod = calculateCurrentPeriod(gameTurn.intValue());
+        EconomicEffectTemplate.EconomicPeriod currentPeriod = EconomicEffectTemplate.calculatePeriodFromTurn(gameTurn.intValue());
         boolean isBoom = random.nextBoolean();
         return EconomicEffectTemplate.getRandomTemplate(currentPeriod, isBoom);
     }
