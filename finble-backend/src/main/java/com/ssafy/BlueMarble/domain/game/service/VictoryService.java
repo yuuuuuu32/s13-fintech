@@ -68,8 +68,7 @@ public class VictoryService {
                 // 스페셜 땅 5개를 모두 소유한 경우 승리
                 if (specialLandCount == 5) {
                     log.info("[VICTORY] 스페셜 땅 5개 소유 승리: player={}, userId={}", player.getNickname(), userId);
-                    handleGameVictory(roomId, player.getNickname(), "스페셜 땅 5개 소유 달성!");
-                    return player.getNickname();
+                    return player.getNickname(); // 승리자만 return, 승리 처리는 상위에서
                 }
             }
 
@@ -86,11 +85,11 @@ public class VictoryService {
      * @param roomId 방 ID
      * @param winnerNickname 승리자 닉네임
      * @param victoryReason 승리 사유
+     * @param gameState 현재 게임 상태 (동시성 보장을 위해 매개변수로 받음)
      */
-    private void handleGameVictory(String roomId, String winnerNickname, String victoryReason) {
+    private void handleGameVictory(String roomId, String winnerNickname, String victoryReason, CreateMapPayload gameState) {
         try {
-            // 게임 상태를 종료로 변경
-            CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
+            // 게임 상태를 종료로 변경 (매개변수로 받은 gameState 사용)
             if (gameState != null) {
                 gameState.setGameState(GameState.FINISHED);
                 gameRedisService.saveGameMapState(roomId, gameState);
@@ -124,7 +123,7 @@ public class VictoryService {
     }
 
     /**
-     * 토지 거래 후 승리 조건 체크 (AOP나 이벤트에서 호출)
+     * 부동산 거래 후 승리 조건 체크 (AOP나 이벤트에서 호출)
      * @param roomId 방 ID
      */
     public void checkVictoryAfterLandTrade(String roomId) {
@@ -146,7 +145,7 @@ public class VictoryService {
             }
 
         } catch (Exception e) {
-            log.error("[VICTORY] 토지 거래 후 승리 조건 체크 중 오류: roomId={}", roomId, e);
+            log.error("[VICTORY] 부동산 거래 후 승리 조건 체크 중 오류: roomId={}", roomId, e);
         }
     }
 
@@ -162,12 +161,14 @@ public class VictoryService {
                     .filter(CreateMapPayload.PlayerState::isActive)
                     .toList();
 
-            // 활성 플레이어가 1명만 남은 경우 승리
-            if (activePlayers.size() == 1) {
+            int totalPlayers = gameState.getPlayers().size();
+
+            // 최소 2명 이상의 게임에서 활성 플레이어가 1명만 남은 경우 승리
+            if (totalPlayers >= 2 && activePlayers.size() == 1) {
                 String winnerNickname = activePlayers.get(0).getNickname();
-                log.info("[VICTORY] 생존자 승리: player={}", winnerNickname);
-                handleGameVictory(roomId, winnerNickname, "마지막 생존자!");
-                return winnerNickname;
+                log.info("[VICTORY] 생존자 승리: player={}, 전체플레이어={}, 생존자={}",
+                        winnerNickname, totalPlayers, activePlayers.size());
+                return winnerNickname; // 승리자만 return, 승리 처리는 상위에서
             }
 
             return null; // 승리자 없음
@@ -201,8 +202,7 @@ public class VictoryService {
                 long totalAssets = calculateTotalAssets(richestPlayer.get());
 
                 log.info("[VICTORY] 20턴 제한 승리: player={}, totalAssets={}", winnerNickname, totalAssets);
-                handleGameVictory(roomId, winnerNickname, "20턴 후 최고 자산가!");
-                return winnerNickname;
+                return winnerNickname; // 승리자만 return, 승리 처리는 상위에서
             }
 
             return null; // 승리자 없음
@@ -221,7 +221,7 @@ public class VictoryService {
     private long calculateTotalAssets(CreateMapPayload.PlayerState player) {
         long totalAssets = player.getMoney(); // 현금
 
-        // 보유 부동산 가치 추가 (기본 땅값으로 계산)
+        // 보유 부동산 자산 가치 추가 (기본 땅값으로 계산)
         if (player.getOwnedProperties() != null) {
             for (Integer landNum : player.getOwnedProperties()) {
                 totalAssets += getBaseLandPrice(landNum);
@@ -232,9 +232,9 @@ public class VictoryService {
     }
 
     /**
-     * 땅 번호에 따른 기본 땅값 반환
+     * 땅 번호에 따른 기본 부동산 자산 가치 반환
      * @param landNum 땅 번호
-     * @return 기본 땅값
+     * @return 기본 부동산 자산 가치
      */
     private long getBaseLandPrice(Integer landNum) {
         // 스페셜 땅 가격
@@ -274,18 +274,21 @@ public class VictoryService {
             // 1. 스페셜 땅 5개 소유 승리 조건 체크 (최우선)
             String specialLandWinner = checkSpecialLandVictory(roomId, gameState);
             if (specialLandWinner != null) {
+                handleGameVictory(roomId, specialLandWinner, "스페셜 땅 5개 소유 달성!", gameState);
                 return specialLandWinner;
             }
 
             // 2. 생존자 승리 조건 체크 (다른 플레이어 모두 파산)
             String lastSurvivorWinner = checkLastSurvivorVictory(roomId, gameState);
             if (lastSurvivorWinner != null) {
+                handleGameVictory(roomId, lastSurvivorWinner, "마지막 생존자!", gameState);
                 return lastSurvivorWinner;
             }
 
             // 3. 턴 제한 승리 조건 체크 (20턴 후 최고 자산 플레이어)
             String turnLimitWinner = checkTurnLimitVictory(roomId, gameState);
             if (turnLimitWinner != null) {
+                handleGameVictory(roomId, turnLimitWinner, "20턴 후 최고 자산가!", gameState);
                 return turnLimitWinner;
             }
 
