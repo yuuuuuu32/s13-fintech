@@ -1,9 +1,14 @@
 package com.ssafy.BlueMarble.domain.game.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.game.entity.EconomicEffectTemplate;
 import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.game.repository.TileRepository;
+import com.ssafy.BlueMarble.websocket.dto.MessageDto;
+import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
+import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,15 +23,20 @@ public class EconomicHistoryService {
 
     private final Random random = new Random();
     private final GameRedisService gameRedisService;
-
-
+    private final SessionMessageService sessionMessageService;
+    private final ObjectMapper objectMapper;
 
     /**
      * 게임방의 현재 경제 효과 템플릿 조회 또는 초기화
      */
     public EconomicEffectTemplate getCurrentEconomicEffect(Long gameTurn) {
         EconomicEffectTemplate.EconomicPeriod currentPeriod = EconomicEffectTemplate.calculatePeriodFromTurn(gameTurn.intValue());
-        boolean isBoom = random.nextBoolean();
+        
+        // 2턴마다 경제 효과가 바뀌므로, 턴을 2로 나눈 몫을 시드로 사용
+        int boomSeed = (int) (gameTurn / 2);
+        Random boomRandom = new Random(boomSeed);
+        boolean isBoom = boomRandom.nextBoolean();
+        
         return EconomicEffectTemplate.getRandomTemplate(currentPeriod, isBoom);
     }
 
@@ -41,6 +51,9 @@ public class EconomicHistoryService {
 
         // 변경된 게임 상태를 Redis에 저장
         gameRedisService.saveGameMapStateWithEconomicEffect(roomId, gameState, currentEffect);
+
+        // 경제 효과 정보와 모든 타일 정보를 포함한 패킷 전송
+        sendEconomicEffectUpdateMessage(roomId, gameState, currentEffect);
     }
 
 
@@ -115,6 +128,39 @@ public class EconomicHistoryService {
         if (originalHotelPrice > 0) {
             int newHotelPrice = currentEffect.applyBuildingCostMultiplier(originalHotelPrice);
             tile.setHotelPrice(newHotelPrice);
+        }
+    }
+
+    /**
+     * 경제 효과 정보와 모든 타일 정보를 포함한 패킷 전송
+     */
+    private void sendEconomicEffectUpdateMessage(String roomId, CreateMapPayload gameState, EconomicEffectTemplate currentEffect) {
+        try {
+            CreateMapPayload clientGameState = CreateMapPayload.builder()
+                    .roomId(roomId)
+                    .gameState(gameState.getGameState())
+                    .currentMap(gameState.getCurrentMap())
+                    .gameTurn(gameState.getGameTurn() + 1)
+                    .playerOrder(gameState.getPlayerOrder())
+                    .players(gameState.getPlayers())
+                    .currentPlayerIndex(gameState.getCurrentPlayerIndex())
+                    .economicPeriodName(currentEffect.getPeriod().getDisplayName())
+                    .economicEffectName(currentEffect.getEffectName())
+                    .economicDescription(currentEffect.getDescription())
+                    .economicFullName(currentEffect.getFullEffectName())
+                    .isBoom(currentEffect.isBoom())
+                    .remainingTurns(EconomicEffectTemplate.getTurnsUntilNextPeriod(gameState.getGameTurn().intValue()))
+                    .build();
+
+            JsonNode payloadNode = objectMapper.valueToTree(clientGameState);
+            MessageDto message = new MessageDto(MessageType.ECONOMIC_HISTORY_UPDATE, payloadNode);
+            sessionMessageService.sendMessageToRoom(roomId, message);
+
+            log.info("경제 효과 업데이트 메시지 전송 완료: roomId={}, effect={}, period={}", 
+                    roomId, currentEffect.getEffectName(), currentEffect.getPeriod().getDisplayName());
+
+        } catch (Exception e) {
+            log.error("경제 효과 업데이트 메시지 전송 실패: roomId={}", roomId, e);
         }
     }
 

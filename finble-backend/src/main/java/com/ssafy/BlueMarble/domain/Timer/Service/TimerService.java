@@ -38,7 +38,7 @@ public class TimerService {
     /**
      * 턴 시작 시 타이머 설정
      */
-    public void startTurnTimer(String roomId, String currentPlayerId, Long seconds ) {
+    public void startTurnTimer(String roomId, String currentPlayerId, Long seconds) {
         String timerKey = TURN_TIMER_PREFIX + roomId;
 
         // 현재 시간 + 30초를 Redis에 저장
@@ -81,7 +81,7 @@ public class TimerService {
         }
     }
 
-    public void endTurnManually(String roomId){
+    public void endTurnManually(String roomId) {
         cancelTurnTimer(roomId);
     }
 
@@ -95,34 +95,34 @@ public class TimerService {
     }
 
     private void endTurnByTimer(String roomId) {
-            // 턴 종료 로직 실행
-            CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-            if (gameState == null) {
-                log.error("게임 상태를 찾을 수 없음: roomId={}", roomId);
-                return;
-            }
+        // 턴 종료 로직 실행
+        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
+        if (gameState == null) {
+            log.error("게임 상태를 찾을 수 없음: roomId={}", roomId);
+            return;
+        }
 
-            // 턴 변경 로직
-            if (gameState.getCurrentPlayerIndex() == gameState.getPlayerOrder().size() - 1) {
-                gameState.setCurrentPlayerIndex(0);
-                gameState.setGameTurn(gameState.getGameTurn() + 1);
-            } else {
-                gameState.setCurrentPlayerIndex(gameState.getCurrentPlayerIndex() + 1);
-            }
+        // 턴 변경 로직
+        if (gameState.getCurrentPlayerIndex() == gameState.getPlayerOrder().size() - 1) {
+            gameState.setCurrentPlayerIndex(0);
+            gameState.setGameTurn(gameState.getGameTurn() + 1);
+        } else {
+            gameState.setCurrentPlayerIndex(gameState.getCurrentPlayerIndex() + 1);
+        }
 
-            // 게임 상태 저장
-            gameRedisService.saveGameMapState(roomId, gameState);
+        // 게임 상태 저장
+        gameRedisService.saveGameMapState(roomId, gameState);
 
-            // 다음 플레이어에게 턴 시작 (닉네임을 ID로 변환)
-            String nextPlayerNickname = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
-            String nextPlayerId = userRedisService.getUserIdByNickname(nextPlayerNickname);
-            if (nextPlayerId == null) {
-                log.error("플레이어 ID를 찾을 수 없음: nickname={}", nextPlayerNickname);
-                return;
-            }
-            startTurnTimer(roomId, nextPlayerId,30000L);
+        // 다음 플레이어에게 턴 시작 (닉네임을 ID로 변환)
+        String nextPlayerNickname = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
+        String nextPlayerId = userRedisService.getUserIdByNickname(nextPlayerNickname);
+        if (nextPlayerId == null) {
+            log.error("플레이어 ID를 찾을 수 없음: nickname={}", nextPlayerNickname);
+            return;
+        }
+        startTurnTimer(roomId, nextPlayerId, 30000L);
 
-            log.info("타이머로 인한 턴 종료: roomId={}, nextPlayerId={}", roomId, nextPlayerId);
+        log.info("타이머로 인한 턴 종료: roomId={}, nextPlayerId={}", roomId, nextPlayerId);
 
     }
 
@@ -144,11 +144,15 @@ public class TimerService {
             }
 
             // 경제 효과를 타일과 플레이어에게 실제 적용
-            economicHistoryService.applyAndSaveEconomicEffectsForAllPlayers(roomId, gameState);
+            if (gameState.getGameTurn() > 0 && gameState.getGameTurn() % 2 == 1){
+                economicHistoryService.applyAndSaveEconomicEffectsForAllPlayers(roomId, gameState);
+            }
+
+
 
             TurnInfoDto payload = TurnInfoDto.builder()
                     .roomId(roomId)
-                    .gameTurn(gameState.getGameTurn())
+                    .gameTurn(gameState.getGameTurn() + 1)
                     .curPlayer(currentPlayer.getNickname())
                     .build();
 

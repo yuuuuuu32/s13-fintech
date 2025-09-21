@@ -152,10 +152,10 @@ public enum EconomicEffectTemplate {
 
         /**
          * 게임 턴으로부터 현재 시대 계산 (2턴마다 변경)
-         * 턴 1-2: MODERN, 턴 3-4: CONTEMPORARY, 턴 5-6: RECENT, 턴 7-8: FUTURE
+         * 턴 0-1: MODERN, 턴 2-3: CONTEMPORARY, 턴 4-5: RECENT, 턴 6-7: FUTURE
          */
         public static EconomicPeriod fromGameTurn(int gameTurn) {
-            int periodIndex = ((gameTurn - 1) / 2) % 4;
+            int periodIndex = (gameTurn / 2) % 4;
             EconomicPeriod[] periods = values();
             return periods[periodIndex];
         }
@@ -164,7 +164,7 @@ public enum EconomicEffectTemplate {
          * 다음 시대까지 남은 턴 수 계산
          */
         public static int getTurnsUntilNextPeriod(int gameTurn) {
-            int turnsInCurrentPeriod = ((gameTurn - 1) % 2) + 1;
+            int turnsInCurrentPeriod = (gameTurn % 2) + 1;
             return 2 - turnsInCurrentPeriod;
         }
     }

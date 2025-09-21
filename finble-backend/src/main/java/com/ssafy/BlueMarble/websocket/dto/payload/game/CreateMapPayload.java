@@ -16,7 +16,7 @@ public class CreateMapPayload {
     private String roomId;                       // 방 ID
     private GameState gameState;                 // 게임 상태
     private GameMap currentMap;                  // 현재 맵
-    private Long gameTurn;                       // 게임 턴 (0~4번까지 모든 유저가 주사위를 던졌을때 1씩 늘어남)
+    private Long gameTurn;                       // 게임 턴
     private List<String> playerOrder;            // 플레이어 순서
     private Map<String , PlayerState> players;    // 플레이어별 상태
     private int currentPlayerIndex;               // 현재 플레이어 인덱스
