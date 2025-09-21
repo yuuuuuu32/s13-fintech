@@ -6,7 +6,7 @@ import com.ssafy.BlueMarble.domain.Timer.dto.TurnInfoDto;
 import com.ssafy.BlueMarble.domain.game.service.GameRedisService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.domain.game.service.EconomicHistoryService;
-import com.ssafy.BlueMarble.domain.game.entity.RoomEconomicState;
+import com.ssafy.BlueMarble.domain.game.entity.EconomicEffectTemplate;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
@@ -143,45 +143,8 @@ public class TimerService {
                 return;
             }
 
-            // 🏛️ 1단계: 턴 시작 시 경제 효과 체크 및 적용
-            boolean economicEffectChanged = false;
-
-            // 게임방의 경제 상태 확인 및 업데이트
-            RoomEconomicState roomState = economicHistoryService.getRoomEconomicState(roomId);
-            if (roomState == null) {
-                // 경제 상태가 없으면 새로 초기화
-                roomState = economicHistoryService.initializeRoomEconomicState(roomId, gameState.getGameTurn());
-                economicEffectChanged = true;
-                
-                log.info("🏛️ [TIMER] 턴 시작 시 경제 효과 초기화: roomId={}, effect={}", 
-                        roomId, roomState.getFullEffectName());
-            } else {
-                // 기존 상태에서 턴 업데이트 (시대 변경 체크 포함)
-                RoomEconomicState updatedState = economicHistoryService.updateRoomEconomicState(roomId, gameState.getGameTurn());
-                if (!updatedState.getCurrentTemplate().equals(roomState.getCurrentTemplate())) {
-                    economicEffectChanged = true;
-                    roomState = updatedState;
-                    
-                    log.info("🏛️ [TIMER] 턴 시작 시 경제 시대 변경: roomId={}, effect={}", 
-                            roomId, roomState.getFullEffectName());
-                }
-            }
-
             // 경제 효과를 타일과 플레이어에게 실제 적용
             economicHistoryService.applyAndSaveEconomicEffectsForAllPlayers(roomId, gameState);
-
-            // 게임 상태 저장 (경제 효과 적용 완료)
-            gameRedisService.saveGameMapStateWithEconomicEffect(roomId, gameState, roomState);
-
-            // 경제 효과가 변경되었을 때만 전체 맵 정보 전송
-            if (economicEffectChanged) {
-                JsonNode mapState = objectMapper.valueToTree(gameState);
-                MessageDto mapMessage = new MessageDto(MessageType.START_GAME_OBSERVE, mapState);
-                sessionMessageService.sendMessageToRoom(roomId, mapMessage);
-                
-                log.info("🏛️ [TIMER] 경제 효과 변경으로 전체 맵 정보 전송: roomId={}, effect={}",
-                        roomId, roomState.getFullEffectName());
-            }
 
             TurnInfoDto payload = TurnInfoDto.builder()
                     .roomId(roomId)
@@ -193,8 +156,6 @@ public class TimerService {
             MessageDto message = new MessageDto(MessageType.GAME_STATE_CHANGE, payloadNode);
             sessionMessageService.sendMessageToRoom(roomId, message);
 
-            log.info("턴 시작 알림 전송: roomId={}, player={}, economicChanged={}",
-                    roomId, currentPlayer.getNickname(), economicEffectChanged);
         } catch (Exception e) {
             log.error("턴 시작 알림 전송 실패: roomId={}", roomId, e);
         }

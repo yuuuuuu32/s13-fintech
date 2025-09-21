@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.Map;
 import java.util.HashMap;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
-import com.ssafy.BlueMarble.domain.game.entity.RoomEconomicState;
+import com.ssafy.BlueMarble.domain.game.entity.EconomicEffectTemplate;
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -47,21 +47,21 @@ public class GameRedisService {
     /**
      * 경제 효과 정보를 포함한 게임 맵 상태 저장
      */
-    public void saveGameMapStateWithEconomicEffect(String roomId, CreateMapPayload gameState, RoomEconomicState roomState) {
+    public void saveGameMapStateWithEconomicEffect(String roomId, CreateMapPayload gameState, EconomicEffectTemplate currentEffect) {
         try {
             // 경제 효과 정보를 gameState에 추가
-            if (roomState != null) {
-                gameState.setEconomicPeriodName(roomState.getCurrentPeriodDisplayName());
-                gameState.setEconomicEffectName(roomState.getEffectName());
-                gameState.setEconomicDescription(roomState.getDescription());
-                gameState.setEconomicFullName(roomState.getFullEffectName());
-                gameState.setBoom(roomState.isBoom());
-                gameState.setRemainingTurns(roomState.getRemainingTurns());
+            if (currentEffect != null) {
+                gameState.setEconomicPeriodName(currentEffect.getPeriod().getDisplayName());
+                gameState.setEconomicEffectName(currentEffect.getEffectName());
+                gameState.setEconomicDescription(currentEffect.getDescription());
+                gameState.setEconomicFullName(currentEffect.getFullEffectName());
+                gameState.setBoom(currentEffect.isBoom());
+                gameState.setRemainingTurns(EconomicEffectTemplate.getTurnsUntilNextPeriod(gameState.getGameTurn().intValue()));
             }
             
             saveGameMapState(roomId, gameState);
             log.info("경제 효과 포함 게임 맵 상태 저장 완료: roomId={}, effect={}", 
-                    roomId, roomState != null ? roomState.getFullEffectName() : "없음");
+                    roomId, currentEffect != null ? currentEffect.getFullEffectName() : "없음");
         } catch (Exception e) {
             log.error("경제 효과 포함 게임 맵 상태 저장 실패: roomId={}", roomId, e);
         }
@@ -162,130 +162,6 @@ public class GameRedisService {
         log.info("경제 효과 관련 Redis 데이터 삭제 완료: roomId={}", roomId);
     }
 
-    // ========== 새로운 RoomEconomicState 관련 메서드들 ==========
 
-    /**
-     * 게임방의 경제 상태 저장 (새로운 구조)
-     */
-    public void saveRoomEconomicState(String roomId, RoomEconomicState roomState) {
-        try {
-            String key = ECONOMIC_EFFECT_PREFIX + roomId + ":state";
-            String value = objectMapper.writeValueAsString(roomState);
-            redisTemplate.opsForValue().set(key, value, GAME_STATE_TTL, TimeUnit.SECONDS);
-            log.info("게임방 경제 상태 저장 완료: roomId={}, effect={}", roomId, roomState.getFullEffectName());
-        } catch (JsonProcessingException e) {
-            log.error("게임방 경제 상태 저장 실패: roomId={}", roomId, e);
-        }
-    }
 
-    /**
-     * 게임방의 경제 상태 조회 (새로운 구조)
-     */
-    public RoomEconomicState getRoomEconomicState(String roomId) {
-        try {
-            String key = ECONOMIC_EFFECT_PREFIX + roomId + ":state";
-            String value = redisTemplate.opsForValue().get(key);
-            if (value != null) {
-                return objectMapper.readValue(value, RoomEconomicState.class);
-            }
-        } catch (JsonProcessingException e) {
-            log.error("게임방 경제 상태 조회 실패: roomId={}", roomId, e);
-        }
-        return null;
-    }
-
-    /**
-     * 게임방의 경제 상태 존재 여부 확인
-     */
-    public boolean hasRoomEconomicState(String roomId) {
-        String key = ECONOMIC_EFFECT_PREFIX + roomId + ":state";
-        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
-    }
-
-    /**
-     * 방의 경제 효과가 반영된 가격 정보 저장 (새로운 RoomEconomicState용)
-     */
-    public void saveAffectedPrices(String roomId, RoomEconomicState roomState) {
-        try {
-            String key = AFFECTED_PRICES_PREFIX + roomId;
-
-            Map<String, Object> affectedPrices = new HashMap<>();
-            affectedPrices.put("baseSalary", BASE_SALARY);
-            affectedPrices.put("basePropertyPrice", BASE_PROPERTY_PRICE);
-            affectedPrices.put("baseBuildingCost", BASE_BUILDING_COST);
-
-            affectedPrices.put("affectedSalary", roomState.applySalaryMultiplier(BASE_SALARY));
-            affectedPrices.put("affectedPropertyPrice", roomState.applyPropertyPriceMultiplier(BASE_PROPERTY_PRICE));
-            affectedPrices.put("affectedBuildingCost", roomState.applyBuildingCostMultiplier(BASE_BUILDING_COST));
-
-            affectedPrices.put("salaryMultiplier", roomState.getSalaryMultiplier());
-            affectedPrices.put("propertyPriceMultiplier", roomState.getPropertyPriceMultiplier());
-            affectedPrices.put("buildingCostMultiplier", roomState.getBuildingCostMultiplier());
-
-            affectedPrices.put("effectName", roomState.getFullEffectName());
-            affectedPrices.put("currentPeriod", roomState.getCurrentPeriodDisplayName());
-            affectedPrices.put("isBoom", roomState.isBoom());
-
-            String value = objectMapper.writeValueAsString(affectedPrices);
-            redisTemplate.opsForValue().set(key, value, GAME_STATE_TTL, TimeUnit.SECONDS);
-
-            log.info("💰 [REDIS] 경제 효과 반영된 가격 정보 저장: roomId={}, effect={}",
-                    roomId, roomState.getFullEffectName());
-        } catch (JsonProcessingException e) {
-            log.error("경제 효과 반영된 가격 정보 저장 실패: roomId={}", roomId, e);
-        }
-    }
-
-    /**
-     * 플레이어별로 경제 효과가 적용된 가격 정보를 업데이트하고 Redis에 저장 (새로운 RoomEconomicState용)
-     */
-    public void updatePlayerAffectedPrices(String roomId, CreateMapPayload gameState, RoomEconomicState roomState) {
-        try {
-            if (gameState.getPlayers() == null) {
-                log.warn("플레이어 정보가 없어 가격 업데이트를 건너뜁니다: roomId={}", roomId);
-                return;
-            }
-
-            for (String playerId : gameState.getPlayers().keySet()) {
-                CreateMapPayload.PlayerState playerState = gameState.getPlayers().get(playerId);
-                Map<String, Object> playerPrices = createPlayerPriceData(playerId, playerState, roomState);
-
-                String playerKey = AFFECTED_PRICES_PREFIX + roomId + ":player:" + playerId;
-                String playerValue = objectMapper.writeValueAsString(playerPrices);
-                redisTemplate.opsForValue().set(playerKey, playerValue, GAME_STATE_TTL, TimeUnit.SECONDS);
-
-                log.info("💰 [REDIS] 플레이어별 경제 효과 가격 저장: roomId={}, playerId={}, effect={}",
-                        roomId, playerId, roomState.getFullEffectName());
-            }
-        } catch (JsonProcessingException e) {
-            log.error("플레이어별 경제 효과 가격 저장 실패: roomId={}", roomId, e);
-        }
-    }
-
-    /**
-     * 플레이어 가격 데이터 생성 (새로운 RoomEconomicState용)
-     */
-    private Map<String, Object> createPlayerPriceData(String playerId, CreateMapPayload.PlayerState playerState, RoomEconomicState roomState) {
-        Map<String, Object> playerPrices = new HashMap<>();
-
-        int affectedSalary = roomState.applySalaryMultiplier(BASE_SALARY);
-        int affectedPropertyPrice = roomState.applyPropertyPriceMultiplier(BASE_PROPERTY_PRICE);
-        int affectedBuildingCost = roomState.applyBuildingCostMultiplier(BASE_BUILDING_COST);
-
-        playerPrices.put("playerId", playerId);
-        playerPrices.put("playerNickname", playerState.getNickname());
-        playerPrices.put("currentMoney", playerState.getMoney());
-
-        playerPrices.put("baseSalary", BASE_SALARY);
-        playerPrices.put("affectedSalary", affectedSalary);
-        playerPrices.put("basePropertyPrice", BASE_PROPERTY_PRICE);
-        playerPrices.put("affectedPropertyPrice", affectedPropertyPrice);
-        playerPrices.put("baseBuildingCost", BASE_BUILDING_COST);
-        playerPrices.put("affectedBuildingCost", affectedBuildingCost);
-
-        playerPrices.put("effectName", roomState.getFullEffectName());
-        playerPrices.put("economicPeriod", roomState.getCurrentPeriodDisplayName());
-
-        return playerPrices;
-    }
 }
