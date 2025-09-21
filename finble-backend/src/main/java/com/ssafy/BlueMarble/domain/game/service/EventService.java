@@ -6,8 +6,6 @@ import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.NtsRequest;
-import com.ssafy.BlueMarble.domain.game.entity.EconomicHistoryPeriod;
-import com.ssafy.BlueMarble.domain.game.entity.EconomicEffect;
 import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.Timer.Service.TimerService;
@@ -274,31 +272,9 @@ public class EventService {
      */
     public void handleUseDiceEvent(WebSocketSession session, UseDiceRequest useDiceRequest) {
         String roomId = roomService.getRoom(session.getId());
-        
+
         // 1. 게임 맵 정보
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-
-        // 1.1 경제역사 시대 업데이트 및 가져오기
-        EconomicHistoryPeriod currentPeriod = economicHistoryService.calculateCurrentPeriod(gameState.getGameTurn().intValue());
-        boolean periodChanged = false;
-
-        // 경제 효과가 없거나 시대가 바뀌었으면 새로운 효과 생성
-        if (gameState.getCurrentEconomicEffect() == null ||
-            gameState.getCurrentEconomicPeriod() != currentPeriod) {
-
-            EconomicEffect newEffect = economicHistoryService.generateRandomEconomicEffect(currentPeriod);
-            gameState.setCurrentEconomicPeriod(currentPeriod);
-            gameState.setCurrentEconomicEffect(newEffect);
-            periodChanged = true;
-
-            // 경제역사 효과 업데이트를 Redis에 저장
-            gameRedisService.saveGameMapState(roomId, gameState);
-
-            log.info("🏛️ [ECONOMIC_HISTORY] 새로운 경제 시대 시작: {}", newEffect.getFullName());
-
-            // 경제 시대 변경 WebSocket 메시지 전송
-            sendEconomicHistoryUpdateMessage(roomId, newEffect, currentPeriod);
-        }
 
         // 2. 주사위 사용자 정보
         String userId = userRedisService.getUserIdByNickname(useDiceRequest.getUserName());
@@ -327,12 +303,12 @@ public class EventService {
         // 4. 위치 계산
         int currentPosition = player.getPosition();
         int newPosition = (currentPosition + diceNumSum) % 32; // 32개 칸 순환
-        
+
         // 5. 시작점 통과 여부 (경제역사 효과 적용)
         int salaryBonus = 0;
         if (newPosition < currentPosition) { // 시작점을 통과했는지 확인
             int baseSalary = 1000000; // 기본 월급
-            salaryBonus = economicHistoryService.applyEconomicEffectToSalary(baseSalary, gameState.getCurrentEconomicEffect());
+            salaryBonus = economicHistoryService.calculateSalaryWithEffect(baseSalary);
             player.setMoney(player.getMoney() + salaryBonus);
         }
 
@@ -355,10 +331,9 @@ public class EventService {
             // 일반땅인 경우에만 통행료 처리
             else if (targetCell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NORMAL) {
                 if (targetCell.getOwnerName() != null && !targetCell.getOwnerName().equals(useDiceRequest.getUserName())) {
-                    // 다른 플레이어의 땅 - 통행료 지불 (경제역사 효과 적용)
+                    // 다른 플레이어의 땅 - 통행료 지불 (기본 통행료 사용)
                     landOwner = targetCell.getOwnerName();
-                    int baseToll = targetCell.getToll();
-                    tollAmount = economicHistoryService.applyEconomicEffectToToll(baseToll, gameState.getCurrentEconomicEffect());
+                    tollAmount = targetCell.getToll();
 
                     // 8. 통행료 지불
                     if (player.getMoney() >= tollAmount) {
@@ -370,8 +345,8 @@ public class EventService {
                             CreateMapPayload.PlayerState owner = gameState.getPlayers().get(ownerUserId);
                             if (owner != null) {
                                 owner.setMoney(owner.getMoney() + tollAmount);
-                                log.info("통행료 지불: player={}, owner={}, amount={} (경제역사 효과 적용: {} -> {})",
-                                       useDiceRequest.getUserName(), landOwner, tollAmount, baseToll, tollAmount);
+                                log.info("통행료 지불: player={}, owner={}, amount={}",
+                                        useDiceRequest.getUserName(), landOwner, tollAmount);
                             }
                         }
                     } else {
@@ -392,8 +367,6 @@ public class EventService {
             log.info("플레이어가 찬스 칸에 도착: position={}, userName={}", newPosition, useDiceRequest.getUserName());
             // 카드 뽑기 및 효과 적용 (gameState를 넘겨서 턴 상태 유지)
             cardService.drawCard(roomId, useDiceRequest.getUserName(), gameState);
-            // 카드 서비스에서 이미 상태를 저장했으므로 최신 상태 다시 가져올 필요 없음
-            // gameState와 player는 참조로 전달되어 이미 업데이트됨
         } else {
             // 찬스 칸이 아니면, 주사위 이동 및 통행료 결과만 저장
             gameRedisService.saveGameMapState(roomId, gameState);
@@ -426,33 +399,5 @@ public class EventService {
 
         // 11. 주사위 사용 후 승리 조건 체크 (모든 승리 조건 통합 체크)
         victoryService.checkAllVictoryConditions(roomId, gameState);
-    }
-
-    /**
-     * 경제역사 시대 변경 메시지 전송
-     */
-    private void sendEconomicHistoryUpdateMessage(String roomId, EconomicEffect effect, EconomicHistoryPeriod period) {
-        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-        int remainingTurns = economicHistoryService.getTurnsUntilNextPeriod(gameState.getGameTurn().intValue());
-
-        EconomicHistoryPayload payload = EconomicHistoryPayload.builder()
-                .periodName(period.getDisplayName())
-                .effectName(effect.getName())
-                .description(effect.getDescription())
-                .isBoom(effect.isBoom())
-                .fullName(effect.getFullName())
-                .salaryMultiplier(effect.getSalaryMultiplier())
-                .tollMultiplier(effect.getTollMultiplier())
-                .propertyPriceMultiplier(effect.getPropertyPriceMultiplier())
-                .buildingCostMultiplier(effect.getBuildingCostMultiplier())
-                .remainingTurns(remainingTurns)
-                .build();
-
-        JsonNode payloadNode = objectMapper.valueToTree(payload);
-        MessageDto message = new MessageDto(MessageType.ECONOMIC_HISTORY_UPDATE, payloadNode);
-        sessionMessageService.sendMessageToRoom(roomId, message);
-
-        log.info("🏛️ [ECONOMIC_HISTORY] WebSocket 메시지 전송: roomId={}, effect={}",
-                roomId, effect.getFullName());
     }
 }

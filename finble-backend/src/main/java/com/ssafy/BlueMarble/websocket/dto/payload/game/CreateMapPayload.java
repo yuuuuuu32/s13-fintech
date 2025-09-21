@@ -3,8 +3,6 @@ package com.ssafy.BlueMarble.websocket.dto.payload.game;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.ssafy.BlueMarble.domain.game.dto.GameMap;
 import com.ssafy.BlueMarble.domain.game.entity.GameState;
-import com.ssafy.BlueMarble.domain.game.entity.EconomicHistoryPeriod;
-import com.ssafy.BlueMarble.domain.game.entity.EconomicEffect;
 import lombok.Builder;
 import lombok.Data;
 
@@ -18,12 +16,18 @@ public class CreateMapPayload {
     private String roomId;                       // 방 ID
     private GameState gameState;                 // 게임 상태
     private GameMap currentMap;                  // 현재 맵
-    private Long gameTurn;                       // 게임 턴 (0~4번까지 모든 유저가 주사위를 던졌을때 1씩 늘어남)
+    private Long gameTurn;                       // 게임 턴
     private List<String> playerOrder;            // 플레이어 순서
     private Map<String , PlayerState> players;    // 플레이어별 상태
     private int currentPlayerIndex;               // 현재 플레이어 인덱스
-    private EconomicHistoryPeriod currentEconomicPeriod; // 현재 경제역사 시대
-    private EconomicEffect currentEconomicEffect; // 현재 적용 중인 경제 효과 (호황/불황 포함)
+    // 경제 효과 정보 (간결하게 정리)
+    private String economicPeriodName;    // 경제 시대명 (예: "근대사")
+    private String economicEffectName;    // 경제 효과명 (예: "산업혁명")
+    private String economicDescription;   // 경제 효과 설명
+    private String economicFullName;      // 전체 효과명 (예: "산업혁명 - 호황")
+    private boolean isBoom;               // 호황/불황 여부
+    private int remainingTurns;           // 다음 시대까지 남은 턴 수
+    
     // private boolean angelCardInDeck;             // 천사카드가 덱에 있는지 여부 (비활성화됨)
 
     @Data

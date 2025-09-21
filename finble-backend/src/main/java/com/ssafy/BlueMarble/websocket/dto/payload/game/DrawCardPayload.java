@@ -29,5 +29,12 @@ public class DrawCardPayload {
         private Integer tollAmount; // 지불한 통행료
         private String landOwner; // 땅 주인
         private Boolean canBuyLand; // 구매 가능한 땅 여부
+
+        // 부동산 자산 정책 카드 효과 정보
+        private Integer assetChangeAmount; // 자산 변동액 (양수: 증가, 음수: 감소)
+        private Integer effectPercent; // 효과 퍼센트 (5%, 10% 등)
+        private Boolean isAssetIncrease; // 자산 증가 여부 (true: 호황, false: 불황)
+        private Integer baseLandValue; // 기본 땅 가치 (100만원)
+        private Integer ownedLandCount; // 소유 땅 개수
     }
 }
