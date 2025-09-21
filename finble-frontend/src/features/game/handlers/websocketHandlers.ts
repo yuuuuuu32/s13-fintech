@@ -4,6 +4,9 @@ import { CHARACTER_PREFABS } from "../constants/gameConstants.ts";
 import { useUserStore } from "../../../stores/useUserStore.ts";
 import { Player } from "../components/Player.tsx";
 
+// 찬스카드 처리 후 다음 GAME_STATE_CHANGE에서 플레이어 정보 허용
+let allowNextPlayerUpdate = false;
+
 export const createWebSocketHandlers = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
   get: () => GameState
@@ -38,13 +41,20 @@ export const createWebSocketHandlers = (
           return {};
         });
       } else {
-        // GAME_STATE_CHANGE는 위치 업데이트하지 않음 - 게임 상태만
-        console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE without curPlayer - excluding players:", JSON.stringify(payload, null, 2));
-        const { players, ...safePayload } = payload;
-        if (players) {
-          console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE BLOCKED player updates to prevent snap-back");
+        // 찬스카드 후 플레이어 업데이트 허용 체크
+        if (allowNextPlayerUpdate && payload.players) {
+          console.log("🎲 [CHANCE_CARD_UPDATE] 찬스카드 후 서버 플레이어 상태 업데이트 허용:", JSON.stringify(payload, null, 2));
+          allowNextPlayerUpdate = false; // 한 번만 허용
+          get().updateGameState(payload);
+        } else {
+          // GAME_STATE_CHANGE는 위치 업데이트하지 않음 - 게임 상태만
+          console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE without curPlayer - excluding players:", JSON.stringify(payload, null, 2));
+          const { players, ...safePayload } = payload;
+          if (players) {
+            console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE BLOCKED player updates to prevent snap-back");
+          }
+          get().updateGameState(safePayload);
         }
-        get().updateGameState(safePayload);
       }
     });
 
@@ -210,6 +220,7 @@ export const createWebSocketHandlers = (
 
         // 플레이어 정보 업데이트
         const updatedPlayers = state.players.map(player => {
+          // 카드를 뽑은 플레이어 처리
           if (player.name === userName) {
             const updatedPlayer = { ...player };
 
@@ -225,6 +236,30 @@ export const createWebSocketHandlers = (
 
             return updatedPlayer;
           }
+
+          // 모든 플레이어에게 영향을 주는 카드 처리 (경기 침체, 경기 호황 등)
+          const isGlobalEffect = effectDescription && (
+            effectDescription.includes("모든 플레이어") ||
+            effectDescription.includes("전체 플레이어") ||
+            cardName === "경기 침체" ||
+            cardName === "경기 호황"
+          );
+
+          if (isGlobalEffect && moneyChange !== undefined && moneyChange !== null) {
+            console.log("🌍 [GLOBAL_EFFECT] 전체 플레이어 영향 카드 적용:", {
+              playerName: player.name,
+              cardName,
+              moneyChange,
+              previousMoney: player.money,
+              newMoney: player.money + moneyChange
+            });
+
+            return {
+              ...player,
+              money: player.money + moneyChange
+            };
+          }
+
           return player;
         });
 
@@ -241,6 +276,19 @@ export const createWebSocketHandlers = (
           onConfirm: () => {
             console.log("🎲 [CHANCE_CARD] 찬스카드 모달 확인 버튼 클릭");
             set({ modal: { type: "NONE" as const } });
+
+            // 모든 플레이어 영향 카드의 경우 서버 업데이트 허용
+            const isGlobalEffect = effectDescription && (
+              effectDescription.includes("모든 플레이어") ||
+              effectDescription.includes("전체 플레이어") ||
+              cardName === "경기 침체" ||
+              cardName === "경기 호황"
+            );
+
+            if (isGlobalEffect) {
+              console.log("🌍 [GLOBAL_EFFECT] 전체 영향 카드 - 서버 플레이어 업데이트 허용 설정");
+              allowNextPlayerUpdate = true;
+            }
 
             // 위치가 변경되었다면 다시 타일 액션 처리
             if (newPosition !== undefined && newPosition !== null) {
