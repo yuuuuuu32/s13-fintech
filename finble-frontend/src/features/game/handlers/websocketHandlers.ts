@@ -5,6 +5,9 @@ import { CHARACTER_PREFABS } from "../constants/gameConstants.ts";
 // 찬스카드 처리 후 다음 GAME_STATE_CHANGE에서 플레이어 정보 허용
 let allowNextPlayerUpdate = false;
 
+// 찬스카드 처리 후 다음 GAME_STATE_CHANGE에서 플레이어 정보 허용
+let allowNextPlayerUpdate = false;
+
 export const createWebSocketHandlers = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
   get: () => GameState
