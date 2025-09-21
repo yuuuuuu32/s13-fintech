@@ -144,27 +144,27 @@ public class TimerService {
                 return;
             }
 
-            // 🏛️ 1단계: 턴 시작 시 경제 효과 체크 및 적용
-            String currentPeriod = economicHistoryService.calculateCurrentPeriod(gameState.getGameTurn().intValue());
-            boolean economicEffectChanged = false;
-
-            // 경제 효과가 없거나 시대가 바뀌었으면 새로운 효과 생성
-            if (gameState.getCurrentEconomicEffect() == null ||
-                !currentPeriod.equals(gameState.getCurrentEconomicPeriod())) {
-
-                EconomicEffect newEffect = economicHistoryService.initializeRoomEconomicEffect(roomId, gameState.getGameTurn());
-                gameState.setCurrentEconomicPeriod(currentPeriod);
-                gameState.setCurrentEconomicEffect(newEffect);
-                economicEffectChanged = true;
-
-                log.info("🏛️ [TIMER] 턴 시작 시 경제 효과 적용: roomId={}, effect={}", roomId, newEffect.getFullEffectName());
-
-                // 경제 효과를 타일과 플레이어에게 실제 적용
-                economicHistoryService.applyAndSaveEconomicEffectsForAllPlayers(roomId, gameState);
-
-                // 경제 시대 변경 WebSocket 메시지 전송
-                sendEconomicHistoryUpdateMessage(roomId, newEffect, currentPeriod);
-            }
+//            // 🏛️ 1단계: 턴 시작 시 경제 효과 체크 및 적용
+//            String currentPeriod = economicHistoryService.calculateCurrentPeriod(gameState.getGameTurn().intValue());
+//            boolean economicEffectChanged = false;
+//
+//            // 경제 효과가 없거나 시대가 바뀌었으면 새로운 효과 생성
+//            if (gameState.getCurrentEconomicEffect() == null ||
+//                !currentPeriod.equals(gameState.getCurrentEconomicPeriod())) {
+//
+//                EconomicEffect newEffect = economicHistoryService.initializeRoomEconomicEffect(roomId, gameState.getGameTurn());
+//                gameState.setCurrentEconomicPeriod(currentPeriod);
+//                gameState.setCurrentEconomicEffect(newEffect);
+//                economicEffectChanged = true;
+//
+//                log.info("🏛️ [TIMER] 턴 시작 시 경제 효과 적용: roomId={}, effect={}", roomId, newEffect.getFullEffectName());
+//
+//                // 경제 효과를 타일과 플레이어에게 실제 적용
+//                economicHistoryService.applyAndSaveEconomicEffectsForAllPlayers(roomId, gameState);
+//
+//                // 경제 시대 변경 WebSocket 메시지 전송
+//                sendEconomicHistoryUpdateMessage(roomId, newEffect, currentPeriod);
+//            }
 
             // 게임 상태 저장 (경제 효과 적용 완료)
             gameRedisService.saveGameMapState(roomId, gameState);
@@ -179,8 +179,8 @@ public class TimerService {
             MessageDto message = new MessageDto(MessageType.GAME_STATE_CHANGE, payloadNode);
             sessionMessageService.sendMessageToRoom(roomId, message);
 
-            log.info("턴 시작 알림 전송: roomId={}, player={}, economicChanged={}",
-                    roomId, currentPlayer.getNickname(), economicEffectChanged);
+//            log.info("턴 시작 알림 전송: roomId={}, player={}, economicChanged={}",
+//                    roomId, currentPlayer.getNickname(), economicEffectChanged);
         } catch (Exception e) {
             log.error("턴 시작 알림 전송 실패: roomId={}", roomId, e);
         }
