@@ -67,7 +67,7 @@ public class EconomicHistoryService {
     /**
      * 특정 효과로 부동산 가격 계산
      */
-    public int calculatePropertyPriceWithEffect(int basePrice, Long gameTurn) {
+    public Long calculatePropertyPriceWithEffect(Long basePrice, Long gameTurn) {
         EconomicEffect currentEffect = getCurrentEconomicEffect(gameTurn);
         return currentEffect.applyPropertyPriceMultiplier(basePrice);
     }
@@ -75,7 +75,7 @@ public class EconomicHistoryService {
     /**
      * 특정 효과로 건물 건설 비용 계산
      */
-    public int calculateBuildingCostWithEffect(int baseCost, Long gameTurn) {
+    public Long calculateBuildingCostWithEffect(Long baseCost, Long gameTurn) {
         EconomicEffect currentEffect = getCurrentEconomicEffect(gameTurn);
         return currentEffect.applyBuildingCostMultiplier(baseCost);
     }
@@ -104,28 +104,28 @@ public class EconomicHistoryService {
      */
     private void applyEconomicEffectToTile(Tile tile, EconomicEffect currentEffect) {
         // 부동산 가격 적용
-        int originalLandPrice = tile.getLandPrice();
+        Long originalLandPrice = tile.getLandPrice();
         if (originalLandPrice > 0) {
-            int newLandPrice = currentEffect.applyPropertyPriceMultiplier(originalLandPrice);
+            Long newLandPrice = currentEffect.applyPropertyPriceMultiplier(originalLandPrice);
             tile.setLandPrice(newLandPrice);
         }
 
         // 건물 건설 비용 적용
-        int originalHousePrice = tile.getHousePrice();
+        Long originalHousePrice = tile.getHousePrice();
         if (originalHousePrice > 0) {
-            int newHousePrice = currentEffect.applyBuildingCostMultiplier(originalHousePrice);
+            Long newHousePrice = currentEffect.applyBuildingCostMultiplier(originalHousePrice);
             tile.setHousePrice(newHousePrice);
         }
 
-        int originalBuildingPrice = tile.getBuildingPrice();
+        Long originalBuildingPrice = tile.getBuildingPrice();
         if (originalBuildingPrice > 0) {
-            int newBuildingPrice = currentEffect.applyBuildingCostMultiplier(originalBuildingPrice);
+            Long newBuildingPrice = currentEffect.applyBuildingCostMultiplier(originalBuildingPrice);
             tile.setBuildingPrice(newBuildingPrice);
         }
 
-        int originalHotelPrice = tile.getHotelPrice();
+        Long originalHotelPrice = tile.getHotelPrice();
         if (originalHotelPrice > 0) {
-            int newHotelPrice = currentEffect.applyBuildingCostMultiplier(originalHotelPrice);
+            Long newHotelPrice = currentEffect.applyBuildingCostMultiplier(originalHotelPrice);
             tile.setHotelPrice(newHotelPrice);
         }
     }

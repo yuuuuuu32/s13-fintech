@@ -9,6 +9,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class Tile {
     
     @Id
@@ -24,16 +26,16 @@ public class Tile {
     private TileType type;
     
     @Column(nullable = false)
-    private int landPrice;
+    private Long landPrice;
     
     @Column(nullable = false)
-    private int housePrice;
+    private Long housePrice;
     
     @Column(nullable = false)
-    private int buildingPrice;
+    private Long buildingPrice;
     
     @Column(nullable = false)
-    private int hotelPrice;
+    private Long hotelPrice;
     
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -50,27 +52,11 @@ public class Tile {
     
     @Transient
     @Setter
-    private int toll;
+    private Long toll;
     
     @Setter
     @Transient
     private BuildingType buildingType;
-    
-    @Builder
-    public Tile(Long id, String name, TileType type, int landPrice,
-                int housePrice, int buildingPrice, int hotelPrice, String description) {
-        this.id = id;
-        this.name = name;
-        this.type = type;
-        this.landPrice = landPrice;
-        this.housePrice = housePrice;
-        this.buildingPrice = buildingPrice;
-        this.hotelPrice = hotelPrice;
-        this.description = description;
-        this.ownerName = null;
-        this.toll = landPrice; // 초기 통행료는 땅 값
-        this.buildingType = BuildingType.FIELD;
-    }
 
     // BuildingType enum 추가
     public enum BuildingType {
