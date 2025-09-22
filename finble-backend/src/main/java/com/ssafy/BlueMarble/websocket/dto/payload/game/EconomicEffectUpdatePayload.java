@@ -15,6 +15,9 @@ public class EconomicEffectUpdatePayload {
     private String economicEffectName;
     private String economicDescription;
     private String economicFullName;
+    private Double salaryMultiplier;
+    private Double propertyPriceMultiplier;
+    private Double buildingCostMultiplier;
     private boolean isBoom;
     private int remainingTurns;
 
@@ -25,6 +28,9 @@ public class EconomicEffectUpdatePayload {
                 .economicEffectName(currentEffect.getEffectName())
                 .economicDescription(currentEffect.getDescription())
                 .economicFullName(currentEffect.getFullEffectName())
+                .salaryMultiplier(currentEffect.getSalaryMultiplier())
+                .propertyPriceMultiplier(currentEffect.getPropertyPriceMultiplier())
+                .buildingCostMultiplier(currentEffect.getBuildingCostMultiplier())
                 .isBoom(currentEffect.isBoom())
                 .remainingTurns(EconomicEffect.getTurnsUntilNextPeriod(gameState.getGameTurn().intValue()))
                 .build();

@@ -119,6 +119,9 @@ public class MapService {
                 .economicEffectName("산업혁명")
                 .economicDescription("산업화로 부동산 가격이 상승하고 있습니다.")
                 .economicFullName("산업혁명 - 호황")
+                .salaryMultiplier(1.6)
+                .buildingCostMultiplier(1.3)
+                .propertyPriceMultiplier(1.3)
                 .isBoom(true)
                 .remainingTurns(1)
                 // .angelCardInDeck(true) // 게임 시작 시 천사카드는 덱에 포함 (비활성화됨)
@@ -138,45 +141,6 @@ public class MapService {
 
         log.info("새로운 게임 맵 상태 생성: roomId={}, players={}",
                 roomId, shuffledPlayers.size());
-    }
-
-    /**
-     * 게임 맵 상태 조회
-     */
-    public CreateMapPayload getGameMapState(String roomId) {
-        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-        if (gameState != null) {
-            // TTL 갱신
-            gameRedisService.updateGameStateTTL(roomId);
-        }
-        return gameState;
-    }
-
-    /**
-     * 플레이어 이동
-     */
-    public CreateMapPayload movePlayer(String roomId, String playerId, int steps) {
-        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
-        if (gameState == null) {
-            throw new IllegalStateException("게임 맵 상태를 찾을 수 없습니다: " + roomId);
-        }
-
-        CreateMapPayload.PlayerState player = gameState.getPlayers().get(playerId);
-        if (player == null) {
-            throw new BusinessException(BusinessError.USER_ID_NOT_FOUND);
-        }
-
-        // 새로운 위치 계산
-        int newPosition = (player.getPosition() + steps) % MAP_SIZE;
-        player.setPosition(newPosition);
-
-        // 게임 상태 업데이트
-        gameRedisService.saveGameMapState(roomId, gameState);
-
-        log.info("플레이어 이동: roomId={}, playerId={}, position={}",
-                roomId, playerId, newPosition);
-
-        return gameState;
     }
 
     /**

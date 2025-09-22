@@ -25,6 +25,9 @@ public class CreateMapPayload {
     private String economicEffectName;    // 경제 효과명 (예: "산업혁명")
     private String economicDescription;   // 경제 효과 설명
     private String economicFullName;      // 전체 효과명 (예: "산업혁명 - 호황")
+    private Double salaryMultiplier;
+    private Double propertyPriceMultiplier;
+    private Double buildingCostMultiplier;
     private boolean isBoom;               // 호황/불황 여부
     private int remainingTurns;           // 다음 시대까지 남은 턴 수
     
