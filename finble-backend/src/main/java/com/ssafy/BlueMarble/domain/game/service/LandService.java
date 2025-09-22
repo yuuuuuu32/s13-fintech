@@ -65,7 +65,7 @@ public class LandService {
 
         // 4.1 경제역사 효과를 적용한 실제 가격 계산
         int basePrice = targetCell.getToll();
-        int actualPrice = economicHistoryService.calculatePropertyPriceWithEffect(basePrice);
+        int actualPrice = economicHistoryService.calculatePropertyPriceWithEffect(basePrice, gameState.getGameTurn());
         log.info("[TRADE] 경제역사 효과 적용: 기본가격={}, 적용가격={}",
                 basePrice, actualPrice);
 
@@ -185,7 +185,7 @@ public class LandService {
 
         //3.0.1 경제역사 효과를 적용한 건설 비용 계산
         int baseBuildingCost = targetCell.getToll() * 10;
-        int actualBuildingCost = economicHistoryService.calculateBuildingCostWithEffect(baseBuildingCost);
+        int actualBuildingCost = economicHistoryService.calculateBuildingCostWithEffect(baseBuildingCost, gameState.getGameTurn());
         log.info("[CONSTRUCT] 경제역사 효과 적용: 기본건설비용={}, 적용건설비용={}",
                 baseBuildingCost, actualBuildingCost);
 

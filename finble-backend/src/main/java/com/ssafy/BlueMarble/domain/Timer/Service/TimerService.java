@@ -142,22 +142,21 @@ public class TimerService {
                 return;
             }
 
-            // 경제 효과를 타일과 플레이어에게 실제 적용
-            if (gameState.getGameTurn() > 0 && gameState.getGameTurn() % 2 == 1){
-                economicHistoryService.applyAndSaveEconomicEffectsForAllPlayers(roomId, gameState);
-            }
-
-
-
             TurnInfoDto payload = TurnInfoDto.builder()
                     .roomId(roomId)
-                    .gameTurn(gameState.getGameTurn() + 1)
+                    .gameTurn(gameState.getGameTurn())
                     .curPlayer(currentPlayer.getNickname())
                     .build();
 
             JsonNode payloadNode = objectMapper.valueToTree(payload);
             MessageDto message = new MessageDto(MessageType.GAME_STATE_CHANGE, payloadNode);
             sessionMessageService.sendMessageToRoom(roomId, message);
+
+            // 경제 효과를 타일과 플레이어에게 실제 적용 (2턴마다 적용)
+            if (gameState.getGameTurn() > 0 && gameState.getGameTurn() % 2 == 0){
+                economicHistoryService.applyAndSaveEconomicEffectsForAllPlayers(roomId, gameState);
+            }
+
 
         } catch (Exception e) {
             log.error("턴 시작 알림 전송 실패: roomId={}", roomId, e);
