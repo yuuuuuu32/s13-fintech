@@ -418,7 +418,6 @@ export function GameUI() {
     console.log("🏦 [GameUI] economicHistory 상태 체크:", economicHistory);
   }, [economicHistory]);
   const setDicePower = useGameStore(state => state.setDicePower);
-  const buyProperty = useGameStore(state => state.buyProperty);
   const buyPropertyWithItems = useGameStore(state => state.buyPropertyWithItems);
   const applyEconomicMultiplier = useGameStore(state => state.applyEconomicMultiplier);
   const endTurn = useGameStore(state => state.endTurn);
@@ -557,17 +556,17 @@ export function GameUI() {
                     </Typography>
                     {economicHistory.salaryMultiplier && (
                       <Typography variant="caption" sx={{ display: 'block' }}>
-                        월급: {((economicHistory.salaryMultiplier - 1) * 100).toFixed(0)}%
+                        월급: {(((economicHistory.salaryMultiplier - 1) * 100) > 0 ? '+' : '') + ((economicHistory.salaryMultiplier - 1) * 100).toFixed(0)}%
                       </Typography>
                     )}
                     {economicHistory.propertyPriceMultiplier && (
                       <Typography variant="caption" sx={{ display: 'block' }}>
-                        부동산: {((economicHistory.propertyPriceMultiplier - 1) * 100).toFixed(0)}%
+                        부동산: {(((economicHistory.propertyPriceMultiplier - 1) * 100) > 0 ? '+' : '') + ((economicHistory.propertyPriceMultiplier - 1) * 100).toFixed(0)}%
                       </Typography>
                     )}
                     {economicHistory.buildingCostMultiplier && (
                       <Typography variant="caption" sx={{ display: 'block' }}>
-                        건설비용: {((economicHistory.buildingCostMultiplier - 1) * 100).toFixed(0)}%
+                        건설비용: {(((economicHistory.buildingCostMultiplier - 1) * 100) > 0 ? '+' : '') + ((economicHistory.buildingCostMultiplier - 1) * 100).toFixed(0)}%
                       </Typography>
                     )}
                   </Box>
@@ -690,13 +689,25 @@ export function GameUI() {
       </Box>
       
       {gamePhase === 'WORLD_TRAVEL_MOVE' && (
-          <Box className={styles.worldTravelOverlay}>
-              <Typography variant="h4" className={styles.worldTravelTitle}>
+          <Box className={styles.worldTravelOverlay} sx={{
+            bgcolor: 'rgba(0, 20, 40, 0.95)',
+            border: '2px solid #00ffff',
+            boxShadow: '0 0 20px rgba(0, 255, 255, 0.3)',
+          }}>
+              <Typography 
+                variant="h4" 
+                className={styles.worldTravelTitle}
+                sx={{
+                  color: '#00ffff',
+                  textShadow: '0 0 10px rgba(0, 255, 255, 0.8)',
+                  fontWeight: 'bold'
+                }}
+              >
                 🌍 세계여행
               </Typography>
               <Typography variant="h6" className={styles.worldTravelText}>
                 원하는 목적지를 보드에서 직접 클릭하세요!<br />
-                <span className={styles.worldTravelHighlight}>
+                <span className={styles.worldTravelHighlight} style={{ color: '#00ffff' }}>
                   ✨ 반짝이는 타일들이 클릭 가능한 곳입니다
                 </span>
               </Typography>
@@ -720,7 +731,7 @@ export function GameUI() {
       <Modal open={modal.type !== 'NONE' || shouldShowGameOver} sx={{ pointerEvents: 'all' }}>
         <Box className={styles.modalStyle} sx={{ fontFamily: 'Galmuri14' }}>
           {modal.type === 'BUY_PROPERTY' && (
-            <BuyPropertyModalContent modal={modal} buyProperty={buyProperty} buyPropertyWithItems={buyPropertyWithItems} endTurn={endTurn} currentPlayer={currentPlayer} applyEconomicMultiplier={applyEconomicMultiplier} />
+            <BuyPropertyModalContent modal={modal} buyPropertyWithItems={buyPropertyWithItems} endTurn={endTurn} currentPlayer={currentPlayer} applyEconomicMultiplier={applyEconomicMultiplier} />
           )}
           {modal.type === 'BUY_SPECIAL_LAND' && (
             <BuySpecialLandModalContent modal={modal} buySpecialLand={buySpecialLand} endTurn={endTurn} currentPlayer={currentPlayer} />
