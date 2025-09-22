@@ -14,13 +14,13 @@ const calculateTotalAssets = (player, board: TileData[]) => {
     if (!tile) return sum;
 
     // 서버 데이터 구조에 맞게 landPrice 사용
-    let value = (tile as any)?.landPrice || tile.price || 0;
+    let value = tile.landPrice || tile.price || 0;
 
     // 건물 가치 추가
     if (tile.buildings && tile.buildings.level > 0) {
-      const housePrice = (tile as any)?.housePrice || 0;
-      const buildingPrice = (tile as any)?.buildingPrice || 0;
-      const hotelPrice = (tile as any)?.hotelPrice || 0;
+      const housePrice = tile.housePrice || 0;
+      const buildingPrice = tile.buildingPrice || 0;
+      const hotelPrice = tile.hotelPrice || 0;
 
       switch (tile.buildings.level) {
         case 1: // 주택
@@ -51,10 +51,10 @@ const BuyPropertyModalContent = ({ modal, buyPropertyWithItems, endTurn, current
 
   const tile = modal.tile;
   // 서버 데이터 구조에 맞게 가격 추출
-  const landPrice = (tile as any)?.landPrice || tile?.price || 0;
-  const housePrice = (tile as any)?.housePrice || 0;
-  const buildingPrice = (tile as any)?.buildingPrice || 0;
-  const hotelPrice = (tile as any)?.hotelPrice || 0;
+  const landPrice = tile?.landPrice || tile?.price || 0;
+  const housePrice = tile?.housePrice || 0;
+  const buildingPrice = tile?.buildingPrice || 0;
+  const hotelPrice = tile?.hotelPrice || 0;
 
   const handleItemChange = (item: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     if (item === 'land' && !event.target.checked) {
@@ -298,7 +298,7 @@ const ManagePropertyModalContent = ({ modal, buildBuilding, endTurn, board }) =>
 // BuySpecialLandModalContent
 const BuySpecialLandModalContent = ({ modal, buySpecialLand, endTurn, currentPlayer }) => {
   const tile = modal.tile;
-  const landPrice = modal.landPrice || (tile as any)?.landPrice || tile?.price || 0;
+  const landPrice = modal.landPrice || tile?.landPrice || tile?.price || 0;
   const canAfford = currentPlayer?.money >= landPrice;
 
   const handlePurchase = () => {

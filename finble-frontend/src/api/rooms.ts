@@ -8,6 +8,14 @@ interface Page<T> {
   // (totalPages, totalElements 등)
 }
 
+interface RoomResponseDTO {
+  roomId: string;
+  roomName: string;
+  roomState: string;
+  userCnt: number;
+  userLimit: number;
+}
+
 export const getRoomList = async (): Promise<GameRoom[]> => {
   const token = localStorage.getItem('jwt');
   if (!token) {
@@ -30,7 +38,7 @@ export const getRoomList = async (): Promise<GameRoom[]> => {
     // 현재는 백엔드 DTO와 GameRoom 타입이 거의 일치하지만,
     // status처럼 프론트엔드에만 필요한 값을 추가하는 등의 처리를 여기서 할 수 있습니다.
     console.log('Raw API response:', response.data.content);
-    const mappedRooms = response.data.content.map((room: any) => ({
+    const mappedRooms = response.data.content.map((room: RoomResponseDTO) => ({
       id: room.roomId,
       name: room.roomName,
       // roomState가 유효한 문자열인 경우에만 toLowerCase()를 호출하고, 아닐 경우 기본값 'waiting'을 사용합니다.

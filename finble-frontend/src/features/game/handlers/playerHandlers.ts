@@ -246,7 +246,10 @@ export const createPlayerActions = (
           modal: {
             type: "INFO" as const,
             text: "감옥에서 탈출했습니다! 다음 턴부터 정상 진행됩니다.",
-            onConfirm: () => set({ modal: { type: "NONE" as const } }),
+            onConfirm: () => {
+              set({ modal: { type: "NONE" as const } });
+              get().endTurn();
+            },
           },
         };
       } else {
@@ -259,7 +262,10 @@ export const createPlayerActions = (
           modal: {
             type: "INFO" as const,
             text: `감옥 탈출까지 ${newJailTurns}턴 남았습니다.`,
-            onConfirm: () => set({ modal: { type: "NONE" as const } }),
+            onConfirm: () => {
+              set({ modal: { type: "NONE" as const } });
+              get().endTurn();
+            },
           },
         };
       }
@@ -342,9 +348,8 @@ export const createPlayerActions = (
       send('/app/game/world-travel', {
         type: "WORLD_TRAVEL_EVENT",
         payload: {
-          playerId: currentPlayer.id,
-          destinationPosition: tileIndex,
-          currentPosition: currentPlayer.position
+          nickname: currentPlayer.name,
+          destination: tileIndex
         }
       });
     }

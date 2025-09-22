@@ -17,4 +17,8 @@ export interface TileData { // [수정] export 추가
   buildings?: {
       level: 0 | 1 | 2 | 3; // 0: 없음, 1: 주택, 2: 빌딩, 3: 호텔
   }
+  // 서버에서 올 수 있는 추가 필드들
+  landPrice?: number
+  housePrice?: number
+  hotelPrice?: number
 }

@@ -25,7 +25,7 @@ export const getWebSocketStatus = (): boolean => {
 };
 
 // 구독 콜백을 저장할 맵 (메시지 타입별로 여러 콜백이 있을 수 있음)
-const subscriptions: { [messageType: string]: ((message: any) => void)[] } = {};
+const subscriptions: { [messageType: string]: ((message: unknown) => void)[] } = {};
 
 export const initializeWebSocket = () => {
   if (webSocket && isConnected) {
@@ -205,7 +205,7 @@ export const disconnectWebSocket = () => {
   }
 };
 
-export const subscribeToTopic = (messageType: string, callback: (message: any) => void): (() => void) => {
+export const subscribeToTopic = (messageType: string, callback: (message: unknown) => void): (() => void) => {
   if (!subscriptions[messageType]) {
     subscriptions[messageType] = [];
   }
@@ -224,7 +224,7 @@ export const subscribeToTopic = (messageType: string, callback: (message: any) =
   return unsubscribe;
 };
 
-export const sendMessage = (destination: string, body: any) => {
+export const sendMessage = (destination: string, body: unknown) => {
   const timestamp = new Date().toISOString();
   const fullStackTrace = new Error().stack;
   const callChain = fullStackTrace?.split('\n').slice(1, 6).map(line => line.trim()).join(' → ');

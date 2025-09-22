@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../../../App.css'; // For .app-container
 import LandingVideo from '../../../assets/Landing.mp4'; // Import the video
@@ -7,12 +7,12 @@ console.log('LandingVideo path:', LandingVideo);
 export default function LandingPage() {
   const navigate = useNavigate()
 
-  const goToLoginPage = () => {
+  const goToLoginPage = useCallback(() => {
     navigate('/login')
-  }
+  }, [navigate])
 
   useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
+    const handleKeyPress = () => {
       goToLoginPage()
     }
 
@@ -23,7 +23,7 @@ export default function LandingPage() {
     return () => {
       window.removeEventListener('keydown', handleKeyPress)
     }
-  }, [navigate])
+  }, [goToLoginPage])
 
   return (
     <main className="app-container" style={{ position: 'relative', overflow: 'hidden' }}>

@@ -48,7 +48,7 @@ export default function LobbyPage() {
             {
               // CSS 변수에 이미지 URL 주입
               // 타입스크립트일 때 캐스팅 필요
-              ['--bg-url' as any]: `url(${bgImage})`,
+              '--bg-url': `url(${bgImage})`,
             } as React.CSSProperties
           }
         >

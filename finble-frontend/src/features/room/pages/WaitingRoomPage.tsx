@@ -53,7 +53,7 @@ export default function WaitingRoomPage() {
     return () => {
       cleanup();
     };
-  }, [roomId]);
+  }, [roomId, enterRoomAndSubscribe, cleanup, navigate]);
 
   useEffect(() => {
     if (room?.status === 'playing' && roomId) {

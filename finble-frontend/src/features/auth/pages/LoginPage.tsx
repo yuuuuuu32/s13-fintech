@@ -80,7 +80,7 @@ export default function LoginPage() {
         idToken: credentialResponse.credential,
       });
       await handleLoginSuccess(res.data.accessToken);
-    } catch (error: any) { // Add type annotation for error
+    } catch (error: unknown) {
       console.error('Backend login error:', error);
       setIsLoggingIn(false);
       setLoginProvider(null);

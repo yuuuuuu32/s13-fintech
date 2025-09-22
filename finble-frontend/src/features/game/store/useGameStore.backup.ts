@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { boardData as initialBoardData } from "../data/boardData.ts";
 import type { GameState, Player } from "../types/gameTypes.ts";
 import { createWebSocketHandlers } from "../handlers/websocketHandlers.ts";
 import { createGameLogicHandlers } from "../handlers/gameLogicHandlers.ts";

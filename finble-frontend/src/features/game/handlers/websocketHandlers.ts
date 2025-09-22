@@ -1,8 +1,6 @@
 import type { GameState, GameInitialState, Player } from "../types/gameTypes.ts";
 import { sendMessage, subscribeToTopic } from "../../../utils/websocket.ts";
 import { CHARACTER_PREFABS } from "../constants/gameConstants.ts";
-import { useUserStore } from "../../../stores/useUserStore.ts";
-import { Player } from "../components/Player.tsx";
 
 export const createWebSocketHandlers = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
@@ -493,6 +491,48 @@ export const createWebSocketHandlers = (
     subscribeToTopic("ENTER_NEW_USER", (message) => {
       console.log("📥 [WEBSOCKET] ENTER_NEW_USER received in game:", message);
       // 게임 중 새 유저 입장은 일반적으로 발생하지 않지만 로그 기록
+    });
+
+    // INTERNAL_SERVER_ERROR 메시지 처리
+    subscribeToTopic("INTERNAL_SERVER_ERROR", (message) => {
+      console.error("❌ [WEBSOCKET] INTERNAL_SERVER_ERROR received:", message);
+      const { payload } = message;
+
+      // 세계여행 중 오류라면 세계여행 모드 해제
+      const currentState = get();
+      if (currentState.gamePhase === "WORLD_TRAVEL_MOVE" ||
+          (currentState.modal?.text && currentState.modal.text.includes("세계여행"))) {
+        console.log("🔄 [INTERNAL_SERVER_ERROR] 세계여행 중 오류 발생 - 상태 복원");
+        set({
+          gamePhase: "WAITING_FOR_ROLL",
+          modal: {
+            type: "INFO" as const,
+            text: payload?.message || "서버 내부 오류가 발생했습니다. 다시 시도해주세요.",
+            onConfirm: () => {
+              set({ modal: { type: "NONE" as const } });
+              // 턴을 강제로 종료하여 다음 플레이어로 넘어감
+              get().endTurn();
+            }
+          }
+        });
+
+        // 여행 상태인 플레이어들의 상태 복원
+        set((state) => ({
+          players: state.players.map(player => ({
+            ...player,
+            isTraveling: false
+          }))
+        }));
+      } else {
+        // 일반적인 서버 오류 처리
+        set({
+          modal: {
+            type: "INFO" as const,
+            text: payload?.message || "서버 내부 오류가 발생했습니다.",
+            onConfirm: () => set({ modal: { type: "NONE" as const } })
+          }
+        });
+      }
     });
   },
 

@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../../../api/client';
 import { getMyInfo } from '../../../api/user';
 import { useUserStore } from '../../../stores/useUserStore';
 

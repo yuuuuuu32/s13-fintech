@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Sky } from '@react-three/drei'
+import { OrbitControls } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
 import { useGameStore } from '../store/useGameStore'
 import { Board } from '../components/Board.tsx'
