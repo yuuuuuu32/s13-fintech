@@ -403,6 +403,7 @@ export function GameUI() {
   const totalTurns = useGameStore(state => state.totalTurns);
   const currentTurn = useGameStore(state => state.currentTurn);
   const board = useGameStore(state => state.board);
+  const economicHistory = useGameStore(state => state.economicHistory);
   const setDicePower = useGameStore(state => state.setDicePower);
   const buyProperty = useGameStore(state => state.buyProperty);
   const buyPropertyWithItems = useGameStore(state => state.buyPropertyWithItems);
@@ -517,6 +518,11 @@ export function GameUI() {
       <Box sx={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', p: '10px 20px', bgcolor: 'rgba(0,0,0,0.7)', borderRadius: '10px' }}>
         <Typography variant="h5" fontWeight="bold" sx={{ fontFamily: 'Galmuri14' }}>{currentTurn} / {totalTurns} 턴</Typography>
         {isMyTurn && timeLeft > 5 && <Typography variant="h6" sx={{ fontFamily: 'Galmuri14' }}>남은 시간: {timeLeft}초</Typography>}
+        {economicHistory && (
+          <Typography variant="body2" sx={{ fontFamily: 'Galmuri14', mt: 1, color: economicHistory.isBoom ? '#4CAF50' : '#FF9800' }}>
+            📈 {economicHistory.fullName} (남은 턴: {economicHistory.remainingTurns})
+          </Typography>
+        )}
       </Box>
 
       {/* Player Cards in Corner Positions */}
