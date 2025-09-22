@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum EconomicEffectTemplate {
+public enum EconomicEffect {
 
     MODERN_BOOM(
         EconomicPeriod.MODERN,
@@ -79,17 +79,17 @@ public enum EconomicEffectTemplate {
     private final double propertyPriceMultiplier;
     private final double buildingCostMultiplier;
 
-    public static EconomicEffectTemplate[] getTemplatesByPeriodAndBoom(EconomicPeriod period, boolean isBoom) {
+    public static EconomicEffect[] getTemplatesByPeriodAndBoom(EconomicPeriod period, boolean isBoom) {
         return java.util.Arrays.stream(values())
                 .filter(template -> template.period == period && template.isBoom == isBoom)
-                .toArray(EconomicEffectTemplate[]::new);
+                .toArray(EconomicEffect[]::new);
     }
     
     /**
      * 랜덤 템플릿 선택
      */
-    public static EconomicEffectTemplate getRandomTemplate(EconomicPeriod period, boolean isBoom) {
-        EconomicEffectTemplate[] templates = getTemplatesByPeriodAndBoom(period, isBoom);
+    public static EconomicEffect getRandomTemplate(EconomicPeriod period, boolean isBoom) {
+        EconomicEffect[] templates = getTemplatesByPeriodAndBoom(period, isBoom);
         if (templates.length == 0) {
             throw new IllegalStateException("템플릿을 찾을 수 없습니다: period=" + period + ", isBoom=" + isBoom);
         }

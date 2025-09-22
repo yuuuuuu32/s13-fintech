@@ -6,7 +6,6 @@ import com.ssafy.BlueMarble.domain.Timer.dto.TurnInfoDto;
 import com.ssafy.BlueMarble.domain.game.service.GameRedisService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.domain.game.service.EconomicHistoryService;
-import com.ssafy.BlueMarble.domain.game.entity.EconomicEffectTemplate;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;

@@ -10,9 +10,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
 import java.util.Map;
-import java.util.HashMap;
+
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
-import com.ssafy.BlueMarble.domain.game.entity.EconomicEffectTemplate;
+import com.ssafy.BlueMarble.domain.game.entity.EconomicEffect;
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -47,7 +47,7 @@ public class GameRedisService {
     /**
      * 경제 효과 정보를 포함한 게임 맵 상태 저장
      */
-    public void saveGameMapStateWithEconomicEffect(String roomId, CreateMapPayload gameState, EconomicEffectTemplate currentEffect) {
+    public void saveGameMapStateWithEconomicEffect(String roomId, CreateMapPayload gameState, EconomicEffect currentEffect) {
         try {
             // 경제 효과 정보를 gameState에 추가
             if (currentEffect != null) {
@@ -56,7 +56,7 @@ public class GameRedisService {
                 gameState.setEconomicDescription(currentEffect.getDescription());
                 gameState.setEconomicFullName(currentEffect.getFullEffectName());
                 gameState.setBoom(currentEffect.isBoom());
-                gameState.setRemainingTurns(EconomicEffectTemplate.getTurnsUntilNextPeriod(gameState.getGameTurn().intValue()));
+                gameState.setRemainingTurns(EconomicEffect.getTurnsUntilNextPeriod(gameState.getGameTurn().intValue()));
             }
             
             saveGameMapState(roomId, gameState);

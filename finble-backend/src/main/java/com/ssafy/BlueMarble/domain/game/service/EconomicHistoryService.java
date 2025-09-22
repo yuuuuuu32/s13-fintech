@@ -2,9 +2,8 @@ package com.ssafy.BlueMarble.domain.game.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.BlueMarble.domain.game.entity.EconomicEffectTemplate;
+import com.ssafy.BlueMarble.domain.game.entity.EconomicEffect;
 import com.ssafy.BlueMarble.domain.game.entity.Tile;
-import com.ssafy.BlueMarble.domain.game.repository.TileRepository;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
@@ -13,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
 import java.util.Random;
 
 @Service
@@ -29,22 +27,22 @@ public class EconomicHistoryService {
     /**
      * 게임방의 현재 경제 효과 템플릿 조회 또는 초기화
      */
-    public EconomicEffectTemplate getCurrentEconomicEffect(Long gameTurn) {
-        EconomicEffectTemplate.EconomicPeriod currentPeriod = EconomicEffectTemplate.calculatePeriodFromTurn(gameTurn.intValue());
+    public EconomicEffect getCurrentEconomicEffect(Long gameTurn) {
+        EconomicEffect.EconomicPeriod currentPeriod = EconomicEffect.calculatePeriodFromTurn(gameTurn.intValue());
         
         // 2턴마다 경제 효과가 바뀌므로, 턴을 2로 나눈 몫을 시드로 사용
         int boomSeed = (int) (gameTurn / 2);
         Random boomRandom = new Random(boomSeed);
         boolean isBoom = boomRandom.nextBoolean();
         
-        return EconomicEffectTemplate.getRandomTemplate(currentPeriod, isBoom);
+        return EconomicEffect.getRandomTemplate(currentPeriod, isBoom);
     }
 
     /**
      * 게임방의 경제 효과가 반영된 가격들을 플레이어에게 적용
      */
     public void applyAndSaveEconomicEffectsForAllPlayers(String roomId, CreateMapPayload gameState) {
-        EconomicEffectTemplate currentEffect = getCurrentEconomicEffect(gameState.getGameTurn());
+        EconomicEffect currentEffect = getCurrentEconomicEffect(gameState.getGameTurn());
 
         // 모든 플레이어에게 경제 효과 실제 적용
         applyEconomicEffectsToAllPlayers(gameState, currentEffect);
@@ -61,7 +59,7 @@ public class EconomicHistoryService {
      * 특정 효과로 월급 계산
      */
     public int calculateSalaryWithEffect(int baseSalary) {
-        EconomicEffectTemplate currentEffect = getCurrentEconomicEffect(0L); // gameTurn은 임시로 0 사용
+        EconomicEffect currentEffect = getCurrentEconomicEffect(0L); // gameTurn은 임시로 0 사용
         return currentEffect.applySalaryMultiplier(baseSalary);
     }
 
@@ -69,7 +67,7 @@ public class EconomicHistoryService {
      * 특정 효과로 부동산 가격 계산
      */
     public int calculatePropertyPriceWithEffect(int basePrice) {
-        EconomicEffectTemplate currentEffect = getCurrentEconomicEffect(0L); // gameTurn은 임시로 0 사용
+        EconomicEffect currentEffect = getCurrentEconomicEffect(0L); // gameTurn은 임시로 0 사용
         return currentEffect.applyPropertyPriceMultiplier(basePrice);
     }
 
@@ -77,14 +75,14 @@ public class EconomicHistoryService {
      * 특정 효과로 건물 건설 비용 계산
      */
     public int calculateBuildingCostWithEffect(int baseCost) {
-        EconomicEffectTemplate currentEffect = getCurrentEconomicEffect(0L); // gameTurn은 임시로 0 사용
+        EconomicEffect currentEffect = getCurrentEconomicEffect(0L); // gameTurn은 임시로 0 사용
         return currentEffect.applyBuildingCostMultiplier(baseCost);
     }
 
     /**
      * 모든 플레이어와 타일에 경제 효과 실제 적용
      */
-    private void applyEconomicEffectsToAllPlayers(CreateMapPayload gameState, EconomicEffectTemplate currentEffect) {
+    private void applyEconomicEffectsToAllPlayers(CreateMapPayload gameState, EconomicEffect currentEffect) {
         if (gameState == null) {
             log.warn("게임 상태가 null이어서 경제 효과를 적용할 수 없습니다.");
             return;
@@ -103,7 +101,7 @@ public class EconomicHistoryService {
     /**
      * 개별 타일에 경제 효과 적용 (기본 가격에서 배수 적용)
      */
-    private void applyEconomicEffectToTile(Tile tile, EconomicEffectTemplate currentEffect) {
+    private void applyEconomicEffectToTile(Tile tile, EconomicEffect currentEffect) {
         // 부동산 가격 적용
         int originalLandPrice = tile.getLandPrice();
         if (originalLandPrice > 0) {
@@ -134,7 +132,7 @@ public class EconomicHistoryService {
     /**
      * 경제 효과 정보와 모든 타일 정보를 포함한 패킷 전송
      */
-    private void sendEconomicEffectUpdateMessage(String roomId, CreateMapPayload gameState, EconomicEffectTemplate currentEffect) {
+    private void sendEconomicEffectUpdateMessage(String roomId, CreateMapPayload gameState, EconomicEffect currentEffect) {
         try {
             CreateMapPayload clientGameState = CreateMapPayload.builder()
                     .roomId(roomId)
@@ -149,7 +147,7 @@ public class EconomicHistoryService {
                     .economicDescription(currentEffect.getDescription())
                     .economicFullName(currentEffect.getFullEffectName())
                     .isBoom(currentEffect.isBoom())
-                    .remainingTurns(EconomicEffectTemplate.getTurnsUntilNextPeriod(gameState.getGameTurn().intValue()))
+                    .remainingTurns(EconomicEffect.getTurnsUntilNextPeriod(gameState.getGameTurn().intValue()))
                     .build();
 
             JsonNode payloadNode = objectMapper.valueToTree(clientGameState);
