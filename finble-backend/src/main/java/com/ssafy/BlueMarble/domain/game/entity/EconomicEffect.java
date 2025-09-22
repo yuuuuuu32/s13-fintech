@@ -129,15 +129,15 @@ public enum EconomicEffect {
     /**
      * 부동산 가격에 배수 적용
      */
-    public int applyPropertyPriceMultiplier(int basePrice) {
-        return (int) (basePrice * propertyPriceMultiplier);
+    public Long applyPropertyPriceMultiplier(Long basePrice) {
+        return (long) (basePrice * propertyPriceMultiplier);
     }
     
     /**
      * 건물 건설비에 배수 적용
      */
-    public int applyBuildingCostMultiplier(int baseCost) {
-        return (int) (baseCost * buildingCostMultiplier);
+    public Long applyBuildingCostMultiplier(Long baseCost) {
+        return (long) (baseCost * buildingCostMultiplier);
     }
 
     @Getter
