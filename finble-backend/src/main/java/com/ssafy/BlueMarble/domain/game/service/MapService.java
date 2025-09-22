@@ -37,7 +37,6 @@ public class MapService {
     private final UserRedisService userRedisService;
     private final RedisTemplate<String, String> redisTemplate;
     private final TimerService timerService;
-    private final EconomicHistoryService economicHistoryService;
 
     private static final int MAP_SIZE = 32;
     private static final Random random = new Random(System.nanoTime());
@@ -116,33 +115,19 @@ public class MapService {
                 .playerOrder(playerNames)
                 .players(players)
                 .currentPlayerIndex(0)
+                .economicPeriodName("근대사")
+                .economicEffectName("산업혁명")
+                .economicDescription("산업화로 부동산 가격이 상승하고 있습니다.")
+                .economicFullName("산업혁명 - 호황")
+                .isBoom(true)
+                .remainingTurns(1)
                 // .angelCardInDeck(true) // 게임 시작 시 천사카드는 덱에 포함 (비활성화됨)
                 .build();
-
-        // 게임 시작 시 턴 0-1에는 MODERN 시대 경제 효과 적용
-        economicHistoryService.applyAndSaveEconomicEffectsForAllPlayers(roomId, gameState);
         
         // Redis에 저장
         gameRedisService.saveGameMapState(roomId, gameState);
-
-        // 웹소켓 (경제 효과가 적용된 맵 정보 전송)
-        CreateMapPayload clientGameState = CreateMapPayload.builder()
-                .roomId(gameState.getRoomId())
-                .gameState(gameState.getGameState())
-                .currentMap(gameState.getCurrentMap())
-                .gameTurn(gameState.getGameTurn())
-                .playerOrder(gameState.getPlayerOrder())
-                .players(gameState.getPlayers())
-                .currentPlayerIndex(gameState.getCurrentPlayerIndex())
-                .economicPeriodName(gameState.getEconomicPeriodName())
-                .economicEffectName(gameState.getEconomicEffectName())
-                .economicDescription(gameState.getEconomicDescription())
-                .economicFullName(gameState.getEconomicFullName())
-                .isBoom(gameState.isBoom())
-                .remainingTurns(gameState.getRemainingTurns())
-                .build();
         
-        JsonNode mapState = objectMapper.valueToTree(clientGameState);
+        JsonNode mapState = objectMapper.valueToTree(gameState);
         MessageDto message = new MessageDto(MessageType.START_GAME_OBSERVE, mapState);
         sessionMessageService.sendMessageToRoom(roomId, message);
 

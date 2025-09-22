@@ -20,7 +20,6 @@ import java.util.Random;
 @RequiredArgsConstructor
 public class EconomicHistoryService {
 
-    private final Random random = new Random();
     private final GameRedisService gameRedisService;
     private final SessionMessageService sessionMessageService;
     private final ObjectMapper objectMapper;

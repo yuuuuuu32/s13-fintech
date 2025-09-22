@@ -201,21 +201,12 @@ public class LandService {
         if (totalBuildingCost > user.getMoney()) {
             throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
         }
-        //3.1 이땅의 주인이 없는지 체크
-        if (targetCell.getOwnerName().equals(user.getNickname())) {
-            // TODO : 땅의 주인이 없다면 구매하도록 유도함
-            throw new BusinessException(BusinessError.LAND_NOT_FOUND);
-        }
-        //3.2 건설하려는 땅을 소유하고 있는가?
-        if (!targetCell.getOwnerName().equals(constructRequest.getNickname())) {
-            throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
-        }
 
-        //3.3 건물 타입을 목표 타입으로 변경
+        //3.1 건물 타입을 목표 타입으로 변경
         targetCell.setBuildingType(targetType);
         log.info("[CONSTRUCT] 건물 타입 변경: {} -> {}", currentType, targetType);
 
-        // 3.4 건설 비용 차감 (총 건설 비용)
+        // 3.2 건설 비용 차감 (총 건설 비용)
         user.setMoney(user.getMoney() - totalBuildingCost);
         log.info("[CONSTRUCT] 건설 비용 차감: 잔액={}, 차감액={}", user.getMoney(), totalBuildingCost);
 
