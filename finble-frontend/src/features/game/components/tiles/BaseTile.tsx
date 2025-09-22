@@ -2,16 +2,24 @@ import { Text, Line } from '@react-three/drei';
 import type { TileData } from '../../data/boardData.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
 import React from 'react';
+import styles from './BaseTile.module.css'; // CSS 모듈 import
+
+// CSS 변수 값을 읽어오는 헬퍼 함수
+const getCSSVariable = (variableName: string, fallback: string) => {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim();
+  return value || fallback;
+};
 
 // 플레이어 색상 함수
 const getPlayerColor = (character: string) => {
   const characterColors = {
-    'cone': '#4A90E2', 
-    'sphere': '#E74C3C',
-    'box': '#F39C12', 
-    'torus': '#9B59B6'
+    'cone': getCSSVariable('--player-cone-color', '#4A90E2'),
+    'sphere': getCSSVariable('--player-sphere-color', '#E74C3C'),
+    'box': getCSSVariable('--player-box-color', '#F39C12'),
+    'torus': getCSSVariable('--player-torus-color', '#9B59B6')
   };
-  return characterColors[character] || '#FFFFFF';
+  return characterColors[character] || getCSSVariable('--player-default-color', '#FFFFFF');
 };
 
 // 특수 타일 체크 함수
@@ -49,13 +57,12 @@ export function BaseTile({ tile, tileIndex, position, children, width, depth, ro
   const TILE_TOP_HEIGHT = 0.1;
   const TOTAL_HEIGHT = TILE_BASE_HEIGHT + TILE_TOP_HEIGHT;
 
-  const tileBaseColor = '#2a2a3a'; // 어두운 베이스
-  // 전체를 연한 초록색으로 통일 (사진과 같은 느낌)
-  const tileTopColor = '#90EE90'; // 라이트 그린
-  const worldTravelGlow = '#00ffff';
+  const tileBaseColor = getCSSVariable('--tile-base-color', '#2a2a3a');
+  const tileTopColor = getCSSVariable('--tile-top-color', '#90EE90');
+  const worldTravelGlow = getCSSVariable('--tile-world-travel-color', '#00ffff');
   
   // 소유자가 있으면 테두리 색상을 소유자 색으로, 없으면 검은색으로 설정
-  const borderColor = owner ? getPlayerColor(owner.character) : 'black';
+  const borderColor = owner ? getPlayerColor(owner.character) : getCSSVariable('--tile-border-color', 'black');
   
   const handleTileClick = () => {
     if (gamePhase === 'WORLD_TRAVEL_MOVE') selectTravelDestination(tileIndex);

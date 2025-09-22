@@ -2,6 +2,7 @@
   position: relative;
   width: 100vw;
   height: 100vh;
+  background-image: var(--bg-image);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -24,4 +25,6 @@
 
 .canvas {
   background: transparent;
+  width: 100%;
+  height: 100%;
 }

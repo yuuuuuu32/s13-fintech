@@ -43,13 +43,12 @@ export interface EconomicHistory {
   description: string;
   isBoom: boolean;
   fullName: string;
-  salaryMultiplier: number;
-  tollMultiplier: number;
-  propertyPriceMultiplier: number;
-  buildingCostMultiplier: number;
-  chanceCardBonusMultiplier: number;
-  chanceCardPenaltyMultiplier: number;
   remainingTurns: number;
+  // 백엔드에서 전송되는 배수 정보 (선택적)
+  salaryMultiplier?: number;
+  tollMultiplier?: number;
+  propertyPriceMultiplier?: number;
+  buildingCostMultiplier?: number;
 }
 
 export interface GameInitialState {
