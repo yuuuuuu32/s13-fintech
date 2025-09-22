@@ -41,7 +41,7 @@ const calculateTotalAssets = (player, board: TileData[]) => {
 };
 
 // BuyPropertyModalContent
-const BuyPropertyModalContent = ({ modal, buyPropertyWithItems, endTurn, currentPlayer }) => {
+const BuyPropertyModalContent = ({ modal, buyPropertyWithItems, endTurn, currentPlayer, applyEconomicMultiplier }) => {
   const [selectedItems, setSelectedItems] = useState({
     land: false, // 땅도 선택사항
     house: false,
@@ -51,10 +51,17 @@ const BuyPropertyModalContent = ({ modal, buyPropertyWithItems, endTurn, current
 
   const tile = modal.tile;
   // 서버 데이터 구조에 맞게 가격 추출
-  const landPrice = tile?.landPrice || tile?.price || 0;
-  const housePrice = tile?.housePrice || 0;
-  const buildingPrice = tile?.buildingPrice || 0;
-  const hotelPrice = tile?.hotelPrice || 0;
+  const baseLandPrice = tile?.landPrice || tile?.price || 0;
+  const baseHousePrice = tile?.housePrice || 0;
+  const baseBuildingPrice = tile?.buildingPrice || 0;
+  const baseHotelPrice = tile?.hotelPrice || 0;
+
+  // Adjusted prices using the multiplier function
+  const landPrice = applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
+  const housePrice = applyEconomicMultiplier(baseHousePrice, 'buildingCostMultiplier');
+  const buildingPrice = applyEconomicMultiplier(baseBuildingPrice, 'buildingCostMultiplier');
+  const hotelPrice = applyEconomicMultiplier(baseHotelPrice, 'buildingCostMultiplier');
+
 
   const handleItemChange = (item: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     if (item === 'land' && !event.target.checked) {
@@ -412,6 +419,7 @@ export function GameUI() {
   const setDicePower = useGameStore(state => state.setDicePower);
   const buyProperty = useGameStore(state => state.buyProperty);
   const buyPropertyWithItems = useGameStore(state => state.buyPropertyWithItems);
+  const applyEconomicMultiplier = useGameStore(state => state.applyEconomicMultiplier);
   const endTurn = useGameStore(state => state.endTurn);
   const acquireProperty = useGameStore(state => state.acquireProperty);
   const payToll = useGameStore(state => state.payToll);
@@ -544,17 +552,17 @@ export function GameUI() {
                     </Typography>
                     {economicHistory.salaryMultiplier && (
                       <Typography variant="caption" sx={{ display: 'block' }}>
-                        월급: {((economicHistory.salaryMultiplier - 1) * 100).toFixed(0)}%
+                        월급: {(((economicHistory.salaryMultiplier - 1) * 100) > 0 ? '+' : '') + ((economicHistory.salaryMultiplier - 1) * 100).toFixed(0)}%
                       </Typography>
                     )}
                     {economicHistory.propertyPriceMultiplier && (
                       <Typography variant="caption" sx={{ display: 'block' }}>
-                        부동산: {((economicHistory.propertyPriceMultiplier - 1) * 100).toFixed(0)}%
+                        부동산: {(((economicHistory.propertyPriceMultiplier - 1) * 100) > 0 ? '+' : '') + ((economicHistory.propertyPriceMultiplier - 1) * 100).toFixed(0)}%
                       </Typography>
                     )}
                     {economicHistory.buildingCostMultiplier && (
                       <Typography variant="caption" sx={{ display: 'block' }}>
-                        건설비용: {((economicHistory.buildingCostMultiplier - 1) * 100).toFixed(0)}%
+                        건설비용: {(((economicHistory.buildingCostMultiplier - 1) * 100) > 0 ? '+' : '') + ((economicHistory.buildingCostMultiplier - 1) * 100).toFixed(0)}%
                       </Typography>
                     )}
                   </Box>
@@ -763,7 +771,7 @@ export function GameUI() {
       <Modal open={modal.type !== 'NONE' || shouldShowGameOver} sx={{ pointerEvents: 'all' }}>
         <Box sx={modalStyle}>
           {modal.type === 'BUY_PROPERTY' && (
-            <BuyPropertyModalContent modal={modal} buyProperty={buyProperty} buyPropertyWithItems={buyPropertyWithItems} endTurn={endTurn} currentPlayer={currentPlayer} />
+            <BuyPropertyModalContent modal={modal} buyProperty={buyProperty} buyPropertyWithItems={buyPropertyWithItems} endTurn={endTurn} currentPlayer={currentPlayer} applyEconomicMultiplier={applyEconomicMultiplier} />
           )}
           {modal.type === 'BUY_SPECIAL_LAND' && (
             <BuySpecialLandModalContent modal={modal} buySpecialLand={buySpecialLand} endTurn={endTurn} currentPlayer={currentPlayer} />

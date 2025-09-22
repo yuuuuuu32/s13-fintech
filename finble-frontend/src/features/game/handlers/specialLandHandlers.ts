@@ -17,62 +17,35 @@ export const createSpecialLandHandlers = (
   buySpecialLand: (tile: TileData, landPrice: number) => {
     const { gameId, send, players, currentPlayerIndex, board } = get();
     const currentPlayer = players[currentPlayerIndex];
+    const tileIndex = board.findIndex(t => t.name === tile.name);
 
-    // 자금 확인
-    if (currentPlayer.money < landPrice) {
-      set({ modal: { type: "INFO" as const, text: "자산이 부족하여 구매할 수 없습니다." } });
-      return;
-    }
-
-    const tileIndex = board.findIndex((t) => t.name === tile.name);
     if (tileIndex === -1) {
-      console.error("Could not find special land to buy:", tile.name);
+      console.error("Cannot find special land to buy:", tile.name);
       return;
     }
 
-    // 클라이언트 상태 업데이트
-    set((state) => {
-      const updatedPlayers = [...state.players];
-      const playerToUpdate = updatedPlayers[state.currentPlayerIndex];
+    // 클라이언트 사이드 자금 체크
+    if (currentPlayer.money < landPrice) {
+      set({ modal: { type: "INFO", text: "자산이 부족하여 구매할 수 없습니다." } });
+      return;
+    }
 
-      updatedPlayers[state.currentPlayerIndex] = {
-        ...playerToUpdate,
-        money: playerToUpdate.money - landPrice,
-        properties: [...playerToUpdate.properties, tileIndex],
-      };
-
-      // 보드 상태 업데이트 (소유자 설정)
-      const updatedBoard = [...state.board];
-      if (updatedBoard[tileIndex]) {
-        updatedBoard[tileIndex] = {
-          ...updatedBoard[tileIndex],
-          owner: currentPlayer.name,
-        };
-      }
-
-      return {
-        players: updatedPlayers,
-        board: updatedBoard,
-        modal: { type: "NONE" as const },
-      };
-    });
-
-    // 서버에 구매 정보 전송
+    // 서버에 건설 메시지 전송
     if (gameId) {
-      send(`/app/game/${gameId}/trade-land`, {
-        type: "TRADE_LAND",
+      send(`/app/game/constructBuilding`, {
+        type: "CONSTRUCT_BUILDING",
         payload: {
-          buyerName: currentPlayer.name,
+          nickname: currentPlayer.name,
           landNum: tileIndex,
+          targetBuildingType: "LAND", // 특수 땅도 'LAND' 타입으로 구매
         },
       });
     } else {
-      console.error("Cannot sync special land purchase, gameId is not set");
+      console.error("Cannot construct building, gameId is not set");
     }
 
-    // 독점 승리 조건 확인
-    const { checkSpecialLandMonopoly } = get();
-    checkSpecialLandMonopoly();
+    // 모달 닫기
+    set({ modal: { type: "NONE" } });
   },
 
   // 스페셜 땅 통행료 지불 (모달 없이 바로 처리)

@@ -20,42 +20,21 @@ export const createPlayerActions = (
       return;
     }
 
-    // 낙관적 업데이트
-    set((state) => {
-      const updatedPlayers = [...state.players];
-      updatedPlayers[state.currentPlayerIndex] = {
-        ...currentPlayer,
-        money: currentPlayer.money - modal.tile.price,
-        properties: [...currentPlayer.properties, tileIndex],
-      };
-
-      const updatedBoard = [...state.board];
-      if (updatedBoard[tileIndex]) {
-        updatedBoard[tileIndex] = {
-          ...updatedBoard[tileIndex],
-          buildings: { level: 0 },
-        };
-      }
-
-      return {
-        players: updatedPlayers,
-        board: updatedBoard,
-        modal: { type: "NONE" as const },
-      };
-    });
-
-    // 서버에 동기화 메시지 전송
+    // 서버에 건설 메시지 전송
     if (gameId) {
-      send(`/app/game/${gameId}/trade-land`, {
-        type: "TRADE_LAND",
+      send(`/app/game/constructBuilding`, {
+        type: "CONSTRUCT_BUILDING",
         payload: {
-          buyerName: currentPlayer.name,
+          nickname: currentPlayer.name,
           landNum: tileIndex,
+          targetBuildingType: "LAND",
         },
       });
     } else {
-      console.error("Cannot sync property purchase, gameId is not set");
+      console.error("Cannot construct building, gameId is not set");
     }
+    
+    set({ modal: { type: "NONE" as const } });
   },
 
   buyPropertyWithItems: (purchaseData: { selectedItems: Record<string, boolean>; totalCost: number; tile: Record<string, unknown> }) => {
@@ -74,60 +53,30 @@ export const createPlayerActions = (
       return;
     }
 
-    // 2. Perform optimistic update on the client
-    set((state) => {
-      const updatedPlayers = [...state.players];
-      const playerToUpdate = updatedPlayers[state.currentPlayerIndex];
-
-      updatedPlayers[state.currentPlayerIndex] = {
-        ...playerToUpdate,
-        money: playerToUpdate.money - purchaseData.totalCost,
-        properties: [...playerToUpdate.properties, tileIndex],
-      };
-
-      // Also update building level on the board optimistically if needed
-      const updatedBoard = [...state.board];
-      let buildingLevel = 0;
-      if (purchaseData.selectedItems.house) buildingLevel = 1;
-      if (purchaseData.selectedItems.building) buildingLevel = 2;
-      if (purchaseData.selectedItems.hotel) buildingLevel = 3;
-
-      // 땅을 구매했다면 항상 buildings 객체를 초기화
-      if (updatedBoard[tileIndex] && purchaseData.selectedItems.land) {
-        updatedBoard[tileIndex] = {
-          ...updatedBoard[tileIndex],
-          buildings: { level: buildingLevel as 0 | 1 | 2 | 3 },
-        };
-
-        console.log("🏠 [LAND_PURCHASE] 땅 구매 후 건물 초기화:", {
-          tileName: updatedBoard[tileIndex].name,
-          buildingLevel,
-          hasBuildings: !!updatedBoard[tileIndex].buildings,
-          selectedItems: purchaseData.selectedItems
-        });
-      }
-
-      return {
-        players: updatedPlayers,
-        board: updatedBoard,
-        modal: { type: "NONE" as const },
-      };
-    });
+    let targetBuildingType = "LAND";
+    if (purchaseData.selectedItems.hotel) {
+      targetBuildingType = "HOTEL";
+    } else if (purchaseData.selectedItems.building) {
+      targetBuildingType = "BUILDING";
+    } else if (purchaseData.selectedItems.house) {
+      targetBuildingType = "VILLA";
+    }
 
     // 3. Send message to the server to make the change permanent
     if (gameId) {
-      send(`/app/game/${gameId}/trade-land`, { // Destination is ignored but good for logging
-        type: "TRADE_LAND",
+      send(`/app/game/constructBuilding`, {
+        type: "CONSTRUCT_BUILDING",
         payload: {
-          buyerName: currentPlayer.name,
+          nickname: currentPlayer.name,
           landNum: tileIndex,
-          // Sending building info might be necessary, but API spec is unclear
-          // buildingLevel: buildingLevel, 
+          targetBuildingType: targetBuildingType,
         },
       });
     } else {
       console.error("Cannot sync property purchase, gameId is not set");
     }
+
+    set({ modal: { type: "NONE" as const } });
   },
 
   acquireProperty: () => {
