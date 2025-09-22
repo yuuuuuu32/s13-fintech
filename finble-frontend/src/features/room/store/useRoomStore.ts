@@ -317,9 +317,26 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   
       // Store unsubscribe functions to be called on cleanup
       set({ cleanup: () => {
-        setTimeout(() => {
-          useLobbyStore.getState().exitRoom(roomId);
-        }, 100); // 100ms delay
+        // 게임이 진행 중이면 방을 나가지 않음
+        const currentRoom = get().room;
+        const isGameInProgress = currentRoom?.status === 'playing';
+
+        console.log('🧹 [ROOM_CLEANUP] Cleanup called:', {
+          roomId,
+          roomStatus: currentRoom?.status,
+          isGameInProgress,
+          willExitRoom: !isGameInProgress
+        });
+
+        if (!isGameInProgress) {
+          setTimeout(() => {
+            console.log('🚪 [ROOM_CLEANUP] Exiting room due to cleanup');
+            useLobbyStore.getState().exitRoom(roomId);
+          }, 100); // 100ms delay
+        } else {
+          console.log('🎮 [ROOM_CLEANUP] Game in progress - skipping room exit');
+        }
+
         enterNewUserSub();
         exitUserSub();
         kickUserSub();

@@ -533,9 +533,32 @@ export function GameUI() {
                 <Typography variant="body2" sx={{ mb: 1, lineHeight: 1.4 }}>
                   {economicHistory.description}
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
                   {economicHistory.isBoom ? '📈 호황' : '📉 불황'} · 남은 턴: {economicHistory.remainingTurns}
                 </Typography>
+                {/* 경제 효과 배수 정보 표시 */}
+                {(economicHistory.salaryMultiplier || economicHistory.propertyPriceMultiplier || economicHistory.buildingCostMultiplier) && (
+                  <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #ddd' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                      경제 효과:
+                    </Typography>
+                    {economicHistory.salaryMultiplier && (
+                      <Typography variant="caption" sx={{ display: 'block' }}>
+                        월급: {((economicHistory.salaryMultiplier - 1) * 100).toFixed(0)}%
+                      </Typography>
+                    )}
+                    {economicHistory.propertyPriceMultiplier && (
+                      <Typography variant="caption" sx={{ display: 'block' }}>
+                        부동산: {((economicHistory.propertyPriceMultiplier - 1) * 100).toFixed(0)}%
+                      </Typography>
+                    )}
+                    {economicHistory.buildingCostMultiplier && (
+                      <Typography variant="caption" sx={{ display: 'block' }}>
+                        건설비용: {((economicHistory.buildingCostMultiplier - 1) * 100).toFixed(0)}%
+                      </Typography>
+                    )}
+                  </Box>
+                )}
               </Box>
             }
             placement="bottom"

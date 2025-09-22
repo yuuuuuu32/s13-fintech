@@ -72,10 +72,49 @@ export const createGameLogicHandlers = (
   setIsDiceRolled: (isRolled: boolean) => set({ isDiceRolled: isRolled }),
 
   rollDice: () => {
-    const { gamePhase, players, currentPlayerIndex, gameId, send } = get();
+    const { gamePhase, players, currentPlayerIndex, gameId, send, board } = get();
     const currentPlayer = players[currentPlayerIndex];
 
     if (gamePhase !== "WAITING_FOR_ROLL") return;
+
+    // 포괄적인 게임 상태 유효성 검사
+    if (!gameId || !currentPlayer || players.length === 0 || !board || board.length === 0) {
+      console.error("❌ [ROLL_DICE] 게임 상태가 유효하지 않습니다:", {
+        gameId: gameId || "NULL",
+        currentPlayer: currentPlayer?.name || "NULL",
+        playersCount: players.length,
+        boardLength: board?.length || 0,
+        currentPlayerIndex,
+        gamePhase,
+        timestamp: new Date().toISOString()
+      });
+      set({
+        modal: {
+          type: "INFO",
+          text: "게임 상태가 손상되었습니다. 페이지를 새로고침하거나 게임을 다시 시작해주세요.",
+          onConfirm: () => set({ modal: { type: "NONE" } })
+        }
+      });
+      return;
+    }
+
+    // 플레이어 데이터 무결성 검사
+    if (!currentPlayer.name || typeof currentPlayer.position !== 'number' || currentPlayer.position < 0) {
+      console.error("❌ [ROLL_DICE] 현재 플레이어 데이터가 유효하지 않습니다:", {
+        playerName: currentPlayer.name,
+        playerPosition: currentPlayer.position,
+        playerId: currentPlayer.id,
+        gameId
+      });
+      set({
+        modal: {
+          type: "INFO",
+          text: "플레이어 데이터가 손상되었습니다. 게임을 다시 시작해주세요.",
+          onConfirm: () => set({ modal: { type: "NONE" } })
+        }
+      });
+      return;
+    }
 
     if (currentPlayer.isInJail) {
       set({ modal: { type: "JAIL" } });
@@ -95,8 +134,22 @@ export const createGameLogicHandlers = (
 
     set({ gamePhase: "DICE_ROLLING" });
 
+    // WebSocket 연결 상태 확인
+    if (!send || typeof send !== 'function') {
+      console.error("❌ [ROLL_DICE] WebSocket send 함수가 유효하지 않습니다");
+      set({
+        gamePhase: "WAITING_FOR_ROLL",
+        modal: {
+          type: "INFO",
+          text: "서버 연결이 끊어졌습니다. 페이지를 새로고침해주세요.",
+          onConfirm: () => set({ modal: { type: "NONE" } })
+        }
+      });
+      return;
+    }
+
     if (gameId && currentPlayer) {
-      console.log("📤 [WEBSOCKET] Sending USE_DICE:", {
+      console.log("📤 [WEBSOCKET] Sending USE_DICE with validation:", {
         destination: `/app/game/${gameId}/roll-dice`,
         type: "USE_DICE",
         payload: {
@@ -109,6 +162,11 @@ export const createGameLogicHandlers = (
           id: currentPlayer.id,
           position: currentPlayer.position,
           isInJail: currentPlayer.isInJail
+        },
+        gameStateValidation: {
+          playersCount: players.length,
+          boardLength: board.length,
+          gamePhase: get().gamePhase
         }
       });
 
@@ -120,44 +178,60 @@ export const createGameLogicHandlers = (
           },
         });
 
-        // 5초 후에도 응답이 없으면 타임아웃 처리
+        // 3초 후에도 응답이 없으면 타임아웃 처리 (5초에서 3초로 단축)
         setTimeout(() => {
           const currentState = get();
           if (currentState.gamePhase === "DICE_ROLLING") {
-            console.warn("⏰ [USE_DICE] 서버 응답 타임아웃 - 5초 경과");
+            console.warn("⏰ [USE_DICE] 서버 응답 타임아웃 - 3초 경과, 게임 상태 문제 가능성");
             set({
               gamePhase: "WAITING_FOR_ROLL",
               modal: {
                 type: "INFO",
-                text: "서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.",
-                onConfirm: () => set({ modal: { type: "NONE" } })
+                text: "서버 응답이 없습니다. 서버의 게임 상태가 손상되었을 수 있습니다. 페이지를 새로고침해주세요.",
+                onConfirm: () => {
+                  set({ modal: { type: "NONE" } });
+                  // 심각한 경우 페이지 새로고침 권장
+                  const userChoice = confirm("게임 상태가 비정상적입니다. 페이지를 새로고침하시겠습니까?");
+                  if (userChoice) {
+                    window.location.reload();
+                  }
+                }
               }
             });
           }
-        }, 5000);
+        }, 3000);
 
       } catch (error) {
-        console.error("❌ [WEBSOCKET] Failed to send USE_DICE:", error);
+        console.error("❌ [WEBSOCKET] Failed to send USE_DICE:", {
+          error: error.message || error,
+          gameId,
+          playerName: currentPlayer.name,
+          gamePhase: get().gamePhase,
+          timestamp: new Date().toISOString()
+        });
         set({
           gamePhase: "WAITING_FOR_ROLL",
           modal: {
             type: "INFO",
-            text: "주사위 굴리기 요청 중 오류가 발생했습니다. 다시 시도해주세요.",
+            text: "주사위 굴리기 요청 중 오류가 발생했습니다. 네트워크 연결을 확인한 후 다시 시도해주세요.",
             onConfirm: () => set({ modal: { type: "NONE" } })
           }
         });
       }
     } else {
-      console.error("Cannot roll dice:", {
+      console.error("❌ [ROLL_DICE] 치명적 오류 - 게임ID 또는 플레이어 정보 없음:", {
         gameId: gameId || "NOT_SET",
         currentPlayer: currentPlayer || "NOT_SET",
-        playerName: currentPlayer?.name || "UNKNOWN"
+        playerName: currentPlayer?.name || "UNKNOWN",
+        hasGameId: !!gameId,
+        hasCurrentPlayer: !!currentPlayer,
+        timestamp: new Date().toISOString()
       });
       set({
         gamePhase: "WAITING_FOR_ROLL",
         modal: {
           type: "INFO",
-          text: "게임 상태가 올바르지 않습니다. 페이지를 새로고침해주세요.",
+          text: "치명적인 게임 상태 오류입니다. 페이지를 새로고침하거나 게임을 다시 시작해주세요.",
           onConfirm: () => set({ modal: { type: "NONE" } })
         }
       });
@@ -165,34 +239,33 @@ export const createGameLogicHandlers = (
   },
 
   movePlayer: (diceValues: [number, number]) => {
-    const { players, currentPlayerIndex, board } = get();
+    const { players, currentPlayerIndex, board, serverCurrentPosition } = get();
     const currentPlayer = players[currentPlayerIndex];
     const diceSum = diceValues[0] + diceValues[1];
 
-    const newPosition = currentPlayer.position + diceSum;
-    let lapCount = currentPlayer.lapCount;
+    // 서버에서 받은 정확한 위치 사용 (찬스카드 이동 등이 반영됨)
+    const finalPosition = serverCurrentPosition !== null ? serverCurrentPosition : (currentPlayer.position + diceSum) % board.length;
 
-    // 시작점 통과 시 lapCount만 증가 (월급은 서버에서 이미 처리됨)
-    if (newPosition >= board.length) {
+    let lapCount = currentPlayer.lapCount;
+    // 시작점 통과 시 lapCount 증가
+    if (finalPosition < currentPlayer.position) {
       lapCount += 1;
     }
 
-    const finalPosition = newPosition % board.length;
     const updatedPlayers = [...players];
     updatedPlayers[currentPlayerIndex] = {
       ...currentPlayer,
       position: finalPosition,
       lapCount,
-      // money는 서버에서 업데이트된 값을 사용 (월급 포함)
     };
 
-    console.log("🏃 [MOVE_PLAYER] 클라이언트 이동 처리:", {
+    console.log("🏃 [MOVE_PLAYER] 서버 기반 이동 처리:", {
       currentPosition: currentPlayer.position,
+      serverPosition: serverCurrentPosition,
+      finalPosition: finalPosition,
       diceSum,
-      newPosition,
-      finalPosition,
       lapCountUpdated: lapCount,
-      note: "월급은 서버에서 이미 처리됨"
+      note: "서버에서 받은 위치 사용"
     });
 
     set({
@@ -200,6 +273,13 @@ export const createGameLogicHandlers = (
       dice: diceValues,
       gamePhase: "PLAYER_MOVING",
     });
+
+    // 애니메이션 시뮬레이션을 위한 지연 후 타일 액션 처리
+    console.log("🎬 [MOVE_PLAYER] 이동 애니메이션 시뮬레이션 시작");
+    setTimeout(() => {
+      console.log("🎯 [MOVE_PLAYER] 애니메이션 완료 - 타일 액션 처리 시작");
+      get().handleTileAction();
+    }, 1000); // 1초 애니메이션 시뮬레이션
   },
 
   handleTileAction: () => {

@@ -125,14 +125,22 @@ export const createWebSocketHandlers = (
         });
 
         return {
-          players: updatedPlayers,
+          players: updatedPlayers, // 위치는 여기서 업데이트하지 않음 - movePlayer에서 처리
           dice: [diceNum1, diceNum2],
           serverDiceNum: diceNumSum,
           serverCurrentPosition: currentPosition,
           currentTurn: curTurn,
-          gamePhase: "DICE_ROLLING",
+          // USE_DICE 응답을 받았으므로 주사위 굴리기 완료
         };
       });
+
+      console.log("🎲 [USE_DICE] 백엔드에서 주사위 처리 완료 - 주사위 애니메이션 대기 중");
+
+      // 주사위 애니메이션이 끝난 후 (2초) 기물 이동 시작
+      setTimeout(() => {
+        console.log("🎬 [USE_DICE] 주사위 애니메이션 완료 - 기물 이동 시작");
+        get().movePlayer([diceNum1, diceNum2]);
+      }, 2000); // 주사위 애니메이션 시간과 동일
     });
 
     subscribeToTopic("TRADE_LAND", (message) => {
@@ -344,9 +352,14 @@ export const createWebSocketHandlers = (
         periodName: payload.economicPeriodName,
         effectName: payload.economicEffectName,
         description: payload.economicDescription,
-        isBoom: payload.boom, // 백엔드에서 "boom" 필드로 전송
+        isBoom: payload.isBoom ?? payload.boom, // 백엔드에서 isBoom 또는 boom으로 전송 가능
         fullName: payload.economicFullName,
-        remainingTurns: payload.remainingTurns
+        remainingTurns: payload.remainingTurns,
+        // 추가 경제 효과 정보
+        salaryMultiplier: payload.salaryMultiplier,
+        tollMultiplier: payload.tollMultiplier,
+        propertyPriceMultiplier: payload.propertyPriceMultiplier,
+        buildingCostMultiplier: payload.buildingCostMultiplier
       };
 
       console.log("📈 [ECONOMIC_HISTORY] 경제역사 업데이트:", {
@@ -624,14 +637,22 @@ export const createWebSocketHandlers = (
         // 일반적인 서버 오류 처리
         const currentState = get();
 
-        // 주사위 굴리는 중 오류가 발생한 경우
+        // 주사위 굴리는 중 오류가 발생한 경우 (gameState가 null일 가능성 높음)
         if (currentState.gamePhase === "DICE_ROLLING") {
-          console.log("🎲 [INTERNAL_SERVER_ERROR] 주사위 굴리기 중 오류 발생 - 상태 복원");
+          console.log("🎲 [INTERNAL_SERVER_ERROR] 주사위 굴리기 중 오류 발생 - 게임 상태 재동기화 시도");
+
+          // 게임 상태 문제 감지 - 로그만 기록
+          console.log("🔄 [GAME_STATE_RESYNC] 서버 게임 상태가 null일 가능성 감지", {
+            gameId: currentState.gameId,
+            reason: "INTERNAL_SERVER_ERROR_ON_USE_DICE",
+            timestamp: new Date().toISOString()
+          });
+
           set({
             gamePhase: "WAITING_FOR_ROLL",
             modal: {
               type: "INFO" as const,
-              text: "주사위 굴리기 중 서버 오류가 발생했습니다. 다시 시도해주세요.",
+              text: "서버 게임 상태 오류가 발생했습니다. 게임 상태를 재동기화하고 있습니다. 잠시 후 다시 시도해주세요.",
               onConfirm: () => set({ modal: { type: "NONE" as const } })
             }
           });
@@ -707,18 +728,53 @@ export const createWebSocketHandlers = (
       );
     }
 
+    // 게임 초기화 상태 검증
+    if (!initialState.roomId || !initialState.currentMap?.cells || playersArray.length === 0) {
+      console.error("❌ [GAME_INIT] 게임 초기화 데이터가 유효하지 않습니다:", {
+        roomId: initialState.roomId,
+        cellsLength: initialState.currentMap?.cells?.length || 0,
+        playersCount: playersArray.length,
+        timestamp: new Date().toISOString()
+      });
+      set({
+        modal: {
+          type: "INFO" as const,
+          text: "게임 초기화에 실패했습니다. 방을 나가서 다시 시작해주세요.",
+          onConfirm: () => {
+            set({ modal: { type: "NONE" as const } });
+            window.location.href = '/lobby';
+          }
+        }
+      });
+      return;
+    }
+
     const mappedState = {
       gameId: initialState.roomId,
-                  board: initialState.currentMap.cells.map(
+      board: initialState.currentMap.cells.map(
         (cell) => cell || { name: "빈칸", type: "special" as const }
       ),
       players: playersArray,
       currentPlayerIndex: initialState.currentPlayerIndex,
       gamePhase: "SELECTING_ORDER" as const,
     };
+
+    console.log("✅ [GAME_INIT] 게임 초기화 성공:", {
+      gameId: mappedState.gameId,
+      playersCount: mappedState.players.length,
+      boardLength: mappedState.board.length,
+      currentPlayerIndex: mappedState.currentPlayerIndex
+    });
+
     set(mappedState);
 
+    // 게임 초기화 완료 후 대기상태로 전환
     setTimeout(() => {
+      console.log("🔍 [GAME_INIT] 게임 초기화 완료 - 대기상태로 전환", {
+        gameId: initialState.roomId,
+        playersCount: playersArray.length,
+        boardSize: mappedState.board.length
+      });
       set({ gamePhase: "WAITING_FOR_ROLL" });
     }, 5000);
   },
