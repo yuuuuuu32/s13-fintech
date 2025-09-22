@@ -8,43 +8,54 @@ export const createPlayerActions = (
   get: () => GameState
 ) => ({
   buyProperty: () => {
+    const { gameId, send, players, currentPlayerIndex, modal, board } = get();
+    const tileIndex = board.findIndex((t) => t.name === modal.tile?.name);
+    if (tileIndex === -1 || !modal.tile?.price) return;
+
+    const currentPlayer = players[currentPlayerIndex];
+
+    // 클라이언트 사이드 자금 체크
+    if (currentPlayer.money < modal.tile.price) {
+      set({ modal: { type: "INFO" as const, text: "자산이 부족하여 구매할 수 없습니다." } });
+      return;
+    }
+
+    // 낙관적 업데이트
     set((state) => {
-      const { players, currentPlayerIndex, modal, board } = state;
-      const tileIndex = board.findIndex((t) => t.name === modal.tile?.name);
-      if (tileIndex === -1 || !modal.tile?.price) return {};
+      const updatedPlayers = [...state.players];
+      updatedPlayers[state.currentPlayerIndex] = {
+        ...currentPlayer,
+        money: currentPlayer.money - modal.tile.price,
+        properties: [...currentPlayer.properties, tileIndex],
+      };
 
-      const currentPlayer = players[currentPlayerIndex];
-      if (currentPlayer.money >= modal.tile.price) {
-        const updatedPlayers = [...players];
-        updatedPlayers[currentPlayerIndex] = {
-          ...currentPlayer,
-          money: currentPlayer.money - modal.tile.price,
-          properties: [...currentPlayer.properties, tileIndex],
-        };
-
-        // 보드에서 건물 초기화
-        const updatedBoard = [...board];
-        if (updatedBoard[tileIndex]) {
-          updatedBoard[tileIndex] = {
-            ...updatedBoard[tileIndex],
-            buildings: { level: 0 },
-          };
-
-          console.log("🏠 [SIMPLE_PURCHASE] 땅 구매 후 건물 초기화:", {
-            tileName: updatedBoard[tileIndex].name,
-            hasBuildings: !!updatedBoard[tileIndex].buildings
-          });
-        }
-
-        return {
-          players: updatedPlayers,
-          board: updatedBoard
+      const updatedBoard = [...state.board];
+      if (updatedBoard[tileIndex]) {
+        updatedBoard[tileIndex] = {
+          ...updatedBoard[tileIndex],
+          buildings: { level: 0 },
         };
       }
+
       return {
-        modal: { type: "INFO" as const, text: "자산이 부족하여 구매할 수 없습니다." },
+        players: updatedPlayers,
+        board: updatedBoard,
+        modal: { type: "NONE" as const },
       };
     });
+
+    // 서버에 동기화 메시지 전송
+    if (gameId) {
+      send(`/app/game/${gameId}/trade-land`, {
+        type: "TRADE_LAND",
+        payload: {
+          buyerName: currentPlayer.name,
+          landNum: tileIndex,
+        },
+      });
+    } else {
+      console.error("Cannot sync property purchase, gameId is not set");
+    }
   },
 
   buyPropertyWithItems: (purchaseData: { selectedItems: Record<string, boolean>; totalCost: number; tile: Record<string, unknown> }) => {
@@ -120,83 +131,100 @@ export const createPlayerActions = (
   },
 
   acquireProperty: () => {
-    const { gameId, send } = get();
+    const { gameId, send, players, currentPlayerIndex, modal, board } = get();
+    const tileIndex = board.findIndex((t) => t.name === modal.tile?.name);
+    if (tileIndex === -1 || !modal.acquireCost) return;
+
+    const currentPlayer = players[currentPlayerIndex];
+    const owner = players.find((p) => p.properties.includes(tileIndex))!;
+
+    // 클라이언트 사이드 자금 체크
+    if (currentPlayer.money < modal.acquireCost) {
+      set({ modal: { type: "INFO" as const, text: "자산이 부족하여 인수할 수 없습니다." } });
+      return;
+    }
+
+    // 낙관적 업데이트
     set((state) => {
-      const { players, currentPlayerIndex, modal, board } = state;
-      const tileIndex = board.findIndex((t) => t.name === modal.tile?.name);
-      if (tileIndex === -1 || !modal.acquireCost) return {};
+      const updatedPlayers = [...state.players];
+      const ownerIndex = updatedPlayers.findIndex((p) => p.id === owner.id);
 
-      const currentPlayer = players[currentPlayerIndex];
-      const owner = players.find((p) => p.properties.includes(tileIndex))!;
+      updatedPlayers[state.currentPlayerIndex] = {
+        ...currentPlayer,
+        money: currentPlayer.money - modal.acquireCost,
+        properties: [...currentPlayer.properties, tileIndex],
+      };
 
-      if (currentPlayer.money >= modal.acquireCost) {
-        const updatedPlayers = [...players];
-        updatedPlayers[currentPlayerIndex] = {
-          ...currentPlayer,
-          money: currentPlayer.money - modal.acquireCost,
-          properties: [...currentPlayer.properties, tileIndex],
-        };
-        const ownerIndex = updatedPlayers.findIndex((p) => p.id === owner.id);
-        updatedPlayers[ownerIndex] = {
-          ...owner,
-          money: owner.money + modal.acquireCost,
-          properties: owner.properties.filter((p) => p !== tileIndex),
-        };
+      updatedPlayers[ownerIndex] = {
+        ...owner,
+        money: owner.money + modal.acquireCost,
+        properties: owner.properties.filter((p) => p !== tileIndex),
+      };
 
-        if (gameId) {
-          send(`/app/game/${gameId}/trade-land`, {
-            type: "TRADE_LAND",
-            payload: {
-              buyerName: currentPlayer.name,
-              landNum: tileIndex,
-            },
-          });
-        } else {
-          console.error("Cannot sync property purchase, gameId is not set");
-        }
-
-        return { players: updatedPlayers, modal: { type: "NONE" as const } };
-      }
       return {
-        modal: { type: "INFO" as const, text: "자산이 부족하여 인수할 수 없습니다." },
+        players: updatedPlayers,
+        modal: { type: "NONE" as const }
       };
     });
+
+    // 서버에 동기화 메시지 전송
+    if (gameId) {
+      send(`/app/game/${gameId}/trade-land`, {
+        type: "TRADE_LAND",
+        payload: {
+          buyerName: currentPlayer.name,
+          landNum: tileIndex,
+          // 인수 거래임을 명시하고 인수 가격 전송
+          isAcquisition: true,
+          acquisitionPrice: modal.acquireCost,
+          sellerName: owner.name,
+        },
+      });
+    } else {
+      console.error("Cannot sync property acquisition, gameId is not set");
+    }
   },
 
   payToll: () => {
+    const { gameId, send, players, currentPlayerIndex, modal, board } = get();
+    if (!modal.toll) {
+      set({ modal: { type: "NONE" as const } });
+      return;
+    }
+
+    const currentPlayer = players[currentPlayerIndex];
+    const tileIndex = board.findIndex((t) => t.name === modal.tile?.name);
+    const toll = modal.toll;
+
+    // 자금 부족 시 부동산 매각 로직 (기존 로직 유지)
+    if (currentPlayer.money < toll) {
+      const requiredAmount = toll - currentPlayer.money;
+
+      const propertiesToSell = currentPlayer.properties
+        .map((index) => ({ index, price: board[index].price || 0 }))
+        .sort((a, b) => b.price - a.price);
+
+      const result = handleInsufficientFundsForToll(
+        set,
+        get,
+        requiredAmount,
+        propertiesToSell,
+        currentPlayer,
+        players,
+        currentPlayerIndex,
+        tileIndex,
+        toll
+      );
+      if (result) {
+        set(result);
+        return;
+      }
+    }
+
+    // 낙관적 업데이트
     set((state) => {
-      const { players, currentPlayerIndex, modal, board } = state;
-      if (!modal.toll) {
-        return { modal: { type: "NONE" as const } };
-      }
-
-      const currentPlayer = players[currentPlayerIndex];
-      const tileIndex = board.findIndex((t) => t.name === modal.tile?.name);
-      const toll = modal.toll;
-
-      if (currentPlayer.money < toll) {
-        const requiredAmount = toll - currentPlayer.money;
-
-        const propertiesToSell = currentPlayer.properties
-          .map((index) => ({ index, price: board[index].price || 0 }))
-          .sort((a, b) => b.price - a.price);
-
-        const result = handleInsufficientFundsForToll(
-          set,
-          get,
-          requiredAmount,
-          propertiesToSell,
-          currentPlayer,
-          players,
-          currentPlayerIndex,
-          tileIndex,
-          toll
-        );
-        if (result) return result;
-      }
-
-      const currentPlayers = [...players];
-      const player = currentPlayers[currentPlayerIndex];
+      const currentPlayers = [...state.players];
+      const player = currentPlayers[state.currentPlayerIndex];
       const currentOwner = currentPlayers.find((p) =>
         p.properties.includes(tileIndex)
       )!;
@@ -204,7 +232,7 @@ export const createPlayerActions = (
         (p) => p.id === currentOwner.id
       );
 
-      currentPlayers[currentPlayerIndex] = {
+      currentPlayers[state.currentPlayerIndex] = {
         ...player,
         money: player.money - toll,
       };
@@ -213,7 +241,7 @@ export const createPlayerActions = (
         money: currentOwner.money + toll,
       };
 
-      const updatedPlayer = currentPlayers[currentPlayerIndex];
+      const updatedPlayer = currentPlayers[state.currentPlayerIndex];
       const text =
         updatedPlayer.money < 0
           ? `${updatedPlayer.name}님이 파산했습니다.`
@@ -227,6 +255,24 @@ export const createPlayerActions = (
         },
       };
     });
+
+    // 서버에 동기화 메시지 전송 (통행료는 별도 API가 필요할 수 있지만 일단 TRADE_LAND 사용)
+    if (gameId) {
+      const landOwner = players.find((p) => p.properties.includes(tileIndex));
+      send(`/app/game/${gameId}/trade-land`, {
+        type: "TRADE_LAND",
+        payload: {
+          buyerName: currentPlayer.name,
+          landNum: tileIndex,
+          // 통행료 지불임을 표시하는 플래그 추가 (백엔드에서 처리 필요)
+          isTollPayment: true,
+          tollAmount: toll,
+          landOwnerName: landOwner?.name
+        },
+      });
+    } else {
+      console.error("Cannot sync toll payment, gameId is not set");
+    }
   },
 
   handleJail: () => {
@@ -273,33 +319,51 @@ export const createPlayerActions = (
   },
 
   payBail: () => {
+    const { gameId, send, players, currentPlayerIndex } = get();
+    const currentPlayer = players[currentPlayerIndex];
+
+    // 클라이언트 사이드 자금 체크
+    if (currentPlayer.money < BAIL_AMOUNT) {
+      set({ modal: { type: "INFO" as const, text: "보석금이 부족합니다." } });
+      return;
+    }
+
+    // 낙관적 업데이트 (서버 응답 전에 UI 즉시 반영)
     set((state) => {
-      const currentPlayer = state.players[state.currentPlayerIndex];
-      if (currentPlayer.money >= BAIL_AMOUNT) {
-        const updatedPlayers = [...state.players];
-        updatedPlayers[state.currentPlayerIndex] = {
-          ...currentPlayer,
-          money: currentPlayer.money - BAIL_AMOUNT,
-          isInJail: false,
-          jailTurns: 0,
-        };
+      const updatedPlayers = [...state.players];
+      updatedPlayers[state.currentPlayerIndex] = {
+        ...currentPlayer,
+        money: currentPlayer.money - BAIL_AMOUNT,
+        isInJail: false,
+        jailTurns: 0,
+      };
 
-        console.log("💰 [BAIL] 보석금 지불 완료:", {
-          playerName: currentPlayer.name,
-          bailAmount: BAIL_AMOUNT,
-          remainingMoney: currentPlayer.money - BAIL_AMOUNT,
-          isInJail: false
-        });
+      console.log("💰 [BAIL] 보석금 지불 낙관적 업데이트:", {
+        playerName: currentPlayer.name,
+        bailAmount: BAIL_AMOUNT,
+        remainingMoney: currentPlayer.money - BAIL_AMOUNT,
+        isInJail: false
+      });
 
-        return {
-          players: updatedPlayers,
-          modal: { type: "NONE" as const },
-          gamePhase: "WAITING_FOR_ROLL" as const,
-        };
-      } else {
-        return { modal: { type: "INFO" as const, text: "보석금이 부족합니다." } };
-      }
+      return {
+        players: updatedPlayers,
+        modal: { type: "NONE" as const },
+        gamePhase: "WAITING_FOR_ROLL" as const,
+      };
     });
+
+    // 서버에 감옥 탈출 메시지 전송
+    if (gameId) {
+      send(`/app/game/${gameId}/jail-event`, {
+        type: "JAIL_EVENT",
+        payload: {
+          nickname: currentPlayer.name,
+          escape: true,
+        },
+      });
+    } else {
+      console.error("Cannot sync bail payment, gameId is not set");
+    }
 
     // 보석금 지불 후 턴 종료
     setTimeout(() => {
