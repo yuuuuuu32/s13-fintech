@@ -52,7 +52,7 @@ const getTilePosition = (index: number, playerIndex?: number, totalPlayers?: num
       }
 
     }
-  } catch (error) {
+  } catch {
     // 안전한 기본 위치 반환
     position[0] = 0;
     position[2] = 0;
@@ -78,7 +78,7 @@ const calculatePath = (start: number, end: number, diceSum: number, boardLength:
     if (path.length === 0 && start !== end) {
         path.push(getTilePosition(end, playerIndex, totalPlayers));
     }
-  } catch (error) {
+  } catch {
     // 안전한 기본 경로 반환
     path.push(getTilePosition(end, playerIndex, totalPlayers));
   }
@@ -97,39 +97,35 @@ export function Player({ player }: PlayerProps) {
   const boardLength = useGameStore(state => state.board.length);
   const players = useGameStore(state => state.players);
 
-  // Input validation
-  if (!player || !players || players.length === 0) {
-    return null;
-  }
-
-  // Use stable visual position tracking that survives component remounts
-  const prevPositionRef = useRef(player.position);
-  const meshRef = useRef<THREE.Mesh>(null!); // Ref for the animated mesh
-  const isAnimatingRef = useRef(false); // Track if animation is in progress
+  // Move all hooks to the top level - before any early returns
+  const prevPositionRef = useRef(player?.position || 0);
+  const meshRef = useRef<THREE.Mesh>(null!);
+  const isAnimatingRef = useRef(false);
 
   // Get player index for position offset (safe handling for -1)
-  const playerIndex = players.findIndex(p => p.id === player.id);
+  const playerIndex = players ? players.findIndex(p => p.id === player.id) : -1;
   const safePlayerIndex = playerIndex >= 0 ? playerIndex : 0;
 
   // Calculate the initial position BEFORE useSpring to ensure consistency
-  const initialVisualPosition = getTilePosition(player.position, safePlayerIndex, players.length);
+  const initialVisualPosition = player && players ? getTilePosition(player.position, safePlayerIndex, players.length) : [0, 0.5, 0] as [number, number, number];
 
   // Initialize useSpring with the player's current position
   const [springs, api] = useSpring(() => ({
-    position: initialVisualPosition, // Use pre-calculated position
+    position: initialVisualPosition,
     config: { duration: 200 },
   }));
 
-
   // Force correct position on component mount to prevent visual reset
   useEffect(() => {
+    if (!player || !players) return;
     const correctPosition = getTilePosition(player.position, safePlayerIndex, players.length);
     api.set({ position: correctPosition });
     prevPositionRef.current = player.position;
-  }, []);
+  }, [api, player, players, safePlayerIndex]);
 
   // This useEffect will handle all position updates
   useEffect(() => {
+    if (!player || !players) return;
     const targetPosition = getTilePosition(player.position, safePlayerIndex, players.length);
     const currentUser = useUserStore.getState().userInfo;
     const currentPlayer = useGameStore.getState().players[useGameStore.getState().currentPlayerIndex];
@@ -181,10 +177,10 @@ export function Player({ player }: PlayerProps) {
         // Not this player's turn - keep the piece in its current position
       }
     }
-  }, [player.position, api, boardLength, dice, gamePhase, handleTileAction, player.id, safePlayerIndex, players.length]);
+  }, [player, players, player.position, api, boardLength, dice, gamePhase, handleTileAction, player.id, safePlayerIndex, players.length]);
 
   useFrame(() => {
-    if (meshRef.current && !isAnimatingRef.current) {
+    if (meshRef.current && !isAnimatingRef.current && player && players) {
       const actualPosition = meshRef.current.position;
       const expectedPosition = getTilePosition(player.position, safePlayerIndex, players.length);
       const springValue = springs.position.get();
@@ -206,6 +202,11 @@ export function Player({ player }: PlayerProps) {
       }
     }
   });
+
+  // Input validation - return null after all hooks have been called
+  if (!player || !players || players.length === 0) {
+    return null;
+  }
 
   return (
     <animated.mesh ref={meshRef} position={springs.position as unknown as [number, number, number]} castShadow>

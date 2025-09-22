@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useUserStore } from '../stores/useUserStore';
-import { initializeWebSocket, disconnectWebSocket } from '../utils/websocket';
+import { initializeWebSocket } from '../utils/websocket';
 
 interface ProtectedRouteProps {
   children: React.ReactElement;

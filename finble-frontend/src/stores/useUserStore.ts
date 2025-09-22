@@ -11,7 +11,7 @@ function parseJwt(token: string) {
     }).join(''));
 
     return JSON.parse(jsonPayload);
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -33,7 +33,7 @@ interface UserState {
   initializeUserFromLocalStorage: () => void; // 새로 추가된 액션
 }
 
-export const useUserStore = create<UserState>((set, get) => ({
+export const useUserStore = create<UserState>((set) => ({
   userInfo: null,
   setUserInfo: (userInfo) => set({ userInfo }),
   // localStorage에서 사용자 정보를 초기화하는 함수

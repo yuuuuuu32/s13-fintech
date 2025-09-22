@@ -34,7 +34,7 @@ export const handleCityCompanyTile = (
     ownerName: owner?.name,
     isMyTurn,
     playerMoney: currentPlayer.money,
-    landPrice: (currentTile as any).landPrice ?? currentTile.price ?? 0
+    landPrice: currentTile.landPrice ?? currentTile.price ?? 0
   });
 
   if (!owner) {

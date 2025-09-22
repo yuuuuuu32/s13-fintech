@@ -10,6 +10,25 @@ export interface Player {
   isOwner: boolean;
 }
 
+// 웹소켓 메시지 타입 정의
+interface WebSocketMessage {
+  payload: unknown;
+}
+
+interface RoomCreationMessage extends WebSocketMessage {
+  payload: {
+    roomId: string;
+  };
+}
+
+interface RoomEntryMessage extends WebSocketMessage {
+  payload: Array<{
+    userId: string;
+    nickname: string;
+    isOwner: boolean;
+  }>;
+}
+
 // GameRoom 타입에서 map과 mode를 제거합니다.
 export interface GameRoom {
   id: string;
@@ -25,7 +44,7 @@ interface LobbyState {
   error: string | null;
   fetchRooms: () => Promise<void>;
   createRoom: (roomName: string, userLimit: number) => Promise<string>;
-  enterRoom: (roomId: string) => Promise<any>;
+  enterRoom: (roomId: string) => Promise<Player[]>;
   exitRoom: (roomId: string) => void;
   addRoomOptimistically: (room: GameRoom) => void;
   addRoom: (roomName: string) => string;
@@ -54,14 +73,14 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
     }
 
     try {
-      const roomCreationResult = await new Promise<any>((resolve, reject) => {
-        const unsubscribeOk = subscribeToTopic('CREATE_ROOM_OK', (message: any) => {
+      const roomCreationResult = await new Promise<string>((resolve, reject) => {
+        const unsubscribeOk = subscribeToTopic('CREATE_ROOM_OK', (message: RoomCreationMessage) => {
           unsubscribeOk();
           unsubscribeFail();
-          resolve(message.payload);
+          resolve(message.payload.roomId);
         });
 
-        const unsubscribeFail = subscribeToTopic('CREATE_ROOM_FAIL', (message: any) => {
+        const unsubscribeFail = subscribeToTopic('CREATE_ROOM_FAIL', (message: WebSocketMessage) => {
           unsubscribeOk();
           unsubscribeFail();
           reject(new Error(message.message));
@@ -100,13 +119,13 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
   },
   enterRoom: async (roomId: string) => {
     try {
-      const roomEntryResult = await new Promise<any>((resolve, reject) => {
-        const unsubscribeOk = subscribeToTopic('ENTER_ROOM_OK', (message: any) => {
+      const roomEntryResult = await new Promise<Player[]>((resolve, reject) => {
+        const unsubscribeOk = subscribeToTopic('ENTER_ROOM_OK', (message: RoomEntryMessage) => {
           unsubscribeOk();
           unsubscribeFail();
           unsubscribeNotFound();
           
-          const players: Player[] = message.payload.map((p: any) => ({
+          const players: Player[] = message.payload.map((p) => ({
             id: p.userId,
             name: p.nickname,
             isOwner: p.isOwner,
@@ -121,7 +140,7 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
           resolve(message.payload);
         });
 
-        const unsubscribeFail = subscribeToTopic('ENTER_ROOM_FAIL', (message: any) => {
+        const unsubscribeFail = subscribeToTopic('ENTER_ROOM_FAIL', (message: WebSocketMessage) => {
           console.log('방 입장 실패:', message);
           unsubscribeOk();
           unsubscribeFail();
@@ -148,7 +167,7 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
           reject(new Error(errorMessage));
         });
 
-        const unsubscribeNotFound = subscribeToTopic('ROOM_ID_NOT_FOUND', (message: any) => {
+        const unsubscribeNotFound = subscribeToTopic('ROOM_ID_NOT_FOUND', (message: WebSocketMessage) => {
           unsubscribeOk();
           unsubscribeFail();
           unsubscribeNotFound();

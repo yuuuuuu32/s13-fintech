@@ -4,6 +4,19 @@ import type { Player, GameRoom } from '../../lobby/store/useLobbyStore';
 import { useLobbyStore } from '../../lobby/store/useLobbyStore';
 import { useWebSocketStore } from '../../../stores/useWebSocketStore';
 
+// 웹소켓 메시지 타입 정의
+interface WebSocketMessage {
+  payload: unknown;
+}
+
+interface RoomMessage extends WebSocketMessage {
+  payload: Array<{
+    userId: string;
+    nickname: string;
+    isOwner: boolean;
+  }>;
+}
+
 interface RoomState {
   room: GameRoom | null;
   isEntering: boolean;
@@ -63,10 +76,10 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     });
 
     try {
-      const playersPayload = await new Promise<any>((resolve, reject) => {
+      const playersPayload = await new Promise<RoomMessage['payload']>((resolve, reject) => {
         let isResolved = false;
 
-        const unsubscribeOk = subscribeToTopic('ENTER_ROOM_OK', (message: any) => {
+        const unsubscribeOk = subscribeToTopic('ENTER_ROOM_OK', (message: RoomMessage) => {
           if (isResolved) return;
           isResolved = true;
 
@@ -78,7 +91,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
           resolve(message.payload);
         });
 
-        const unsubscribeFail = subscribeToTopic('ENTER_ROOM_FAIL', (message: any) => {
+        const unsubscribeFail = subscribeToTopic('ENTER_ROOM_FAIL', (message: WebSocketMessage) => {
           if (isResolved) return;
           isResolved = true;
 
@@ -110,7 +123,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
           reject(new Error(errorMessage));
         });
 
-        const unsubscribeNotFound = subscribeToTopic('ROOM_ID_NOT_FOUND', (message: any) => {
+        const unsubscribeNotFound = subscribeToTopic('ROOM_ID_NOT_FOUND', (message: WebSocketMessage) => {
           if (isResolved) return;
           isResolved = true;
 
@@ -122,7 +135,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
           reject(new Error(message.message || '방 ID를 찾을 수 없습니다.'));
         });
 
-        const unsubscribeError = subscribeToTopic('INTERNAL_SERVER_ERROR', (message: any) => {
+        const unsubscribeError = subscribeToTopic('INTERNAL_SERVER_ERROR', (message: WebSocketMessage) => {
           if (isResolved) return;
           isResolved = true;
 
@@ -160,7 +173,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         }, 10000);
       });
 
-      const players: Player[] = playersPayload.map((p: any) => ({
+      const players: Player[] = playersPayload.map((p) => ({
         id: p.userId,
         name: p.nickname,
         isOwner: p.isOwner,

@@ -1,9 +1,8 @@
-import type { GameState, Player } from "../types/gameTypes.ts";
+import type { GameState } from "../types/gameTypes.ts";
 import type { TileData } from "../data/boardData.ts";
 
 // 스페셜 땅 위치 (MapService.java의 EVENT_CELLS와 동일)
 const SPECIAL_LAND_POSITIONS = [5, 13, 21, 28, 31]; // 광주, 대전, 구미, 부산, 서울
-const SPECIAL_LAND_NAMES = ["광주", "대전", "구미", "부산", "서울"];
 
 export const createSpecialLandHandlers = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
@@ -78,8 +77,7 @@ export const createSpecialLandHandlers = (
 
   // 스페셜 땅 통행료 지불 (모달 없이 바로 처리)
   paySpecialLandToll: (tileIndex: number, toll: number) => {
-    const { players, currentPlayerIndex, board } = get();
-    const currentPlayer = players[currentPlayerIndex];
+    const { players } = get();
     const owner = players.find((p) => p.properties.includes(tileIndex));
 
     if (!owner) {
@@ -105,7 +103,6 @@ export const createSpecialLandHandlers = (
       };
 
       const tileName = board[tileIndex]?.name || "스페셜 땅";
-      const payerName = updatedPlayers[playerIdx].name;
 
       return {
         players: updatedPlayers,
@@ -120,7 +117,7 @@ export const createSpecialLandHandlers = (
 
   // 스페셜 땅 독점 승리 조건 확인
   checkSpecialLandMonopoly: () => {
-    const { players, currentPlayerIndex, board } = get();
+    const { players, currentPlayerIndex } = get();
     const currentPlayer = players[currentPlayerIndex];
 
     // 현재 플레이어가 소유한 스페셜 땅 개수 확인
@@ -164,7 +161,7 @@ export const createSpecialLandHandlers = (
 
     if (!owner) {
       // 주인이 없는 경우 - 구매 모달 표시
-      const landPrice = (tile as any)?.landPrice || tile?.price || 0;
+      const landPrice = tile?.landPrice || tile?.price || 0;
       set({
         modal: {
           type: "BUY_SPECIAL_LAND" as const,
@@ -174,7 +171,7 @@ export const createSpecialLandHandlers = (
       });
     } else if (owner.id !== currentPlayer.id) {
       // 다른 플레이어 소유 - 통행료 바로 지불
-      const toll = (tile as any)?.landPrice || tile?.price || 0;
+      const toll = tile?.landPrice || tile?.price || 0;
       const { paySpecialLandToll } = get();
       paySpecialLandToll(tileIndex, toll);
     } else {
