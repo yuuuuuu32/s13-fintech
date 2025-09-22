@@ -109,7 +109,7 @@ export default function GameCanvas() {
 
   // --- Router Params ---
   const { gameId } = useParams<{ gameId: string }>();
-
+  console.log('[1번 체크] useParams로 가져온 gameId:', gameId);
   // Safely convert players object/array to an array for rendering
   const playersArray = useMemo(
     () => (Array.isArray(players) ? players : Object.values(players || {})),
@@ -140,10 +140,11 @@ export default function GameCanvas() {
 
   // Effect to connect and disconnect WebSocket
   useEffect(() => {
+    console.log('[2번 체크] useEffect 실행됨. isWebSocketReady:', isWebSocketReady, 'gameId:', gameId);
     if (gameId && isWebSocketReady) {
       // CRITICAL FIX: Set gameId in the global store BEFORE connecting.
       // This ensures other parts of the app can access it for API calls.
-      useGameStore.setState({ gameId });
+      useGameStore.setState({ gameId: gameId }); 
       connect(gameId);
     }
     // Cleanup on component unmount
