@@ -421,25 +421,44 @@ export const createWebSocketHandlers = (
       console.log("📥 [WEBSOCKET] JAIL_EVENT received:", message);
       const { payload } = message;
 
-      set((state) => {
-        const updatedPlayers = state.players.map(player => {
-          if (player.name === payload.nickname) {
-            return {
-              ...player,
-              money: payload.updatedAsset ? payload.updatedAsset.money : player.money,
-              properties: payload.updatedAsset ? payload.updatedAsset.lands || [] : player.properties,
-              isInJail: payload.turns > 0,
-              jailTurns: payload.turns
-            };
-          }
-          return player;
-        });
+      if (payload.result !== undefined) {
+        set((state) => {
+          const updatedPlayers = state.players.map(player => {
+            if (player.name === payload.nickname) {
+              console.log("🔓 [JAIL_EVENT] 플레이어 상태 업데이트:", {
+                playerName: player.name,
+                escapeResult: payload.result,
+                previousMoney: player.money,
+                newMoney: payload.updatedAsset ? payload.updatedAsset.money : player.money,
+                jailTurns: payload.turns,
+                isInJail: payload.turns > 0
+              });
 
-        return {
-          players: updatedPlayers,
-          modal: { type: "NONE" }
-        };
-      });
+              return {
+                ...player,
+                money: payload.updatedAsset ? payload.updatedAsset.money : player.money,
+                properties: payload.updatedAsset ? payload.updatedAsset.lands || [] : player.properties,
+                isInJail: payload.turns > 0,
+                jailTurns: payload.turns
+              };
+            }
+            return player;
+          });
+
+          const resultText = payload.result
+            ? `${payload.nickname}님이 보석금을 내고 감옥에서 탈출했습니다!`
+            : `${payload.nickname}님의 감옥 탈출이 실패했습니다.`;
+
+          return {
+            players: updatedPlayers,
+            modal: {
+              type: "INFO" as const,
+              text: resultText,
+              onConfirm: () => set({ modal: { type: "NONE" as const } })
+            }
+          };
+        });
+      }
     });
 
     // WORLD_TRAVEL_EVENT 메시지 처리
