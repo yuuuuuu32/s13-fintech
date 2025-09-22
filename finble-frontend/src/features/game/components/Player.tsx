@@ -5,82 +5,118 @@ import type { Player as PlayerData } from '../types/gameTypes'
 import { useGameStore } from '../store/useGameStore'
 import { useFrame } from '@react-three/fiber'
 import { useUserStore } from '../../../stores/useUserStore'
+import type { TileData } from '../data/boardData.ts'
 
+// CSS 변수 값을 가져오는 함수
+const getCSSVariable = (variableName: string) => {
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(variableName)
+    .trim();
+};
 
-const getTilePosition = (index: number, playerIndex?: number, totalPlayers?: number): [number, number, number] => {
-  const TILE_WIDTH = 3;
-  const TILES_PER_SIDE = 8; // Corner to corner
-  const HALF_BOARD_WIDTH = TILES_PER_SIDE * TILE_WIDTH / 2; // 12
+const getTilePosition = (
+  index: number,
+  board: TileData[],
+  playerIndex?: number,
+  totalPlayers?: number
+): [number, number, number] => {
+  const DEFAULT_W = 4;
+  const DEFAULT_D = 4; // 6에서 4로 수정 (Board.tsx와 일치)
+  const GAP = 0.1;
 
-  const position: [number, number, number] = [0, 0, 0];
+  const widths = board.map((t) => (t?.size?.w ?? DEFAULT_W) + GAP);
+  const depths = board.map((t) => (t?.size?.d ?? DEFAULT_D) + GAP);
 
-  // 안전한 인덱스 처리
+  const B0 = 0, B1 = 8;
+  const L0 = 9, L1 = 16;
+  const T0 = 17, T1 = 24;
+  const R0 = 25, R1 = 31;
+
+  const bottomWidth = widths.slice(B0, B1 + 1).reduce((a, b) => a + b, 0) - GAP;
+  const leftDepth = depths.slice(L0, L1 + 1).reduce((a, b) => a + b, 0) - GAP;
+
+  const halfX = bottomWidth / 2;
+  const halfZ = leftDepth / 2;
+
+  const prefix = (arr: number[]) => arr.map((_, i) => arr.slice(0, i).reduce((a, b) => a + b, 0));
+
+  const bottomPS = prefix(widths.slice(B0, B1 + 1));
+  const leftPS = prefix(depths.slice(L0, L1 + 1));
+  const topPS = prefix(widths.slice(T0, T1 + 1));
+  const rightPS = prefix(depths.slice(R0, R1 + 1));
+
+  let x = 0, z = 0;
   const safeIndex = (typeof index === 'number' && index >= 0 && index <= 31) ? index : 0;
 
-  try {
-    if (safeIndex >= 0 && safeIndex <= 8) { // Bottom row (moves left)
-      position[0] = HALF_BOARD_WIDTH - safeIndex * TILE_WIDTH;
-      position[2] = -HALF_BOARD_WIDTH;
-    } else if (safeIndex > 8 && safeIndex <= 16) { // Left column (moves up)
-      position[0] = -HALF_BOARD_WIDTH;
-      position[2] = -HALF_BOARD_WIDTH + (safeIndex - 8) * TILE_WIDTH;
-    } else if (safeIndex > 16 && safeIndex <= 24) { // Top row (moves right)
-      position[0] = -HALF_BOARD_WIDTH + (safeIndex - 16) * TILE_WIDTH;
-      position[2] = HALF_BOARD_WIDTH;
-    } else if (safeIndex > 24 && safeIndex <= 31) { // Right column (moves down)
-      position[0] = HALF_BOARD_WIDTH;
-      position[2] = HALF_BOARD_WIDTH - (safeIndex - 24) * TILE_WIDTH;
-    }
-
-    // 플레이어별 동적 오프셋 적용 (무제한 플레이어 지원)
-    if (playerIndex !== undefined && playerIndex >= 0) {
-      const offsetDistance = 0.4;
-      const safePlayerIndex = Math.max(0, playerIndex); // 음수 방지
-      const playerCount = Math.max(1, totalPlayers || 4); // 기본값 4명
-
-      if (safePlayerIndex === 0) {
-        // 첫 번째 플레이어는 중앙
-        // 오프셋 없음
-      } else {
-        // 나머지 플레이어들은 원형으로 배치
-        const angle = (safePlayerIndex * 2 * Math.PI) / Math.max(playerCount - 1, 3);
-        const offsetX = Math.cos(angle) * offsetDistance;
-        const offsetZ = Math.sin(angle) * offsetDistance;
-
-        position[0] += offsetX;
-        position[2] += offsetZ;
-      }
-
-    }
-  } catch {
-    // 안전한 기본 위치 반환
-    position[0] = 0;
-    position[2] = 0;
+  if (safeIndex >= B0 && safeIndex <= B1) {
+    const k = safeIndex - B0;
+    const traveled = bottomPS[k] + (widths[k] - GAP) / 2;
+    x = halfX - traveled;
+    z = -halfZ;
+  } else if (safeIndex >= L0 && safeIndex <= L1) {
+    const k = safeIndex - L0;
+    const traveled = leftPS[k] + (depths[k + L0] - GAP) / 2;
+    x = -halfX;
+    z = -halfZ + traveled;
+  } else if (safeIndex >= T0 && safeIndex <= T1) {
+    const k = safeIndex - T0;
+    const traveled = topPS[k] + (widths[k + T0] - GAP) / 2;
+    x = -halfX + traveled;
+    z = halfZ;
+  } else {
+    const k = safeIndex - R0;
+    const traveled = rightPS[k] + (depths[k + R0] - GAP) / 2;
+    x = halfX;
+    z = halfZ - traveled;
   }
 
-  position[1] = 0.5; // Set Y position to be above the board
+  const position: [number, number, number] = [x, 0, z];
+
+  if (playerIndex !== undefined && playerIndex >= 0) {
+    const offsetDistance = 0.4;
+    const safePlayerIndex = Math.max(0, playerIndex);
+    const playerCount = Math.max(1, totalPlayers || 4);
+
+    if (safePlayerIndex !== 0) {
+      const angle = (safePlayerIndex * 2 * Math.PI) / Math.max(playerCount - 1, 3);
+      const offsetX = Math.cos(angle) * offsetDistance;
+      const offsetZ = Math.sin(angle) * offsetDistance;
+      position[0] += offsetX;
+      position[2] += offsetZ;
+    }
+  }
+
+  // 타일 높이(0.5) + 플레이어 모델 높이의 절반(약 0.4~0.5)
+  position[1] = 0.9; // Set Y position to be above the board
   return position;
 };
 
-const calculatePath = (start: number, end: number, diceSum: number, boardLength: number, playerIndex?: number, totalPlayers?: number): [number, number, number][] => {
+const calculatePath = (
+  start: number,
+  end: number,
+  diceSum: number,
+  board: TileData[],
+  playerIndex?: number,
+  totalPlayers?: number
+): [number, number, number][] => {
   const path: [number, number, number][] = [];
+  const boardLength = board.length;
 
   try {
     if (diceSum === 0) {
-        return [getTilePosition(end, playerIndex, totalPlayers)];
+      return [getTilePosition(end, board, playerIndex, totalPlayers)];
     }
 
     for (let i = 1; i <= diceSum; i++) {
       const nextIndex = (start + i) % boardLength;
-      path.push(getTilePosition(nextIndex, playerIndex, totalPlayers));
+      path.push(getTilePosition(nextIndex, board, playerIndex, totalPlayers));
     }
 
     if (path.length === 0 && start !== end) {
-        path.push(getTilePosition(end, playerIndex, totalPlayers));
+      path.push(getTilePosition(end, board, playerIndex, totalPlayers));
     }
-  } catch {
-    // 안전한 기본 경로 반환
-    path.push(getTilePosition(end, playerIndex, totalPlayers));
+  } catch (error) {
+    path.push(getTilePosition(end, board, playerIndex, totalPlayers));
   }
 
   return path;
@@ -94,55 +130,47 @@ export function Player({ player }: PlayerProps) {
   const handleTileAction = useGameStore(state => state.handleTileAction);
   const gamePhase = useGameStore(state => state.gamePhase);
   const dice = useGameStore(state => state.dice);
-  const boardLength = useGameStore(state => state.board.length);
+  const board = useGameStore(state => state.board);
   const players = useGameStore(state => state.players);
 
-  // Move all hooks to the top level - before any early returns
   const prevPositionRef = useRef(player?.position || 0);
   const meshRef = useRef<THREE.Mesh>(null!);
   const isAnimatingRef = useRef(false);
 
-  // Get player index for position offset (safe handling for -1)
   const playerIndex = players ? players.findIndex(p => p.id === player.id) : -1;
   const safePlayerIndex = playerIndex >= 0 ? playerIndex : 0;
 
-  // Calculate the initial position BEFORE useSpring to ensure consistency
-  const initialVisualPosition = player && players ? getTilePosition(player.position, safePlayerIndex, players.length) : [0, 0.5, 0] as [number, number, number];
+  const initialVisualPosition = player && players ? getTilePosition(player.position, board, safePlayerIndex, players.length) : [0, 0.5, 0] as [number, number, number];
 
-  // Initialize useSpring with the player's current position
   const [springs, api] = useSpring(() => ({
     position: initialVisualPosition,
     config: { duration: 200 },
   }));
 
-  // Force correct position on component mount to prevent visual reset
   useEffect(() => {
     if (!player || !players) return;
-    const correctPosition = getTilePosition(player.position, safePlayerIndex, players.length);
+    const correctPosition = getTilePosition(player.position, board, safePlayerIndex, players.length);
     api.set({ position: correctPosition });
     prevPositionRef.current = player.position;
-  }, [api, player, players, safePlayerIndex]);
+  }, [api, player, players, safePlayerIndex, board]);
 
-  // This useEffect will handle all position updates
   useEffect(() => {
     if (!player || !players) return;
-    const targetPosition = getTilePosition(player.position, safePlayerIndex, players.length);
+    const targetPosition = getTilePosition(player.position, board, safePlayerIndex, players.length);
     const currentUser = useUserStore.getState().userInfo;
-    const currentPlayer = useGameStore.getState().players[useGameStore.getState().currentPlayerIndex];
+    const currentPlayer = useGameStore.getState().players.find(p => p.id === useGameStore.getState().currentPlayerId);
     const isThisPlayersTurn = currentPlayer?.id === player.id;
     const isMyPlayer = currentUser?.userId === player.id;
 
-    // Only animate if the player's position has actually changed in the state
     if (player.position !== prevPositionRef.current) {
-      if (isThisPlayersTurn && gamePhase === 'PLAYER_MOVING') {
-        // This is a dice roll move, animate step-by-step
+      if (isThisPlayersTurn && gamePhase === 'MOVING_PLAYER') {
         const diceSum = dice[0] + dice[1];
-        const path = calculatePath(prevPositionRef.current, player.position, diceSum, boardLength, safePlayerIndex, players.length);
+        const path = calculatePath(prevPositionRef.current, player.position, diceSum, board, safePlayerIndex, players.length);
 
-        isAnimatingRef.current = true; // Start animation flag
+        isAnimatingRef.current = true;
 
         api.start({
-          from: getTilePosition(prevPositionRef.current, safePlayerIndex, players.length),
+          from: getTilePosition(prevPositionRef.current, board, safePlayerIndex, players.length),
           to: async (next) => {
             for (const pos of path) {
               await next({ position: pos });
@@ -152,37 +180,33 @@ export function Player({ player }: PlayerProps) {
           onRest: () => {
             isAnimatingRef.current = false;
             prevPositionRef.current = player.position;
-            if (isMyPlayer && isThisPlayersTurn && useGameStore.getState().gamePhase === 'PLAYER_MOVING') {
+            if (isMyPlayer && isThisPlayersTurn && useGameStore.getState().gamePhase === 'MOVING_PLAYER') {
               handleTileAction();
             }
           }
         });
-      } else if (gamePhase === 'TILE_ACTION' && isThisPlayersTurn) {
-        // This is a chance card or special tile movement, animate with smooth transition
-
-        isAnimatingRef.current = true; // Start animation flag
+      } else if (gamePhase === 'TILE_EVENT' && isThisPlayersTurn) {
+        isAnimatingRef.current = true;
 
         api.start({
           position: targetPosition,
-          config: { duration: 800 }, // Smoother transition for chance card moves
+          config: { duration: 800 },
           onRest: () => {
             isAnimatingRef.current = false;
             prevPositionRef.current = player.position;
           }
         });
-      } else if (isThisPlayersTurn) {
+      } else {
         api.set({ position: targetPosition });
         prevPositionRef.current = player.position;
-      } else {
-        // Not this player's turn - keep the piece in its current position
       }
     }
-  }, [player, players, player.position, api, boardLength, dice, gamePhase, handleTileAction, player.id, safePlayerIndex, players.length]);
+  }, [player.position, api, board, dice, gamePhase, handleTileAction, player.id, safePlayerIndex, players, players.length]);
 
   useFrame(() => {
     if (meshRef.current && !isAnimatingRef.current && player && players) {
       const actualPosition = meshRef.current.position;
-      const expectedPosition = getTilePosition(player.position, safePlayerIndex, players.length);
+      const expectedPosition = getTilePosition(player.position, board, safePlayerIndex, players.length);
       const springValue = springs.position.get();
 
       const positionMismatch =

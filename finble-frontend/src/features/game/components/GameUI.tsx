@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { BuildingType } from '../data/boardData.ts';
 import type { TileData } from '../data/boardData.ts';
 import { useUserStore } from '../../../stores/useUserStore';
-import { Modal, Box, Typography, Button, Card, CardContent, LinearProgress, List, ListItem, ListItemButton, ListItemText, Checkbox, FormControlLabel, FormGroup, Tooltip } from '@mui/material';
+import { Modal, Box, Typography, Button, Card, CardContent, LinearProgress, List, ListItem, ListItemButton, ListItemText, Checkbox, FormControlLabel, FormGroup } from '@mui/material';
+import styles from './GameUI.module.css';
 
 const BAIL_AMOUNT = 500000; 
 
@@ -527,76 +528,14 @@ export function GameUI() {
   };
 
   return (
-    <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', color: 'white', zIndex: 999 }}>
-      <Box sx={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', p: '10px 20px', bgcolor: 'rgba(0,0,0,0.7)', borderRadius: '10px', pointerEvents: 'auto' }}>
+    <Box className={styles.gameContainer}>
+      <Box className={styles.turnInfo}>
         <Typography variant="h5" fontWeight="bold" sx={{ fontFamily: 'Galmuri14' }}>{currentTurn} / {totalTurns} 턴</Typography>
         {isMyTurn && timeLeft > 5 && <Typography variant="h6" sx={{ fontFamily: 'Galmuri14' }}>남은 시간: {timeLeft}초</Typography>}
         {economicHistory && (
-          <Tooltip
-            title={
-              <Box sx={{ p: 1 }}>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, color: economicHistory.isBoom ? '#4CAF50' : '#FF9800' }}>
-                  {economicHistory.periodName} - {economicHistory.effectName}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1, lineHeight: 1.4 }}>
-                  {economicHistory.description}
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                  {economicHistory.isBoom ? '📈 호황' : '📉 불황'} · 남은 턴: {economicHistory.remainingTurns}
-                </Typography>
-                {/* 경제 효과 배수 정보 표시 */}
-                {(economicHistory.salaryMultiplier || economicHistory.propertyPriceMultiplier || economicHistory.buildingCostMultiplier) && (
-                  <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #ddd' }}>
-                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
-                      경제 효과:
-                    </Typography>
-                    {economicHistory.salaryMultiplier && (
-                      <Typography variant="caption" sx={{ display: 'block' }}>
-                        월급: {(((economicHistory.salaryMultiplier - 1) * 100) > 0 ? '+' : '') + ((economicHistory.salaryMultiplier - 1) * 100).toFixed(0)}%
-                      </Typography>
-                    )}
-                    {economicHistory.propertyPriceMultiplier && (
-                      <Typography variant="caption" sx={{ display: 'block' }}>
-                        부동산: {(((economicHistory.propertyPriceMultiplier - 1) * 100) > 0 ? '+' : '') + ((economicHistory.propertyPriceMultiplier - 1) * 100).toFixed(0)}%
-                      </Typography>
-                    )}
-                    {economicHistory.buildingCostMultiplier && (
-                      <Typography variant="caption" sx={{ display: 'block' }}>
-                        건설비용: {(((economicHistory.buildingCostMultiplier - 1) * 100) > 0 ? '+' : '') + ((economicHistory.buildingCostMultiplier - 1) * 100).toFixed(0)}%
-                      </Typography>
-                    )}
-                  </Box>
-                )}
-              </Box>
-            }
-            placement="bottom"
-            arrow
-            componentsProps={{
-              tooltip: {
-                sx: {
-                  bgcolor: 'rgba(0, 0, 0, 0.9)',
-                  maxWidth: 350,
-                  fontSize: '0.875rem',
-                  fontFamily: 'Galmuri14'
-                }
-              }
-            }}
-          >
-            <Typography
-              variant="body2"
-              sx={{
-                fontFamily: 'Galmuri14',
-                mt: 1,
-                color: economicHistory.isBoom ? '#4CAF50' : '#FF9800',
-                cursor: 'help',
-                '&:hover': {
-                  textDecoration: 'underline'
-                }
-              }}
-            >
-              📈 {economicHistory.fullName} (남은 턴: {economicHistory.remainingTurns})
-            </Typography>
-          </Tooltip>
+          <Typography variant="body2" className={`${styles.economicText} ${economicHistory.isBoom ? styles.boomText : styles.bustText}`}>
+            📈 {economicHistory.fullName} (남은 턴: {economicHistory.remainingTurns})
+          </Typography>
         )}
       </Box>
 
@@ -625,55 +564,36 @@ export function GameUI() {
         const position = getCornerPosition(index);
 
         return (
-          <Card key={player.id} sx={{
+          <Card key={player.id} className={styles.playerCard} sx={{
             position: 'absolute',
             ...position,
-            minWidth: 200,
-            maxWidth: 220,
             bgcolor: `rgba(0,0,0,${player.money < 0 ? 0.4 : 0.8})`,
             border: `3px solid ${index === currentPlayerIndex && !isGameOver ? '#FFD700' : characterColors[player.character] || 'white'}`,
-            color: 'white',
-            transition: 'all 0.3s',
-            borderRadius: 2,
             boxShadow: index === currentPlayerIndex && !isGameOver ? '0 0 15px rgba(255, 215, 0, 0.6)' : '0 4px 8px rgba(0,0,0,0.3)',
-            pointerEvents: 'all',
-            zIndex: 1000
           }}>
-            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <CardContent className={styles.playerCardContent} sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+              <Box className={styles.playerInfo}>
                 <Box
-                  sx={{
-                    width: 12,
-                    height: 12,
-                    borderRadius: '50%',
-                    bgcolor: characterColors[player.character] || 'white',
-                    mr: 1,
-                    boxShadow: '0 0 4px rgba(0,0,0,0.5)'
-                  }}
+                  className={styles.playerIcon}
+                  sx={{ bgcolor: characterColors[player.character] || 'white' }}
                 />
-                <Typography variant="subtitle1" component="div" fontWeight="bold" sx={{ fontSize: '0.9rem', fontFamily: 'Galmuri14' }}>
+                <Typography variant="subtitle1" component="div" fontWeight="bold" className={styles.playerName} sx={{ color: 'white' }}>
                   {player.name} {isMyPlayer ? '(나)' : ''}
-                  {player.money < 0 && <span style={{ color: '#ff6b6b' }}> (파산)</span>}
-                  {player.isInJail && <span style={{ color: '#ffa726' }}> 🔒</span>}
+                  {player.money < 0 && <span className={styles.bankruptText}> (파산)</span>}
+                  {player.isInJail && <span className={styles.jailText}> 🔒</span>}
                 </Typography>
               </Box>
-              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2, fontFamily: 'Galmuri14' }}>
+              <Typography variant="body2" className={styles.playerStats} sx={{ color: 'white' }}>
                 💰 {player.money.toLocaleString()}원
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2, fontFamily: 'Galmuri14' }}>
+              <Typography variant="body2" className={styles.playerStats} sx={{ color: 'white' }}>
                 📊 총 {totalAssets.toLocaleString()}원
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.2, fontFamily: 'Galmuri14' }}>
+              <Typography variant="body2" className={styles.playerStats} sx={{ color: 'white' }}>
                 🏘️ {player.properties.length}개 도시
               </Typography>
               {index === currentPlayerIndex && !isGameOver && (
-                <Typography variant="caption" sx={{
-                  display: 'block',
-                  mt: 0.5,
-                  color: '#FFD700',
-                  fontWeight: 'bold',
-                  fontSize: '0.7rem'
-                }}>
+                <Typography variant="caption" className={styles.currentTurnLabel}>
                   ⭐ 현재 턴
                 </Typography>
               )}
@@ -682,10 +602,10 @@ export function GameUI() {
         )
       })}
 
-      <Box sx={{ position: 'absolute', bottom: '5%', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'all', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+      <Box className={styles.bottomControls}>
         {gamePhase === 'WAITING_FOR_ROLL' && (
-           <Box sx={{ width: 300 }}>
-             <LinearProgress variant="determinate" value={gauge} color="secondary" sx={{ height: 10, borderRadius: 5 }} />
+           <Box className={styles.gaugeContainer}>
+             <LinearProgress variant="determinate" value={gauge} color="secondary" className={styles.gauge} />
            </Box>
         )}
         <Button 
@@ -695,7 +615,8 @@ export function GameUI() {
           onMouseUp={handleChargeEnd}
           onMouseLeave={handleChargeEnd}
           disabled={gamePhase !== 'WAITING_FOR_ROLL' || !isMyTurn}
-          sx={mainButtonSx}
+          className={styles.mainButton}
+          sx={{ fontFamily: 'Galmuri14' }}
         >
           {currentPlayer?.isInJail ? '감옥...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
         </Button>
@@ -706,7 +627,8 @@ export function GameUI() {
             color="primary"
             size="large"
             onClick={endTurn}
-            sx={mainButtonSx}
+            className={styles.mainButton}
+            sx={{ fontFamily: 'Galmuri14' }}
           >
             턴 종료
           </Button>
@@ -714,40 +636,13 @@ export function GameUI() {
       </Box>
       
       {gamePhase === 'WORLD_TRAVEL_MOVE' && (
-          <Box sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            p: 4,
-            bgcolor: 'rgba(0, 20, 40, 0.95)',
-            borderRadius: 3,
-            border: '2px solid #00ffff',
-            boxShadow: '0 0 20px rgba(0, 255, 255, 0.3)',
-            textAlign: 'center',
-            minWidth: 400
-          }}>
-              <Typography
-                variant="h4"
-                sx={{
-                  color: '#00ffff',
-                  textShadow: '0 0 10px rgba(0, 255, 255, 0.8)',
-                  mb: 2,
-                  fontWeight: 'bold'
-                }}
-              >
+          <Box className={styles.worldTravelOverlay}>
+              <Typography variant="h4" className={styles.worldTravelTitle}>
                 🌍 세계여행
               </Typography>
-              <Typography
-                variant="h6"
-                sx={{
-                  color: '#ffffff',
-                  mb: 3,
-                  lineHeight: 1.6
-                }}
-              >
+              <Typography variant="h6" className={styles.worldTravelText}>
                 원하는 목적지를 보드에서 직접 클릭하세요!<br />
-                <span style={{ color: '#00ffff', fontSize: '0.9em' }}>
+                <span className={styles.worldTravelHighlight}>
                   ✨ 반짝이는 타일들이 클릭 가능한 곳입니다
                 </span>
               </Typography>
