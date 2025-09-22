@@ -214,7 +214,7 @@ public class CardService {
             }
 
             // 효과 적용 전 상태 저장
-            Long beforeMoney = player.getMoney();
+            int beforeMoney = player.getMoney();
             int beforePosition = player.getPosition();
             boolean beforeJail = player.isInJail();
             
@@ -230,12 +230,12 @@ public class CardService {
             }
 
             // 효과 적용 후 상태 확인
-            Long afterMoney = player.getMoney();
+            int afterMoney = player.getMoney();
             int afterPosition = player.getPosition();
             boolean afterJail = player.isInJail();
 
             // 변화량 계산 (금융정책 카드는 개인 변화만 추적)
-            Long moneyChange = (afterMoney != beforeMoney) ? (afterMoney - beforeMoney) : null;
+            Integer moneyChange = (afterMoney != beforeMoney) ? (afterMoney - beforeMoney) : null;
             Integer newPosition = (afterPosition != beforePosition) ? afterPosition : null;
             Boolean jailStatus = (afterJail != beforeJail) ? afterJail : null;
             String effectDescription = drawnCard.getDescription();
@@ -251,7 +251,7 @@ public class CardService {
             boolean hasAngelCard = false;
 
             // 이동 카드로 인한 통행료 정보 설정
-            Long tollAmount = null;
+            Integer tollAmount = null;
             String landOwner = null;
             Boolean canBuyLand = null;
 
@@ -262,16 +262,16 @@ public class CardService {
             }
 
             // 부동산 자산 정책 카드 효과 정보 계산
-            Long assetChangeAmount = null;
+            Integer assetChangeAmount = null;
             Integer effectPercent = null;
             Boolean isAssetIncrease = null;
-            Long baseLandValue = null;
+            Integer baseLandValue = null;
             Integer ownedLandCount = null;
 
             if (isFinancialPolicyCard(drawnCard) && "LAND_VALUE".equals(drawnCard.getEffectType())) {
                 effectPercent = drawnCard.getEffectValue();
                 isAssetIncrease = drawnCard.getName().contains("호황");
-                baseLandValue = 1000000L; // 기본 땅 가치 100만원
+                baseLandValue = 1000000; // 기본 땅 가치 100만원
                 ownedLandCount = player.getOwnedProperties() != null ? player.getOwnedProperties().size() : 0;
 
                 if (ownedLandCount > 0 && effectPercent != null) {
@@ -418,7 +418,7 @@ public class CardService {
     }
     
     private void applyMoneyEffect(CreateMapPayload.PlayerState player, int amount) {
-        Long newMoney = Math.max(0, player.getMoney() + amount);
+        int newMoney = Math.max(0, player.getMoney() + amount);
         player.setMoney(newMoney);
     }
     
@@ -477,10 +477,10 @@ public class CardService {
     }
     
     private void applyMoneyPercentEffectSimple(CreateMapPayload.PlayerState player, int percent) {
-        Long currentMoney = player.getMoney();
-        Long change = (currentMoney * percent) / 100;
+        int currentMoney = player.getMoney();
+        int change = (currentMoney * percent) / 100;
         // 퍼센트 효과는 기본적으로 차감으로 처리 (세금납부)
-        Long newMoney = Math.max(0, currentMoney - change);
+        int newMoney = Math.max(0, currentMoney - change);
         player.setMoney(newMoney);
     }
     
@@ -490,7 +490,7 @@ public class CardService {
 
         // 시작점(0번)으로 이동하면 월급 지급 (EventService와 통일)
         if (position == 0) {
-            Long currentMoney = player.getMoney();
+            int currentMoney = player.getMoney();
             player.setMoney(currentMoney + 1000000); // 월급 100만원 (EventService와 동일)
             log.info("시작점 도착으로 월급 지급: player={}, 월급=1000000", player.getNickname());
         }
@@ -503,7 +503,7 @@ public class CardService {
         try {
             var data = objectMapper.readTree(effectData);
             int amount = data.get("amount").asInt();
-            Long newMoney = Math.max(0, player.getMoney() + amount);
+            int newMoney = Math.max(0, player.getMoney() + amount);
             player.setMoney(newMoney);
         } catch (Exception e) {
             log.error("돈 효과 적용 실패: effectData={}", effectData, e);
@@ -515,15 +515,15 @@ public class CardService {
             var data = objectMapper.readTree(effectData);
             int percent = data.get("percent").asInt();
             String type = data.get("type").asText();
-
-            Long currentMoney = player.getMoney();
-            Long change = (currentMoney * percent) / 100;
+            
+            int currentMoney = player.getMoney();
+            int change = (currentMoney * percent) / 100;
             
             if ("deduct".equals(type)) {
                 change = -change;
             }
-
-            Long newMoney = Math.max(0, currentMoney + change);
+            
+            int newMoney = Math.max(0, currentMoney + change);
             player.setMoney(newMoney);
         } catch (Exception e) {
             log.error("퍼센트 돈 효과 적용 실패: effectData={}", effectData, e);
@@ -570,7 +570,7 @@ public class CardService {
             
             if (salary) {
                 // 시작점 이동 시 월급 지급
-                Long currentMoney = player.getMoney();
+                int currentMoney = player.getMoney();
                 player.setMoney(currentMoney + 1000000); // 월급 100만원 (EventService와 동일)
             }
         } catch (Exception e) {
@@ -600,14 +600,14 @@ public class CardService {
 
             for (CreateMapPayload.PlayerState player : gameMapState.getPlayers().values()) {
                 if (player.isActive()) {
-                    Long currentMoney = player.getMoney();
-                    Long change = (currentMoney * effectValue) / 100;
+                    int currentMoney = player.getMoney();
+                    int change = (currentMoney * effectValue) / 100;
 
                     if (!isIncrease) {
                         change = -change;
                     }
 
-                    Long newMoney = Math.max(0, currentMoney + change);
+                    int newMoney = Math.max(0, currentMoney + change);
                     player.setMoney(newMoney);
 
                     log.info("금융정책 효과 적용: userName={}, 기존금액={}, 변동률={}%, 변동액={}, 새금액={}",
@@ -673,7 +673,7 @@ public class CardService {
                             assetChange = -assetChange;
                         }
 
-                        Long newMoney = Math.max(0, player.getMoney() + assetChange);
+                        int newMoney = Math.max(0, player.getMoney() + assetChange);
                         player.setMoney(newMoney);
 
                         log.info("부동산 자산 변동 적용: player={}, ownedLands={}, assetChange={}, newMoney={}",
@@ -723,7 +723,7 @@ public class CardService {
      * @return LandingResult 도착 결과 정보
      */
     private LandingResult handleLandingOnTile(CreateMapPayload.PlayerState player, int position, CreateMapPayload gameMapState) {
-        LandingResult result = new LandingResult(0L, null, false);
+        LandingResult result = new LandingResult(0, null, false);
 
         try {
             if (gameMapState == null || gameMapState.getCurrentMap() == null ||
@@ -749,7 +749,7 @@ public class CardService {
 
             if (landOwner != null && !landOwner.equals(player.getNickname())) {
                 // 다른 플레이어의 땅에 도착 - 통행료 지불
-                Long tollAmount = targetCell.getToll();
+                int tollAmount = targetCell.getToll();
 
                 if (player.getMoney() >= tollAmount) {
                     // 통행료 지불
@@ -776,11 +776,11 @@ public class CardService {
                 // 구매 가능한 땅에 도착
                 log.info("구매 가능한 땅 도착: player={}, position={}, price={}",
                        player.getNickname(), position, targetCell.getToll());
-                result = new LandingResult(0L, null, true);
+                result = new LandingResult(0, null, true);
             } else {
                 // 자신의 땅에 도착
                 log.info("자신의 땅 도착: player={}, position={}", player.getNickname(), position);
-                result = new LandingResult(0L, landOwner, false);
+                result = new LandingResult(0, landOwner, false);
             }
 
         } catch (Exception e) {
@@ -796,7 +796,7 @@ public class CardService {
     @Data
     @AllArgsConstructor
     private static class LandingResult {
-        private Long tollAmount;      // 지불한 통행료
+        private int tollAmount;      // 지불한 통행료
         private String landOwner;    // 땅 주인
         private boolean canBuyLand;  // 구매 가능 여부
     }
