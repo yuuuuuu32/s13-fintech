@@ -1,0 +1,16 @@
+:root {
+  /* 더 밝은 네온 타일 색상 */
+  --tile-city-color: #10b981;
+  --tile-company-color: #3b82f6;
+  --tile-chance-color: #ef4444;
+  --tile-special-color: #8b5cf6;
+  --tile-jail-color: #6b7280;
+  --tile-airplane-color: #06b6d4;
+  --tile-border-color: #4b5563;
+  --tile-world-travel-color: #00ffff;
+  --tile-world-travel-hover: #4fd1c7;
+  
+  --player-1-color: #10b981;
+  --player-2-color: #ef4444;
+  --player-default-color: #ffffff;
+}

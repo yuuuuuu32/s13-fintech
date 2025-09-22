@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import React, { useEffect, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore.ts';
+import styles from './Dice.module.css';
 
 // 주사위 값에 따른 회전 값을 반환하는 헬퍼 함수
 const getRotationForDiceValue = (value: number): THREE.Quaternion => {
@@ -155,11 +156,7 @@ export function Dice() {
 
       {displayDiceSum !== null && (
         <Html position={[0, 2, 0]} center>
-          <div style={{
-            color: 'white',
-            fontSize: '3em',
-            textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
-          }}>
+          <div className={styles.diceSum}>
             {displayDiceSum}
           </div>
         </Html>

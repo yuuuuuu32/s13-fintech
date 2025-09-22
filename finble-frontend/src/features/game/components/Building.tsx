@@ -1,4 +1,12 @@
 import { Box } from '@react-three/drei';
+import styles from './Building.module.css';
+
+// CSS 변수 값을 가져오는 함수
+const getCSSVariable = (variableName: string) => {
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(variableName)
+    .trim();
+};
 
 interface BuildingProps {
   level: 1 | 2 | 3;
@@ -12,19 +20,19 @@ function Building({ level }: BuildingProps) {
     case 1: // 주택
       return (
         <Box position={[0, TILE_HEIGHT / 2 + 0.3, -1.5]} args={[1, 0.6, 1]} castShadow>
-          <meshStandardMaterial color="skyblue" />
+          <meshStandardMaterial color={getCSSVariable('--building-house-color')} />
         </Box>
       );
     case 2: // 호텔
       return (
         <Box position={[0, TILE_HEIGHT / 2 + 0.6, -1.5]} args={[1.2, 1.2, 1.2]} castShadow>
-          <meshStandardMaterial color="limegreen" />
+          <meshStandardMaterial color={getCSSVariable('--building-hotel-color')} />
         </Box>
       );
     case 3: // 빌딩
       return (
         <Box position={[0, TILE_HEIGHT / 2 + 1, -1.5]} args={[1.5, 2, 1.5]} castShadow>
-          <meshStandardMaterial color="tomato" />
+          <meshStandardMaterial color={getCSSVariable('--building-skyscraper-color')} />
         </Box>
       );
     default:
