@@ -88,7 +88,7 @@ public class EventService {
 
         if (jailRequest.isEscape()) {
             // 3. 보석금으로 탈출 시도
-            int bailMoney = 500; // 보석금
+            Long bailMoney = 500000L; // 보석금
 
             if (user.getMoney() >= bailMoney) {
                 // 보석금 지불 가능
