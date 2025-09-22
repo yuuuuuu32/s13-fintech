@@ -64,9 +64,8 @@ public class LandService {
         Tile targetCell = mapData.getCells().get(tradeLandRequest.getLandNum());
 
         // 4.1 경제역사 효과를 적용한 실제 가격 계산
-        Long basePrice = targetCell.getToll();
-        ;
-        Long actualPrice = economicHistoryService.calculatePropertyPriceWithEffect(basePrice, gameState.getGameTurn());
+        int basePrice = targetCell.getToll();
+        int actualPrice = economicHistoryService.calculatePropertyPriceWithEffect(basePrice, gameState.getGameTurn());
         log.info("[TRADE] 경제역사 효과 적용: 기본가격={}, 적용가격={}",
                 basePrice, actualPrice);
 
@@ -84,10 +83,13 @@ public class LandService {
             if (sellerUserId == null) {
                 throw new BusinessException(BusinessError.USER_ID_NOT_FOUND);
             }
-
+            
             // 판매자의 자산 정보를 가져온다.
             CreateMapPayload.PlayerState seller = gameState.getPlayers().get(sellerUserId);
             log.info("[TRADE] sellerUserId={}, sellerNickname={}, sellerMoney(before)={}", sellerUserId, seller.getNickname(), seller.getMoney());
+            if (seller == null) {
+                throw new BusinessException(BusinessError.USER_ID_NOT_FOUND);
+            }
 
             // 판매자가 실제로 해당 땅을 소유하고 있는지 확인
             if (!seller.getOwnedProperties().contains(tradeLandRequest.getLandNum())) {
@@ -108,8 +110,11 @@ public class LandService {
                 log.info("[TRADE] sellerOwnedProps(after)={}", seller.getOwnedProperties());
             }
         } else {
-            // 소유되지 않은 땅인 경우 거래가 불가능함
-            throw new BusinessException(BusinessError.CANNOT_TRADE);
+            // 소유되지 않은 땅인 경우, 땅 가격으로 구매 (경제역사 효과 적용된 가격)
+            if (buyer.getMoney() < actualPrice) {
+                throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
+            }
+            log.info("[TRADE] unowned land purchase, basePrice={}, actualPrice={}", basePrice, actualPrice);
         }
 
         // 6. 땅 주인을 구매자로 변경
@@ -151,6 +156,7 @@ public class LandService {
 
     /**
      * 건설
+     *
      */
     @Transactional
     public void constructBuilding(WebSocketSession session, ConstructRequest constructRequest) {
@@ -169,46 +175,50 @@ public class LandService {
         }
         log.info("[CONSTRUCT] player null? {}", user == null);
         GameMap mapData = gameState.getCurrentMap();
-
         //3. 건설시도 ( 건설 자금이 충분한지 / 현재 건설하려는 땅을 소유하고 있는지 체크해야함)
         Tile targetCell = mapData.getCells().get(constructRequest.getLandNum());
 
         //3.0 특별 땅이라면 건물을 지을 수 없음
-        if (targetCell.getType().equals(Tile.TileType.SPECIAL)) {
-            throw new BusinessException(BusinessError.SPECIAL_CANNOT_BUILD);
+        if(targetCell.getType().equals(Tile.TileType.SPECIAL)){
+            throw new  BusinessException(BusinessError.SPECIAL_CANNOT_BUILD);
         }
 
-        //3.0.1 목표 건물 타입까지의 총 건설 비용 계산
-        Tile.BuildingType currentType = targetCell.getBuildingType();
-        Tile.BuildingType targetType = constructRequest.getTargetBuildingType();
+        //3.0.1 경제역사 효과를 적용한 건설 비용 계산
+        int baseBuildingCost = targetCell.getToll() * 10;
+        int actualBuildingCost = economicHistoryService.calculateBuildingCostWithEffect(baseBuildingCost, gameState.getGameTurn());
+        log.info("[CONSTRUCT] 경제역사 효과 적용: 기본건설비용={}, 적용건설비용={}",
+                baseBuildingCost, actualBuildingCost);
 
-        Long totalBuildingCost = calculateTotalConstructCost(targetType, targetCell);
-        log.info("[CONSTRUCT] 건설 비용 계산: {} -> {} = {} (Redis에서 가져온 경제효과 적용된 비용)",
-                currentType, targetType, totalBuildingCost);
-
-        //3.1 유효성 검사
-        // 현재 건물 타입보다 높은 타입만 건설 가능
-        if (targetType.ordinal() <= currentType.ordinal()) {
-            throw new BusinessException(BusinessError.INVALID_BUILDING_TYPE);
+        //3.1 건설 자금이 충분한지 (경제역사 효과 적용된 비용)
+        if (actualBuildingCost > user.getMoney()) {
+            throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
         }
-
-        // 최대 건물 타입 제한 (HOTEL까지만)
-        if (currentType == Tile.BuildingType.HOTEL) {
-            throw new BusinessException(BusinessError.MAX_BUILDING_REACHED);
+        //3.1 이땅의 주인이 없는지 체크
+        if (targetCell.getOwnerName() == null) {
+            // TODO : 땅의 주인이 없다면 구매하도록 유도함
+            throw new BusinessException(BusinessError.LAND_NOT_FOUND);
         }
-
-        // 건설 자금이 충분한지 확인
-        if (totalBuildingCost > user.getMoney()) {
+        //3.2 건설하려는 땅을 소유하고 있는가?
+        if (!targetCell.getOwnerName().equals(constructRequest.getNickname())) {
             throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
         }
 
-        //3.1 건물 타입을 목표 타입으로 변경
-        targetCell.setBuildingType(targetType);
-        log.info("[CONSTRUCT] 건물 타입 변경: {} -> {}", currentType, targetType);
+        Tile.BuildingType curType = targetCell.getBuildingType();
 
-        // 3.2 건설 비용 차감 (총 건설 비용)
-        user.setMoney(user.getMoney() - totalBuildingCost);
-        log.info("[CONSTRUCT] 건설 비용 차감: 잔액={}, 차감액={}", user.getMoney(), totalBuildingCost);
+        switch (curType) {
+            case BUILDING:
+                targetCell.setBuildingType(Tile.BuildingType.HOTEL);
+                break;
+            case VILLA:
+                targetCell.setBuildingType(Tile.BuildingType.BUILDING);
+                break;
+            case HOTEL:
+                break;
+        }
+
+        // 3.3 건설 비용 차감 (경제역사 효과 적용된 비용)
+        user.setMoney(user.getMoney() - actualBuildingCost);
+        log.info("[CONSTRUCT] 건설 비용 차감: 잔액={}, 차감액={}", user.getMoney(), actualBuildingCost);
 
         //4. 업데이트된 상태를 Redis에 저장
         gameRedisService.saveGameMapState(roomId, gameState);
@@ -224,50 +234,12 @@ public class LandService {
                                 .lands(user.getOwnedProperties())
                                 .build()
                 )
-                .actualBuildingCost(totalBuildingCost)
-                .baseBuildingCost(targetCell.getToll())
+                .actualBuildingCost(actualBuildingCost)
+                .baseBuildingCost(baseBuildingCost)
                 .build();
 
         JsonNode payloadNode = objectMapper.valueToTree(payload);
         MessageDto message = new MessageDto(MessageType.CONSTRUCT_BUILDING, payloadNode);
         sessionMessageService.sendMessageToRoom(roomId, message);
-    }
-
-    /**
-     * 현재 건물 타입에서 목표 건물 타입까지의 총 건설 비용 계산
-     */
-    private Long calculateTotalConstructCost(Tile.BuildingType target,
-                                            Tile targetCell) {
-        Tile.BuildingType current = targetCell.getBuildingType();
-
-        Long totalCost = 0L;
-
-        // 현재 타입 다음부터 목표 타입까지의 각 단계 비용 계산
-        for (int i = current.ordinal() + 1; i <= target.ordinal(); i++) {
-            Tile.BuildingType buildingType = Tile.BuildingType.values()[i];
-            Long stepCost = getBuildingCostFromTile(buildingType, targetCell);
-            totalCost += stepCost;
-
-            log.info("[CONSTRUCT] 단계별 비용: {} -> {} = {} (Redis에서 가져온 경제효과 적용된 비용)",
-                    Tile.BuildingType.values()[i - 1], buildingType, stepCost);
-        }
-
-        return totalCost;
-    }
-
-    /**
-     * Tile에서 건물 타입별 건설 비용 가져오기 (이미 경제 효과가 적용된 비용)
-     */
-    private Long getBuildingCostFromTile(Tile.BuildingType buildingType, Tile tile) {
-        switch (buildingType) {
-            case VILLA:
-                return tile.getHousePrice();
-            case BUILDING:
-                return tile.getBuildingPrice();
-            case HOTEL:
-                return tile.getHotelPrice();
-            default:
-                return 0L;
-        }
     }
 }

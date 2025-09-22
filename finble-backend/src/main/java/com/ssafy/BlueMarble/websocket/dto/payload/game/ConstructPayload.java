@@ -16,13 +16,13 @@ public class ConstructPayload {
     private Integer landNum;
     private Tile.BuildingType buildingType;
     private Asset updatedAsset;
-    private Long actualBuildingCost;  // 경제역사 효과가 적용된 실제 건설 비용
-    private Long baseBuildingCost;    // 기본 건설 비용
+    private Integer actualBuildingCost;  // 경제역사 효과가 적용된 실제 건설 비용
+    private Integer baseBuildingCost;    // 기본 건설 비용
 
     @Data
     @Builder
     public static class Asset {
-        private Long money;
+        private int money;
         private List<Integer> lands;
     }
 }

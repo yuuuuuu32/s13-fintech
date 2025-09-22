@@ -13,7 +13,7 @@ public class WorldTravelPayload {
     private int startLand;                    
     private int endLand;                      
     private String landOwner;                 
-    private Long tollAmount;
+    private int tollAmount;                   
     private ConstructPayload.Asset travelerAsset; 
     private ConstructPayload.Asset ownerAsset; 
 }
