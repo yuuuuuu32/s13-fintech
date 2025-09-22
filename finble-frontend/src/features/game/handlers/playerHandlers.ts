@@ -174,6 +174,10 @@ export const createPlayerActions = (
         payload: {
           buyerName: currentPlayer.name,
           landNum: tileIndex,
+          // 인수 거래임을 명시하고 인수 가격 전송
+          isAcquisition: true,
+          acquisitionPrice: modal.acquireCost,
+          sellerName: owner.name,
         },
       });
     } else {
@@ -254,6 +258,7 @@ export const createPlayerActions = (
 
     // 서버에 동기화 메시지 전송 (통행료는 별도 API가 필요할 수 있지만 일단 TRADE_LAND 사용)
     if (gameId) {
+      const landOwner = players.find((p) => p.properties.includes(tileIndex));
       send(`/app/game/${gameId}/trade-land`, {
         type: "TRADE_LAND",
         payload: {
@@ -261,7 +266,8 @@ export const createPlayerActions = (
           landNum: tileIndex,
           // 통행료 지불임을 표시하는 플래그 추가 (백엔드에서 처리 필요)
           isTollPayment: true,
-          tollAmount: toll
+          tollAmount: toll,
+          landOwnerName: landOwner?.name
         },
       });
     } else {
@@ -307,33 +313,51 @@ export const createPlayerActions = (
   },
 
   payBail: () => {
+    const { gameId, send, players, currentPlayerIndex } = get();
+    const currentPlayer = players[currentPlayerIndex];
+
+    // 클라이언트 사이드 자금 체크
+    if (currentPlayer.money < BAIL_AMOUNT) {
+      set({ modal: { type: "INFO" as const, text: "보석금이 부족합니다." } });
+      return;
+    }
+
+    // 낙관적 업데이트 (서버 응답 전에 UI 즉시 반영)
     set((state) => {
-      const currentPlayer = state.players[state.currentPlayerIndex];
-      if (currentPlayer.money >= BAIL_AMOUNT) {
-        const updatedPlayers = [...state.players];
-        updatedPlayers[state.currentPlayerIndex] = {
-          ...currentPlayer,
-          money: currentPlayer.money - BAIL_AMOUNT,
-          isInJail: false,
-          jailTurns: 0,
-        };
+      const updatedPlayers = [...state.players];
+      updatedPlayers[state.currentPlayerIndex] = {
+        ...currentPlayer,
+        money: currentPlayer.money - BAIL_AMOUNT,
+        isInJail: false,
+        jailTurns: 0,
+      };
 
-        console.log("💰 [BAIL] 보석금 지불 완료:", {
-          playerName: currentPlayer.name,
-          bailAmount: BAIL_AMOUNT,
-          remainingMoney: currentPlayer.money - BAIL_AMOUNT,
-          isInJail: false
-        });
+      console.log("💰 [BAIL] 보석금 지불 낙관적 업데이트:", {
+        playerName: currentPlayer.name,
+        bailAmount: BAIL_AMOUNT,
+        remainingMoney: currentPlayer.money - BAIL_AMOUNT,
+        isInJail: false
+      });
 
-        return {
-          players: updatedPlayers,
-          modal: { type: "NONE" as const },
-          gamePhase: "WAITING_FOR_ROLL" as const,
-        };
-      } else {
-        return { modal: { type: "INFO" as const, text: "보석금이 부족합니다." } };
-      }
+      return {
+        players: updatedPlayers,
+        modal: { type: "NONE" as const },
+        gamePhase: "WAITING_FOR_ROLL" as const,
+      };
     });
+
+    // 서버에 감옥 탈출 메시지 전송
+    if (gameId) {
+      send(`/app/game/${gameId}/jail-event`, {
+        type: "JAIL_EVENT",
+        payload: {
+          nickname: currentPlayer.name,
+          escape: true,
+        },
+      });
+    } else {
+      console.error("Cannot sync bail payment, gameId is not set");
+    }
 
     // 보석금 지불 후 턴 종료
     setTimeout(() => {
