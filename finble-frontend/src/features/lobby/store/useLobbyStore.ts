@@ -109,7 +109,6 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
         status: 'waiting',
       };
       get().addRoomOptimistically(newRoom);
-      
       return roomCreationResult;
 
     } catch (error) {

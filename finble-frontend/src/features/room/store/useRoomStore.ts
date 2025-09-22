@@ -273,6 +273,13 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         window.location.href = '/lobby';
       });
 
+      // 경제역사 업데이트 구독 (대기실에서도 받을 수 있음)
+      const economicHistorySub = subscribeToTopic('ECONOMIC_HISTORY_UPDATE', (message) => {
+        console.log('📈 [ROOM] 경제역사 업데이트 수신:', message);
+        // 게임 시작 전 경제역사 정보는 로그만 기록
+        // 실제 처리는 게임 상태에서 담당
+      });
+
       // 게임 시작 메시지 구독
       const gameStartSub = subscribeToTopic('START_GAME_OBSERVE', (message) => {
         const currentWebSocketState = useWebSocketStore.getState();
@@ -310,13 +317,31 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   
       // Store unsubscribe functions to be called on cleanup
       set({ cleanup: () => {
-        setTimeout(() => {
-          useLobbyStore.getState().exitRoom(roomId);
-        }, 100); // 100ms delay
+        // 게임이 진행 중이면 방을 나가지 않음
+        const currentRoom = get().room;
+        const isGameInProgress = currentRoom?.status === 'playing';
+
+        console.log('🧹 [ROOM_CLEANUP] Cleanup called:', {
+          roomId,
+          roomStatus: currentRoom?.status,
+          isGameInProgress,
+          willExitRoom: !isGameInProgress
+        });
+
+        if (!isGameInProgress) {
+          setTimeout(() => {
+            console.log('🚪 [ROOM_CLEANUP] Exiting room due to cleanup');
+            useLobbyStore.getState().exitRoom(roomId);
+          }, 100); // 100ms delay
+        } else {
+          console.log('🎮 [ROOM_CLEANUP] Game in progress - skipping room exit');
+        }
+
         enterNewUserSub();
         exitUserSub();
         kickUserSub();
         kickedSub();
+        economicHistorySub();
         gameStartSub(); // cleanup에 추가
       }});
 
@@ -339,6 +364,10 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
       // Handle error, maybe navigate back to lobby
       throw error;
+    } finally {
+      // 항상 isEntering 상태를 리셋
+      set({ isEntering: false });
+      console.log('🔄 [ROOM_ENTRY] isEntering state reset to false');
     }
   },
   cleanup: () => {
