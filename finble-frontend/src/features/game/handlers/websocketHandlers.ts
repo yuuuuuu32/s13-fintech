@@ -5,24 +5,66 @@ import { CHARACTER_PREFABS } from "../constants/gameConstants.ts";
 // 찬스카드 처리 후 다음 GAME_STATE_CHANGE에서 플레이어 정보 허용
 let allowNextPlayerUpdate = false;
 
+// 구독 해제 함수들을 저장할 배열
+let unsubscribeFunctions: (() => void)[] = [];
+
 export const createWebSocketHandlers = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
   get: () => GameState
 ) => ({
   connect: (gameId: string) => {
+    // 현재 게임 상태 로깅
+    const currentState = get();
+    console.log("🔌 [WEBSOCKET] Connect called:", {
+      gameId,
+      currentGameId: currentState.gameId,
+      currentPhase: currentState.gamePhase,
+      playersCount: currentState.players.length,
+      existingSubscriptions: unsubscribeFunctions.length,
+      timestamp: new Date().toISOString()
+    });
+
+    // 같은 게임ID로 이미 연결되어 있고 구독이 있으면 재연결하지 않음
+    if (currentState.gameId === gameId && unsubscribeFunctions.length > 0) {
+      console.log("🔌 [WEBSOCKET] Already connected to same game, skipping reconnection");
+      return;
+    }
+
+    // 기존 구독들을 먼저 정리
+    console.log("🧹 [WEBSOCKET] Cleaning up existing subscriptions:", unsubscribeFunctions.length);
+    unsubscribeFunctions.forEach(unsubscribe => unsubscribe());
+    unsubscribeFunctions = [];
+
     set({ gameId });
     console.log("🔌 [WEBSOCKET] Connected to game:", gameId);
 
-    subscribeToTopic("GAME_STATE_CHANGE", (message) => {
+    // 모든 구독을 등록하고 해제 함수들을 저장
+    unsubscribeFunctions.push(subscribeToTopic("GAME_STATE_CHANGE", (message) => {
       console.log("📥 [WEBSOCKET] GAME_STATE_CHANGE received:", message);
       const { payload } = message;
       console.log("📥 [WEBSOCKET] GAME_STATE_CHANGE payload detail:", JSON.stringify(payload, null, 2));
 
       // If the payload has curPlayer, it's likely a turn change from the timer
       if (payload.curPlayer) {
+        console.log("🔄 [TURN_DEBUG] 턴 변경 디버깅:", {
+          currentPlayer: payload.curPlayer,
+          gameTurn: payload.gameTurn,
+          currentPlayersInFrontend: get().players.map(p => p.name),
+          frontendPlayerCount: get().players.length,
+          currentPlayerIndex: get().currentPlayerIndex
+        });
+
         set((state) => {
           const nextPlayerIndex = state.players.findIndex(p => p.name === payload.curPlayer);
           if (nextPlayerIndex !== -1) {
+            console.log("🔄 [TURN_DEBUG] 플레이어 인덱스 변경:", {
+              previousIndex: state.currentPlayerIndex,
+              nextIndex: nextPlayerIndex,
+              previousPlayer: state.players[state.currentPlayerIndex]?.name,
+              nextPlayer: state.players[nextPlayerIndex]?.name,
+              isLastPlayer: nextPlayerIndex === state.players.length - 1
+            });
+
             const newState = {
               currentPlayerIndex: nextPlayerIndex,
               currentTurn: payload.gameTurn ?? state.currentTurn,
@@ -54,9 +96,9 @@ export const createWebSocketHandlers = (
           get().updateGameState(safePayload);
         }
       }
-    });
+    }));
 
-    subscribeToTopic("START_GAME_OBSERVE", (message) => {
+    unsubscribeFunctions.push(subscribeToTopic("START_GAME_OBSERVE", (message) => {
       console.log("📥 [WEBSOCKET] START_GAME_OBSERVE received:", message);
       console.log("🔍 [BACKEND_DATA] START_GAME_OBSERVE payload:", JSON.stringify(message.payload, null, 2));
 
@@ -72,9 +114,9 @@ export const createWebSocketHandlers = (
         const { players, ...safePayload } = message.payload;
         get().updateGameState(safePayload);
       }
-    });
+    }));
 
-    subscribeToTopic("TURN_CHANGE", (message) => {
+    unsubscribeFunctions.push(subscribeToTopic("TURN_CHANGE", (message) => {
       console.log("📥 [WEBSOCKET] TURN_CHANGE received:", message);
       const { payload } = message;
       if (payload.currentPlayerIndex !== undefined) {
@@ -89,9 +131,9 @@ export const createWebSocketHandlers = (
           modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
         }));
       }
-    });
+    }));
 
-    subscribeToTopic("USE_DICE", (message) => {
+    unsubscribeFunctions.push(subscribeToTopic("USE_DICE", (message) => {
       console.log("📥 [WEBSOCKET] USE_DICE received:", message);
       const { payload } = message;
 
@@ -141,9 +183,9 @@ export const createWebSocketHandlers = (
         console.log("🎬 [USE_DICE] 주사위 애니메이션 완료 - 기물 이동 시작");
         get().movePlayer([diceNum1, diceNum2]);
       }, 2000); // 주사위 애니메이션 시간과 동일
-    });
+    }));
 
-    subscribeToTopic("TRADE_LAND", (message) => {
+    unsubscribeFunctions.push(subscribeToTopic("TRADE_LAND", (message) => {
       console.log("📥 [WEBSOCKET] TRADE_LAND received:", message);
       const { payload } = message;
       if (payload.players) {
@@ -186,7 +228,7 @@ export const createWebSocketHandlers = (
           return { players: updatedPlayers };
         });
       }
-    });
+    }));
 
     // 찬스카드 결과 구독 (DRAW_CARD와 CHANCE_CARD 둘 다)
     const handleChanceCard = (message) => {
@@ -336,11 +378,11 @@ export const createWebSocketHandlers = (
       });
     };
 
-    subscribeToTopic("DRAW_CARD", handleChanceCard);
-    subscribeToTopic("CHANCE_CARD", handleChanceCard);
+    unsubscribeFunctions.push(subscribeToTopic("DRAW_CARD", handleChanceCard));
+    unsubscribeFunctions.push(subscribeToTopic("CHANCE_CARD", handleChanceCard));
 
     // 경제역사 업데이트 구독
-    subscribeToTopic("ECONOMIC_HISTORY_UPDATE", (message) => {
+    unsubscribeFunctions.push(subscribeToTopic("ECONOMIC_HISTORY_UPDATE", (message) => {
       const { payload } = message;
 
       if (!payload) {
@@ -378,7 +420,7 @@ export const createWebSocketHandlers = (
       if (payload.currentMap) {
         const updatedBoard = payload.currentMap.cells.map((cell) => ({
           name: cell.name,
-          type: cell.type?.toLowerCase() === 'special' ? 'special' as const : 'normal' as const,
+          type: cell.type, // 백엔드에서 보내는 대문자 타입을 그대로 사용
           price: cell.landPrice || cell.toll,
           landPrice: cell.landPrice,
           housePrice: cell.housePrice,
@@ -393,20 +435,39 @@ export const createWebSocketHandlers = (
         set({ board: updatedBoard });
       }
 
-      // 경제역사 변경 알림 모달 표시 (새로운 시대가 시작될 때만)
+      // 경제역사 변경 알림 모달 표시 (한 라운드당 한 번만)
       if (payload.economicPeriodName && payload.economicEffectName && payload.remainingTurns > 0) {
-        set({
-          modal: {
-            type: "INFO" as const,
-            text: `📈 ${economicHistory.fullName}\n\n${payload.economicDescription}\n\n남은 턴: ${payload.remainingTurns}턴`,
-            onConfirm: () => set({ modal: { type: "NONE" as const } })
-          }
-        });
+        const currentState = get();
+        const currentTurn = currentState.currentTurn;
+
+        // 이번 턴에 이미 경제 효과 모달을 표시했는지 확인
+        if (currentState.lastEconomicModalTurn !== currentTurn) {
+          console.log("📈 [ECONOMIC_HISTORY] 새로운 경제 시대 모달 표시:", {
+            turn: currentTurn,
+            lastModalTurn: currentState.lastEconomicModalTurn,
+            periodName: economicHistory.periodName,
+            effectName: economicHistory.effectName
+          });
+
+          set({
+            modal: {
+              type: "INFO" as const,
+              text: `📈 ${economicHistory.fullName}\n\n${payload.economicDescription}\n\n남은 턴: ${payload.remainingTurns}턴`,
+              onConfirm: () => set({ modal: { type: "NONE" as const } })
+            },
+            lastEconomicModalTurn: currentTurn // 이번 턴에 모달을 표시했다고 기록
+          });
+        } else {
+          console.log("📈 [ECONOMIC_HISTORY] 이미 이번 턴에 경제 효과 모달을 표시했으므로 스킵:", {
+            turn: currentTurn,
+            lastModalTurn: currentState.lastEconomicModalTurn
+          });
+        }
       }
-    });
+    }));
 
     // CONSTRUCT_BUILDING 메시지 처리
-    subscribeToTopic("CONSTRUCT_BUILDING", (message) => {
+    unsubscribeFunctions.push(subscribeToTopic("CONSTRUCT_BUILDING", (message) => {
       console.log("📥 [WEBSOCKET] CONSTRUCT_BUILDING received:", message);
       const { payload } = message;
 
@@ -447,14 +508,16 @@ export const createWebSocketHandlers = (
           };
         });
       }
-    });
+    }));
 
     // JAIL_EVENT 메시지 처리
-    subscribeToTopic("JAIL_EVENT", (message) => {
+    unsubscribeFunctions.push(subscribeToTopic("JAIL_EVENT", (message) => {
       console.log("📥 [WEBSOCKET] JAIL_EVENT received:", message);
       const { payload } = message;
 
       if (payload.result !== undefined) {
+        const currentUserId = useUserStore.getState().userInfo?.userId;
+
         set((state) => {
           const updatedPlayers = state.players.map(player => {
             if (player.name === payload.nickname) {
@@ -463,6 +526,8 @@ export const createWebSocketHandlers = (
                 escapeResult: payload.result,
                 previousMoney: player.money,
                 newMoney: payload.updatedAsset ? payload.updatedAsset.money : player.money,
+                previousProperties: player.properties,
+                newProperties: payload.updatedAsset ? payload.updatedAsset.lands : player.properties,
                 jailTurns: payload.turns,
                 isInJail: payload.turns > 0
               });
@@ -472,30 +537,54 @@ export const createWebSocketHandlers = (
                 money: payload.updatedAsset ? payload.updatedAsset.money : player.money,
                 properties: payload.updatedAsset ? payload.updatedAsset.lands || [] : player.properties,
                 isInJail: payload.turns > 0,
-                jailTurns: payload.turns
+                jailTurns: payload.turns || 0
               };
             }
             return player;
           });
 
+          const isMyJailEvent = updatedPlayers[state.currentPlayerIndex]?.id === currentUserId &&
+                                updatedPlayers[state.currentPlayerIndex]?.name === payload.nickname;
+
           const resultText = payload.result
             ? `${payload.nickname}님이 보석금을 내고 감옥에서 탈출했습니다!`
-            : `${payload.nickname}님의 감옥 탈출이 실패했습니다.`;
+            : `${payload.nickname}님의 감옥 탈출이 실패했습니다. 남은 감옥 턴: ${payload.turns}`;
 
           return {
             players: updatedPlayers,
+            gamePhase: payload.result && isMyJailEvent ? "WAITING_FOR_ROLL" as const : state.gamePhase,
             modal: {
               type: "INFO" as const,
               text: resultText,
-              onConfirm: () => set({ modal: { type: "NONE" as const } })
+              onConfirm: () => {
+                set({ modal: { type: "NONE" as const } });
+                // 내가 보석금을 성공적으로 낸 경우에만 턴 종료
+                if (payload.result && isMyJailEvent) {
+                  console.log("🔄 [JAIL_EVENT] 보석금 지불 성공 후 턴 종료");
+                  setTimeout(() => get().endTurn(), 100);
+                }
+              }
             }
           };
         });
       }
-    });
+    }));
+
+    // INVALID_JAIL_STATE 에러 처리
+    unsubscribeFunctions.push(subscribeToTopic("INVALID_JAIL_STATE", (message) => {
+      console.log("❌ [WEBSOCKET] INVALID_JAIL_STATE received:", message);
+
+      set({
+        modal: {
+          type: "INFO" as const,
+          text: message.message || "감옥 상태가 올바르지 않습니다.",
+          onConfirm: () => set({ modal: { type: "NONE" as const } })
+        }
+      });
+    }));
 
     // WORLD_TRAVEL_EVENT 메시지 처리
-    subscribeToTopic("WORLD_TRAVEL_EVENT", (message) => {
+    unsubscribeFunctions.push(subscribeToTopic("WORLD_TRAVEL_EVENT", (message) => {
       console.log("✈️ [WORLD_TRAVEL_RESPONSE] 서버 응답 수신:", {
         message,
         timestamp: new Date().toISOString()
@@ -583,21 +672,21 @@ export const createWebSocketHandlers = (
           }
         });
       }
-    });
+    }));
 
     // 게임 중 방 관련 메시지 처리
-    subscribeToTopic("ENTER_ROOM_OK", (message) => {
+    unsubscribeFunctions.push(subscribeToTopic("ENTER_ROOM_OK", (message) => {
       console.log("📥 [WEBSOCKET] ENTER_ROOM_OK received in game:", message);
       // 게임 중에는 특별한 처리가 필요하지 않으므로 로그만 기록
-    });
+    }));
 
-    subscribeToTopic("ENTER_NEW_USER", (message) => {
+    unsubscribeFunctions.push(subscribeToTopic("ENTER_NEW_USER", (message) => {
       console.log("📥 [WEBSOCKET] ENTER_NEW_USER received in game:", message);
       // 게임 중 새 유저 입장은 일반적으로 발생하지 않지만 로그 기록
-    });
+    }));
 
     // INTERNAL_SERVER_ERROR 메시지 처리
-    subscribeToTopic("INTERNAL_SERVER_ERROR", (message) => {
+    unsubscribeFunctions.push(subscribeToTopic("INTERNAL_SERVER_ERROR", (message) => {
       console.error("❌ [WEBSOCKET] INTERNAL_SERVER_ERROR received:", message);
       console.error("❌ [WEBSOCKET] Error details:", {
         payload: message.payload,
@@ -667,10 +756,13 @@ export const createWebSocketHandlers = (
           });
         }
       }
-    });
+    }));
   },
 
   disconnect: () => {
+    console.log("🧹 [WEBSOCKET] Disconnecting and cleaning up subscriptions:", unsubscribeFunctions.length);
+    unsubscribeFunctions.forEach(unsubscribe => unsubscribe());
+    unsubscribeFunctions = [];
     console.log("Game store disconnected.");
   },
 
@@ -752,7 +844,7 @@ export const createWebSocketHandlers = (
     const mappedState = {
       gameId: initialState.roomId,
       board: initialState.currentMap.cells.map(
-        (cell) => cell || { name: "빈칸", type: "special" as const }
+        (cell) => cell || { name: "빈칸", type: "SPECIAL" as const }
       ),
       players: playersArray,
       currentPlayerIndex: initialState.currentPlayerIndex,
@@ -768,14 +860,19 @@ export const createWebSocketHandlers = (
 
     set(mappedState);
 
-    // 게임 초기화 완료 후 대기상태로 전환
+    // 게임 초기화 완료 후 대기상태로 전환 (게임이 이미 진행 중이 아닐 때만)
     setTimeout(() => {
-      console.log("🔍 [GAME_INIT] 게임 초기화 완료 - 대기상태로 전환", {
-        gameId: initialState.roomId,
-        playersCount: playersArray.length,
-        boardSize: mappedState.board.length
-      });
-      set({ gamePhase: "WAITING_FOR_ROLL" });
+      const currentState = get();
+      if (currentState.gamePhase === "SELECTING_ORDER") {
+        console.log("🔍 [GAME_INIT] 게임 초기화 완료 - 대기상태로 전환", {
+          gameId: initialState.roomId,
+          playersCount: playersArray.length,
+          boardSize: mappedState.board.length
+        });
+        set({ gamePhase: "WAITING_FOR_ROLL" });
+      } else {
+        console.log("🔍 [GAME_INIT] 게임이 이미 진행 중이므로 gamePhase 변경하지 않음:", currentState.gamePhase);
+      }
     }, 5000);
   },
 

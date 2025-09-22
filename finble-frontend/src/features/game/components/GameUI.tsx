@@ -529,7 +529,10 @@ export function GameUI() {
   return (
     <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', color: 'white', zIndex: 999 }}>
       <Box sx={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', p: '10px 20px', bgcolor: 'rgba(0,0,0,0.7)', borderRadius: '10px', pointerEvents: 'auto' }}>
-        <Typography variant="h5" fontWeight="bold" sx={{ fontFamily: 'Galmuri14' }}>{currentTurn} / {totalTurns} 턴</Typography>
+        <Typography variant="h5" fontWeight="bold" sx={{ fontFamily: 'Galmuri14' }}>라운드 {currentTurn} / {totalTurns}</Typography>
+        <Typography variant="body2" sx={{ fontFamily: 'Galmuri14', mt: 0.5 }}>
+          현재 플레이어: {currentPlayer?.name} ({currentPlayerIndex + 1}/{players.length})
+        </Typography>
         {isMyTurn && timeLeft > 5 && <Typography variant="h6" sx={{ fontFamily: 'Galmuri14' }}>남은 시간: {timeLeft}초</Typography>}
         {economicHistory && (
           <Tooltip

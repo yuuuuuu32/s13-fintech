@@ -55,12 +55,14 @@ export default function GameCanvas() {
 
   useEffect(() => {
     if (gameId && isWebSocketReady) {
+      console.log("🔌 [CANVAS] Connecting to game:", gameId);
       connect(gameId);
     }
     return () => {
+      console.log("🔌 [CANVAS] Disconnecting from game");
       disconnect();
     };
-  }, [connect, disconnect, gameId, isWebSocketReady]);
+  }, [gameId, isWebSocketReady]); // connect, disconnect 제거하여 불필요한 재실행 방지
 
   const isLoading = playersArray.length === 0;
 

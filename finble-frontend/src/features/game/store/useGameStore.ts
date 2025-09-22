@@ -36,6 +36,7 @@ export const useGameStore = create<GameState>()((set, get) => {
     serverCurrentPosition: null,
     isDiceRolled: false,
     economicHistory: null,
+    lastEconomicModalTurn: null,
 
     // 웹소켓 관련 메서드
     connect: websocketHandlers.connect,

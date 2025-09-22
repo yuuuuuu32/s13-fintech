@@ -22,7 +22,7 @@ export const createPlayerActions = (
 
     // 서버에 건설 메시지 전송
     if (gameId) {
-      send(`/app/game/constructBuilding`, {
+      send(`/app/game/${gameId}/construct-building`, {
         type: "CONSTRUCT_BUILDING",
         payload: {
           nickname: currentPlayer.name,
@@ -64,7 +64,7 @@ export const createPlayerActions = (
 
     // 3. Send message to the server to make the change permanent
     if (gameId) {
-      send(`/app/game/constructBuilding`, {
+      send(`/app/game/${gameId}/construct-building`, {
         type: "CONSTRUCT_BUILDING",
         payload: {
           nickname: currentPlayer.name,
@@ -205,23 +205,13 @@ export const createPlayerActions = (
       };
     });
 
-    // 서버에 동기화 메시지 전송 (통행료는 별도 API가 필요할 수 있지만 일단 TRADE_LAND 사용)
-    if (gameId) {
-      const landOwner = players.find((p) => p.properties.includes(tileIndex));
-      send(`/app/game/${gameId}/trade-land`, {
-        type: "TRADE_LAND",
-        payload: {
-          buyerName: currentPlayer.name,
-          landNum: tileIndex,
-          // 통행료 지불임을 표시하는 플래그 추가 (백엔드에서 처리 필요)
-          isTollPayment: true,
-          tollAmount: toll,
-          landOwnerName: landOwner?.name
-        },
-      });
-    } else {
-      console.error("Cannot sync toll payment, gameId is not set");
-    }
+    // 통행료 지불은 클라이언트 사이드에서만 처리하고 서버에 전송하지 않음
+    // (백엔드에서 TRADE_LAND로 처리되어 땅이 거래되는 문제 방지)
+    console.log("💰 [TOLL_PAYMENT] 통행료 지불 완료 (클라이언트 전용):", {
+      payerName: currentPlayer.name,
+      tollAmount: toll,
+      tileIndex: tileIndex
+    });
   },
 
   handleJail: () => {
@@ -277,32 +267,14 @@ export const createPlayerActions = (
       return;
     }
 
-    // 낙관적 업데이트 (서버 응답 전에 UI 즉시 반영)
-    set((state) => {
-      const updatedPlayers = [...state.players];
-      updatedPlayers[state.currentPlayerIndex] = {
-        ...currentPlayer,
-        money: currentPlayer.money - BAIL_AMOUNT,
-        isInJail: false,
-        jailTurns: 0,
-      };
-
-      console.log("💰 [BAIL] 보석금 지불 낙관적 업데이트:", {
+    // 서버에 감옥 탈출 메시지 전송 (낙관적 업데이트 제거)
+    if (gameId) {
+      console.log("💰 [BAIL] 보석금 지불 요청 전송:", {
         playerName: currentPlayer.name,
         bailAmount: BAIL_AMOUNT,
-        remainingMoney: currentPlayer.money - BAIL_AMOUNT,
-        isInJail: false
+        currentMoney: currentPlayer.money
       });
 
-      return {
-        players: updatedPlayers,
-        modal: { type: "NONE" as const },
-        gamePhase: "WAITING_FOR_ROLL" as const,
-      };
-    });
-
-    // 서버에 감옥 탈출 메시지 전송
-    if (gameId) {
       send(`/app/game/${gameId}/jail-event`, {
         type: "JAIL_EVENT",
         payload: {
@@ -310,15 +282,17 @@ export const createPlayerActions = (
           escape: true,
         },
       });
+
+      // 서버 응답 대기 모달 표시
+      set({
+        modal: {
+          type: "INFO" as const,
+          text: "보석금을 지불하는 중입니다...",
+        }
+      });
     } else {
       console.error("Cannot sync bail payment, gameId is not set");
     }
-
-    // 보석금 지불 후 턴 종료
-    setTimeout(() => {
-      console.log("🔄 [BAIL] 보석금 지불 후 턴 종료");
-      get().endTurn();
-    }, 100);
   },
 
   selectExpoProperty: (propertyIndex: number) => {
@@ -358,13 +332,16 @@ export const createPlayerActions = (
 
     // 백엔드에 세계여행 목적지 전송
     if (send) {
-      send('/app/game/world-travel', {
-        type: "WORLD_TRAVEL_EVENT",
-        payload: {
-          nickname: currentPlayer.name,
-          destination: tileIndex
-        }
-      });
+      const gameId = get().gameId;
+      if (gameId) {
+        send(`/app/game/${gameId}/world-travel`, {
+          type: "WORLD_TRAVEL_EVENT",
+          payload: {
+            nickname: currentPlayer.name,
+            destination: tileIndex
+          }
+        });
+      }
     }
 
     // 서버 응답을 기다리는 동안 로딩 상태로 설정

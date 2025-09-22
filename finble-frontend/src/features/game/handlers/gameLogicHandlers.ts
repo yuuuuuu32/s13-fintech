@@ -116,7 +116,12 @@ export const createGameLogicHandlers = (
       return;
     }
 
-    if (currentPlayer.isInJail) {
+    if (currentPlayer.isInJail && currentPlayer.jailTurns > 0) {
+      console.log("🔒 [JAIL_CHECK] 감옥에 있는 플레이어 확인:", {
+        playerName: currentPlayer.name,
+        isInJail: currentPlayer.isInJail,
+        jailTurns: currentPlayer.jailTurns
+      });
       set({ modal: { type: "JAIL" } });
       return;
     }
@@ -308,24 +313,21 @@ export const createGameLogicHandlers = (
     }
 
     switch (currentTile?.type) {
-      case "city":
-      case "company":
       case "NORMAL":
         handleCityCompanyTile(set, get, currentTile, currentPlayer, players);
         break;
 
-      case "chance":
       case "CHANCE":
         // 찬스카드는 서버에서 처리되며, DRAW_CARD 메시지를 기다림
         console.log("🎲 [CHANCE] 찬스 타일 도착, 서버 응답 대기 중");
         set({ gamePhase: "TILE_ACTION" });
         break;
 
-      case "special":
       case "SPECIAL":
       case "JAIL":
       case "START":
       case "AIRPLANE":
+      case "NTS":
         handleSpecialTile(set, get, currentTile, currentPlayer, board, get().send);
         break;
 

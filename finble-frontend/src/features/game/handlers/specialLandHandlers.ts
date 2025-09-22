@@ -32,7 +32,7 @@ export const createSpecialLandHandlers = (
 
     // 서버에 건설 메시지 전송
     if (gameId) {
-      send(`/app/game/constructBuilding`, {
+      send(`/app/game/${gameId}/construct-building`, {
         type: "CONSTRUCT_BUILDING",
         payload: {
           nickname: currentPlayer.name,
