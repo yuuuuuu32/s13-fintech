@@ -7,6 +7,7 @@ import com.ssafy.BlueMarble.domain.game.entity.Tile;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.EconomicEffectUpdatePayload;
 import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,24 +59,24 @@ public class EconomicHistoryService {
     /**
      * 특정 효과로 월급 계산
      */
-    public int calculateSalaryWithEffect(int baseSalary) {
-        EconomicEffect currentEffect = getCurrentEconomicEffect(0L); // gameTurn은 임시로 0 사용
+    public int calculateSalaryWithEffect(int baseSalary, Long gameTurn) {
+        EconomicEffect currentEffect = getCurrentEconomicEffect(gameTurn);
         return currentEffect.applySalaryMultiplier(baseSalary);
     }
 
     /**
      * 특정 효과로 부동산 가격 계산
      */
-    public int calculatePropertyPriceWithEffect(int basePrice) {
-        EconomicEffect currentEffect = getCurrentEconomicEffect(0L); // gameTurn은 임시로 0 사용
+    public int calculatePropertyPriceWithEffect(int basePrice, Long gameTurn) {
+        EconomicEffect currentEffect = getCurrentEconomicEffect(gameTurn);
         return currentEffect.applyPropertyPriceMultiplier(basePrice);
     }
 
     /**
      * 특정 효과로 건물 건설 비용 계산
      */
-    public int calculateBuildingCostWithEffect(int baseCost) {
-        EconomicEffect currentEffect = getCurrentEconomicEffect(0L); // gameTurn은 임시로 0 사용
+    public int calculateBuildingCostWithEffect(int baseCost, Long gameTurn) {
+        EconomicEffect currentEffect = getCurrentEconomicEffect(gameTurn);
         return currentEffect.applyBuildingCostMultiplier(baseCost);
     }
 
@@ -134,26 +135,11 @@ public class EconomicHistoryService {
      */
     private void sendEconomicEffectUpdateMessage(String roomId, CreateMapPayload gameState, EconomicEffect currentEffect) {
         try {
-            CreateMapPayload clientGameState = CreateMapPayload.builder()
-                    .roomId(roomId)
-                    .gameState(gameState.getGameState())
-                    .currentMap(gameState.getCurrentMap())
-                    .gameTurn(gameState.getGameTurn() + 1)
-                    .playerOrder(gameState.getPlayerOrder())
-                    .players(gameState.getPlayers())
-                    .currentPlayerIndex(gameState.getCurrentPlayerIndex())
-                    .economicPeriodName(currentEffect.getPeriod().getDisplayName())
-                    .economicEffectName(currentEffect.getEffectName())
-                    .economicDescription(currentEffect.getDescription())
-                    .economicFullName(currentEffect.getFullEffectName())
-                    .isBoom(currentEffect.isBoom())
-                    .remainingTurns(EconomicEffect.getTurnsUntilNextPeriod(gameState.getGameTurn().intValue()))
-                    .build();
+            EconomicEffectUpdatePayload payload = EconomicEffectUpdatePayload.fromGameState(gameState, currentEffect);
 
-            JsonNode payloadNode = objectMapper.valueToTree(clientGameState);
+            JsonNode payloadNode = objectMapper.valueToTree(payload);
             MessageDto message = new MessageDto(MessageType.ECONOMIC_HISTORY_UPDATE, payloadNode);
             sessionMessageService.sendMessageToRoom(roomId, message);
-
             log.info("경제 효과 업데이트 메시지 전송 완료: roomId={}, effect={}, period={}", 
                     roomId, currentEffect.getEffectName(), currentEffect.getPeriod().getDisplayName());
 

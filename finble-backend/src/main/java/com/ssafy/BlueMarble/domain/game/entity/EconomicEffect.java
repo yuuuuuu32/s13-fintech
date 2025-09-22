@@ -164,7 +164,7 @@ public enum EconomicEffect {
          * 다음 시대까지 남은 턴 수 계산
          */
         public static int getTurnsUntilNextPeriod(int gameTurn) {
-            int turnsInCurrentPeriod = (gameTurn % 2) + 1;
+            int turnsInCurrentPeriod = (gameTurn % 2);
             return 2 - turnsInCurrentPeriod;
         }
     }

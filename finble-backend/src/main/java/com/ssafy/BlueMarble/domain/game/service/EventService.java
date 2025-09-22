@@ -308,7 +308,7 @@ public class EventService {
         int salaryBonus = 0;
         if (newPosition < currentPosition) { // 시작점을 통과했는지 확인
             int baseSalary = 1000000; // 기본 월급
-            salaryBonus = economicHistoryService.calculateSalaryWithEffect(baseSalary);
+            salaryBonus = economicHistoryService.calculateSalaryWithEffect(baseSalary, gameState.getGameTurn());
             player.setMoney(player.getMoney() + salaryBonus);
         }
 
