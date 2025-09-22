@@ -88,7 +88,7 @@ public class EventService {
 
         if (jailRequest.isEscape()) {
             // 3. 보석금으로 탈출 시도
-            int bailMoney = 500; // 보석금
+            Long bailMoney = 500000L; // 보석금
 
             if (user.getMoney() >= bailMoney) {
                 // 보석금 지불 가능
@@ -150,7 +150,7 @@ public class EventService {
 
         // 4. 도착지점의 땅 정보 확인
         String landOwner = null;
-        int tollAmount = 0;
+        Long tollAmount = 0L;
         CreateMapPayload.PlayerState owner = null;
 
         //2.1 TODO : 현재 여행 하려는 사람이 세계여행 칸에 있는지 체크해야함
@@ -237,11 +237,11 @@ public class EventService {
         }
 
         // 현재 현금의 15% 계산
-        int currentMoney = player.getMoney();
-        int taxAmount = (int) (currentMoney * 0.15);
+        Long currentMoney = player.getMoney();
+        Long taxAmount = (long) (currentMoney * 0.15);
 
         // 세금 차감 (최소 0원까지만)
-        int newMoney = Math.max(0, currentMoney - taxAmount);
+        Long newMoney = Math.max(0, currentMoney - taxAmount);
         player.setMoney(newMoney);
 
         // 게임 상태 저장
@@ -317,7 +317,7 @@ public class EventService {
 
         // 7. 도착한 땅 정보 확인 (찬스칸이 아닌 경우에만)
         String landOwner = null;
-        int tollAmount = 0;
+        Long tollAmount = 0L;
         boolean canBuyLand = false;
 
         // 찬스칸은 특별칸이므로 통행료 없음 - 찬스칸이 아닌 경우에만 통행료 처리

@@ -40,7 +40,7 @@ public class CreateMapPayload {
         private String userId;                   // 사용자 ID
         private String nickname;                 // 닉네임
         private int position;                    // 현재 위치
-        private int money;                       // 보유 금액
+        private Long money;                       // 보유 금액
         private List<Integer> ownedProperties;   // 소유한 부동산 목록
         private boolean isInJail;                // 감옥에 있는지 여부
         private int jailTurns;                   // 감옥 남은 턴 수

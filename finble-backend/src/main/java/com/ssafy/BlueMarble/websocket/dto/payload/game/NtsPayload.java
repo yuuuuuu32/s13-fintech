@@ -11,6 +11,6 @@ import lombok.NoArgsConstructor;
 @Builder
 public class NtsPayload {
     private String nickname;
-    private int taxAmount;
+    private Long taxAmount;
     private ConstructPayload.Asset updatedAsset;
 }
