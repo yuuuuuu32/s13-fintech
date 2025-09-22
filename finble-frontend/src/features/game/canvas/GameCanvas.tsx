@@ -1,39 +1,47 @@
-import '../styles/game-layout.css';
-import CanvasStage from '../components/CanvasStage';
-import BoardFrame from '../components/BoardFrame';
-import GameGuard from '../components/GameGuard';
-import BookIcon from '../components/BookIcon';
-
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, SoftShadows, OrthographicCamera } from '@react-three/drei'
-import { Physics } from '@react-three/rapier'
-import { useGameStore } from '../store/useGameStore'
-import { Board } from '../components/Board.tsx'
-import { Player } from '../components/Player.tsx'
-import { GameUI } from '../components/GameUI.tsx'
-import { Dice } from '../components/Dice.tsx'
-import { useEffect, useMemo, Suspense } from 'react'
-import { useParams } from 'react-router-dom'
-import { useWebSocketStore } from '../../../stores/useWebSocketStore'
-import TurnOrderSelection from '../components/TurnOrderSelection';
-import bgImage from '../../../assets/game_background.png';
-
-// ==== 보드 치수 === =
-const TILES_PER_SIDE = 9;
-const TILE_WIDTH = 4;
-const BOARD_SIZE = TILES_PER_SIDE * TILE_WIDTH; // 36
-
-// === Canvas 내부에서만 useThree 사용: 카메라 자동 프레이밍 ===
-import { useThree } from '@react-three/fiber';
+import React, { useEffect, useMemo, Suspense } from 'react';
+import { useParams } from 'react-router-dom';
+import { Canvas, useThree } from '@react-three/fiber';
+import { OrbitControls, SoftShadows, OrthographicCamera } from '@react-three/drei';
+import { Physics } from '@react-three/rapier';
 import * as THREE from 'three';
 
+// --- Store Imports ---
+// FIX: Added file extensions (.ts) to resolve compilation errors.
+import { useGameStore } from '../store/useGameStore.ts';
+import { useWebSocketStore } from '../../../stores/useWebSocketStore.ts';
+
+// --- Component Imports ---
+// FIX: Added file extensions (.tsx) to resolve compilation errors.
+import { Board } from '../components/Board.tsx';
+import { Player } from '../components/Player.tsx';
+import { GameUI } from '../components/GameUI.tsx';
+import { Dice } from '../components/Dice.tsx';
+import TurnOrderSelection from '../components/TurnOrderSelection.tsx';
+import CanvasStage from '../components/CanvasStage.tsx';
+import BoardFrame from '../components/BoardFrame.tsx';
+import GameGuard from '../components/GameGuard.tsx';
+
+// --- Asset & Style Imports ---
+// FIX: Added file extensions (.png, .css) to resolve compilation errors.
+import bgImage from '../../../assets/game_background.png';
+import styles from './GameCanvas.module.css';
+import '../styles/game-layout.css';
+
+
+// ==== Board Dimensions ====
+const TILES_PER_SIDE = 9;
+const TILE_WIDTH = 4;
+const BOARD_SIZE = TILES_PER_SIDE * TILE_WIDTH;
+
+// === Auto-fitting Orthographic Camera ===
+// This helper component adjusts the camera to perfectly frame the board on any screen size.
 function AutoOrthoCamera({ boardSize }: { boardSize: number }) {
   const { size, camera } = useThree();
 
   useEffect(() => {
-    // 레퍼런스 시점: 45° 대각 + 35° 틸트
+    // Set a consistent isometric-like camera angle
     const radius = 60;
-    const yaw = Math.PI / 4; // 45deg
+    const yaw = Math.PI / 4; // 45 degrees
     const tilt = THREE.MathUtils.degToRad(35);
 
     const x = Math.cos(yaw) * Math.cos(tilt) * radius;
@@ -44,7 +52,7 @@ function AutoOrthoCamera({ boardSize }: { boardSize: number }) {
     camera.up.set(0, 1, 0);
     camera.lookAt(0, 0, 0);
 
-    // 오소카메라 줌 자동 맞춤 (패딩으로 여유)
+    // Auto-zoom to fit the board with a bit of padding
     const padding = 1.15;
     const wZoom = size.width / (boardSize * padding);
     const hZoom = size.height / (boardSize * padding);
@@ -58,45 +66,39 @@ function AutoOrthoCamera({ boardSize }: { boardSize: number }) {
   return null;
 }
 
-// 물리 엔진 없는 보드 (fallback)
-function BoardWithoutPhysics() {
-  const playersArray = useGameStore(state => Array.isArray(state.players) ? state.players : Object.values(state.players || {}));
-  
-  return (
-    <group scale={1.2} position={[0, 1.5, 0]}>
-      <Board />
-      {playersArray.map((player) => (
-        <Player key={player.id} player={player} />
-      ))}
-      <Dice />
-    </group>
-  );
+// === Game Scene Components (with and without physics) ===
+// These are defined here because they are specific to this canvas setup.
+
+function GameScene() {
+    const playersArray = useGameStore(state => Array.isArray(state.players) ? state.players : Object.values(state.players || {}));
+    return (
+        <group scale={1.2} position={[0, 1.5, 0]}>
+            <Board />
+            {playersArray.map((player) => (
+                <Player key={player.id} player={player} />
+            ))}
+            <Dice />
+        </group>
+    );
 }
 
-// 물리 엔진 포함 보드
 function BoardWithPhysics() {
-  const playersArray = useGameStore(state => Array.isArray(state.players) ? state.players : Object.values(state.players || {}));
-  
   return (
     <Physics>
-      <group scale={1.2} position={[0, 1.5, 0]}>
-        <Board />
-        {playersArray.map((player) => (
-          <Player key={player.id} player={player} />
-        ))}
-        <Dice />
-      </group>
+      <GameScene />
     </Physics>
   );
 }
 
-export default function GameCanvas() {
-  const players = useGameStore((state) => state.players)
-  const gamePhase = useGameStore((state) => state.gamePhase)
-  const connect = useGameStore((state) => state.connect)
-  const disconnect = useGameStore((state) => state.disconnect)
-  const initializeGame = useGameStore((state) => state.initializeGame);
+function BoardWithoutPhysics() {
+  return <GameScene />;
+}
 
+
+// ==== Main GameCanvas Component ====
+export default function GameCanvas() {
+  // --- State from Stores ---
+  const { players, gamePhase, connect, disconnect, initializeGame } = useGameStore();
   const {
     isWebSocketReady,
     initialGameState,
@@ -105,20 +107,24 @@ export default function GameCanvas() {
     setGameInitialized
   } = useWebSocketStore();
 
+  // --- Router Params ---
   const { gameId } = useParams<{ gameId: string }>();
 
-  // players가 객체/배열 어느 형태든 안전하게 변환
+  // Safely convert players object/array to an array for rendering
   const playersArray = useMemo(
     () => (Array.isArray(players) ? players : Object.values(players || {})),
     [players]
   );
 
-  // 초기 상태 적용
+  // --- Logic Hooks (useEffect) ---
+
+  // Effect to apply the initial game state when entering a room
   useEffect(() => {
     if (initialGameState && isWebSocketReady) {
       const hasPlayersWithPosition = playersArray.some(p => p.position > 0);
       const isGameInProgress = gamePhase !== "SELECTING_ORDER" && gamePhase !== "WAITING_FOR_ROLL" && playersArray.length > 0;
 
+      // Avoid re-initializing if the game is already in progress
       if (gameInitialized || hasPlayersWithPosition || isGameInProgress) {
         setInitialGameState(null);
       } else {
@@ -132,45 +138,55 @@ export default function GameCanvas() {
     gameInitialized, setGameInitialized, playersArray, gamePhase
   ]);
 
-  // 웹소켓 연결
+  // Effect to connect and disconnect WebSocket
   useEffect(() => {
     if (gameId && isWebSocketReady) {
+      // CRITICAL FIX: Set gameId in the global store BEFORE connecting.
+      // This ensures other parts of the app can access it for API calls.
+      useGameStore.setState({ gameId });
       connect(gameId);
     }
+    // Cleanup on component unmount
     return () => {
       disconnect();
     };
   }, [connect, disconnect, gameId, isWebSocketReady]);
 
-  const isLoading = playersArray.length === 0;
+  // --- Loading State ---
+  // More robust loading condition
+  const isLoading = playersArray.length === 0 && !gameInitialized;
 
   return (
-    <div 
-      className="game-root"
+    <div
+      className={styles.gameContainer}
       style={{ backgroundImage: `url(${bgImage})` }}
     >
       <div className="game-safe-top" />
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className={styles.loadingOverlay}>
+          Loading game...
+        </div>
+      )}
       
-      {/* <BookIcon 
-        position="top-center" 
-        size="medium" 
-      /> */}
-      
+      {/* 2D UI Layer */}
       <GameGuard>
         <TurnOrderSelection />
         <GameUI />
       </GameGuard>
 
+      {/* 3D Canvas Layer */}
       <CanvasStage>
         <Canvas
           shadows
-          gl={{ alpha: true }}
-          style={{ background: 'transparent', width: '100%', height: '100%' }}
+          gl={{ alpha: true }} // Allows transparent background
+          className={styles.canvas}
         >
           <OrthographicCamera makeDefault />
           <AutoOrthoCamera boardSize={BOARD_SIZE} />
 
-          {/* 바닥과 조화된 라이팅 */}
+          {/* Lighting & Environment */}
           <SoftShadows size={25} samples={10} focus={0.5} />
           <fog attach="fog" args={['#050508', 60, 120]} />
           <ambientLight intensity={0.6} />
@@ -187,20 +203,20 @@ export default function GameCanvas() {
             shadow-camera-top={60}
             shadow-camera-bottom={-60}
           />
-          {/* 네온 포인트 라이트 */}
           <pointLight position={[-25, 8, -20]} color="#47d8ff" intensity={30} distance={80} />
           <pointLight position={[25, 8, 15]} color="#d24bff" intensity={25} distance={80} />
 
-          {/* Physics를 Suspense로 감싸서 안전하게 로딩 */}
+          {/* Game Board and Pieces */}
           <Suspense fallback={<BoardWithoutPhysics />}>
             <BoardWithPhysics />
           </Suspense>
 
-          <OrbitControls target={[0, 0, 0]} makeDefault enableRotate={false} enablePan={false} enableZoom />
+          {/* Controls (disabled for gameplay, useful for debugging) */}
+          <OrbitControls target={[0, 0, 0]} makeDefault enableRotate={false} enablePan={false} enableZoom={false} />
         </Canvas>
       </CanvasStage>
 
       <BoardFrame />
     </div>
-  )
+  );
 }

@@ -16,14 +16,6 @@ const BOARD_SIZE = TILES_PER_SIDE * TILE_WIDTH;
 // ===== 옵션: 장식물 토글 =====
 const SHOW_DECOR = false; // 건물 장식 비활성화
 
-// CSS 변수 값을 가져오는 함수 (fallback 추가)
-const getCSSVariable = (variableName: string, fallback: string = '#333333') => {
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue(variableName)
-    .trim();
-  return value || fallback;
-};
-
 // ===== 가변 폭/깊이 계산을 위한 유틸리티 =====
 const prefix = (arr: number[]) => {
   const out: number[] = [];
@@ -145,7 +137,6 @@ export function Board() {
 
         // BaseTile props 안전하게 전달
         const baseTileProps: any = {
-          key: index,
           tile,
           tileIndex: index,
           position,
@@ -186,7 +177,7 @@ export function Board() {
       <RigidBody type="fixed" colliders="cuboid">
         <mesh position={[0, -0.2, 0]}>
           <boxGeometry args={[BOARD_SIZE, 0.4, BOARD_SIZE]} />
-          <meshStandardMaterial color={getCSSVariable('--board-base', '#1a1a35')} visible={false} />
+          <meshStandardMaterial color={'#1a1a35'} visible={false} />
         </mesh>
       </RigidBody>
     </group>

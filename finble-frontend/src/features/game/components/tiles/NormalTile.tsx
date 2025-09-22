@@ -2,6 +2,14 @@ import { Text } from '@react-three/drei';
 import type { TileData } from '../../data/boardData.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
 import Building from '../Building';
+import styles from './NormalTile.module.css'; // CSS 모듈 import
+
+// CSS 변수 값을 읽어오는 헬퍼 함수
+const getCSSVariable = (variableName: string, fallback: string) => {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim();
+  return value || fallback;
+};
 
 interface NormalTileProps {
   tile: TileData;
@@ -40,14 +48,14 @@ export function NormalTile({ tile, tileIndex }: NormalTileProps) {
           position={[0, TILE_HEIGHT / 2 + 0.02, 2]}
           rotation={[-Math.PI / 2, 0, 0]}
           fontSize={0.4}
-          color="#000000"
+          color={getCSSVariable('--normal-tile-text-color', '#000000')}
           anchorX="center"
           anchorY="middle"
           maxWidth={TILE_WIDTH - 1.5}
           textAlign="center"
           font="/fonts/Galmuri14.ttf"
           outlineWidth={0.015}
-          outlineColor="#ffffff"
+          outlineColor={getCSSVariable('--normal-tile-outline-color', '#ffffff')}
         >
           {infoText}
         </Text>
