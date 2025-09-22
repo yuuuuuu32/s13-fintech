@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { BuildingType } from '../data/boardData.ts';
 import type { TileData } from '../data/boardData.ts';
 import { useUserStore } from '../../../stores/useUserStore';
-import { Modal, Box, Typography, Button, Card, CardContent, LinearProgress, List, ListItem, ListItemButton, ListItemText, Checkbox, FormControlLabel, FormGroup } from '@mui/material';
+import { Modal, Box, Typography, Button, Card, CardContent, LinearProgress, List, ListItem, ListItemButton, ListItemText, Checkbox, FormControlLabel, FormGroup, Tooltip } from '@mui/material';
 
 const BAIL_AMOUNT = 500000; 
 
@@ -404,6 +404,11 @@ export function GameUI() {
   const currentTurn = useGameStore(state => state.currentTurn);
   const board = useGameStore(state => state.board);
   const economicHistory = useGameStore(state => state.economicHistory);
+
+  // 경제역사 상태 디버깅
+  useEffect(() => {
+    console.log("🏦 [GameUI] economicHistory 상태 체크:", economicHistory);
+  }, [economicHistory]);
   const setDicePower = useGameStore(state => state.setDicePower);
   const buyProperty = useGameStore(state => state.buyProperty);
   const buyPropertyWithItems = useGameStore(state => state.buyPropertyWithItems);
@@ -515,13 +520,52 @@ export function GameUI() {
 
   return (
     <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', color: 'white', zIndex: 999 }}>
-      <Box sx={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', p: '10px 20px', bgcolor: 'rgba(0,0,0,0.7)', borderRadius: '10px' }}>
+      <Box sx={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', p: '10px 20px', bgcolor: 'rgba(0,0,0,0.7)', borderRadius: '10px', pointerEvents: 'auto' }}>
         <Typography variant="h5" fontWeight="bold" sx={{ fontFamily: 'Galmuri14' }}>{currentTurn} / {totalTurns} 턴</Typography>
         {isMyTurn && timeLeft > 5 && <Typography variant="h6" sx={{ fontFamily: 'Galmuri14' }}>남은 시간: {timeLeft}초</Typography>}
         {economicHistory && (
-          <Typography variant="body2" sx={{ fontFamily: 'Galmuri14', mt: 1, color: economicHistory.isBoom ? '#4CAF50' : '#FF9800' }}>
-            📈 {economicHistory.fullName} (남은 턴: {economicHistory.remainingTurns})
-          </Typography>
+          <Tooltip
+            title={
+              <Box sx={{ p: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, color: economicHistory.isBoom ? '#4CAF50' : '#FF9800' }}>
+                  {economicHistory.periodName} - {economicHistory.effectName}
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 1, lineHeight: 1.4 }}>
+                  {economicHistory.description}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                  {economicHistory.isBoom ? '📈 호황' : '📉 불황'} · 남은 턴: {economicHistory.remainingTurns}
+                </Typography>
+              </Box>
+            }
+            placement="bottom"
+            arrow
+            componentsProps={{
+              tooltip: {
+                sx: {
+                  bgcolor: 'rgba(0, 0, 0, 0.9)',
+                  maxWidth: 350,
+                  fontSize: '0.875rem',
+                  fontFamily: 'Galmuri14'
+                }
+              }
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                fontFamily: 'Galmuri14',
+                mt: 1,
+                color: economicHistory.isBoom ? '#4CAF50' : '#FF9800',
+                cursor: 'help',
+                '&:hover': {
+                  textDecoration: 'underline'
+                }
+              }}
+            >
+              📈 {economicHistory.fullName} (남은 턴: {economicHistory.remainingTurns})
+            </Typography>
+          </Tooltip>
         )}
       </Box>
 

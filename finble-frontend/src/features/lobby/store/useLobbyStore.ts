@@ -102,15 +102,15 @@ export const useLobbyStore = create<LobbyState>((set, get) => ({
       });
 
       const newRoom: GameRoom = {
-        id: roomCreationResult.roomId,
+        id: roomCreationResult,
         name: roomName,
         playerCount: 1, // 방 생성자는 1명
         maxPlayers: userLimit,
         status: 'waiting',
       };
       get().addRoomOptimistically(newRoom);
-      
-      return roomCreationResult.roomId;
+
+      return roomCreationResult;
 
     } catch (error) {
       console.error('방 생성 요청 실패:', error);

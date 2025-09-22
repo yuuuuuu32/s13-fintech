@@ -5,12 +5,6 @@ import { CHARACTER_PREFABS } from "../constants/gameConstants.ts";
 // 찬스카드 처리 후 다음 GAME_STATE_CHANGE에서 플레이어 정보 허용
 let allowNextPlayerUpdate = false;
 
-// 찬스카드 처리 후 다음 GAME_STATE_CHANGE에서 플레이어 정보 허용
-let allowNextPlayerUpdate = false;
-
-// 찬스카드 처리 후 다음 GAME_STATE_CHANGE에서 플레이어 정보 허용
-let allowNextPlayerUpdate = false;
-
 export const createWebSocketHandlers = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
   get: () => GameState
@@ -347,28 +341,51 @@ export const createWebSocketHandlers = (
       }
 
       const economicHistory = {
-        periodName: payload.periodName,
-        effectName: payload.effectName,
-        description: payload.description,
-        isBoom: payload.isBoom,
-        fullName: payload.fullName,
-        salaryMultiplier: payload.salaryMultiplier,
-        tollMultiplier: payload.tollMultiplier,
-        propertyPriceMultiplier: payload.propertyPriceMultiplier,
-        buildingCostMultiplier: payload.buildingCostMultiplier,
-        chanceCardBonusMultiplier: payload.isBoom ? 1.2 : 0.8,
-        chanceCardPenaltyMultiplier: payload.isBoom ? 0.8 : 1.2,
+        periodName: payload.economicPeriodName,
+        effectName: payload.economicEffectName,
+        description: payload.economicDescription,
+        isBoom: payload.boom, // 백엔드에서 "boom" 필드로 전송
+        fullName: payload.economicFullName,
         remainingTurns: payload.remainingTurns
       };
 
-      set({ economicHistory });
+      console.log("📈 [ECONOMIC_HISTORY] 경제역사 업데이트:", {
+        periodName: economicHistory.periodName,
+        effectName: economicHistory.effectName,
+        fullName: economicHistory.fullName,
+        isBoom: economicHistory.isBoom,
+        remainingTurns: economicHistory.remainingTurns
+      });
 
-      // 경제역사 변경 알림 모달 표시
-      if (payload.periodName && payload.effectName) {
+      console.log("📈 [ECONOMIC_HISTORY] 게임 상태에 경제역사 설정 중...");
+      set({ economicHistory });
+      console.log("📈 [ECONOMIC_HISTORY] 게임 상태 업데이트 완료");
+
+      // 맵 정보도 함께 업데이트
+      if (payload.currentMap) {
+        const updatedBoard = payload.currentMap.cells.map((cell) => ({
+          name: cell.name,
+          type: cell.type?.toLowerCase() === 'special' ? 'special' as const : 'normal' as const,
+          price: cell.landPrice || cell.toll,
+          landPrice: cell.landPrice,
+          housePrice: cell.housePrice,
+          buildingPrice: cell.buildingPrice,
+          hotelPrice: cell.hotelPrice,
+          buildings: cell.buildingType === 'FIELD' ? { level: 0 as const } :
+                     cell.buildingType === 'HOUSE' ? { level: 1 as const } :
+                     cell.buildingType === 'BUILDING' ? { level: 2 as const } :
+                     cell.buildingType === 'HOTEL' ? { level: 3 as const } : { level: 0 as const },
+          description: cell.description
+        }));
+        set({ board: updatedBoard });
+      }
+
+      // 경제역사 변경 알림 모달 표시 (새로운 시대가 시작될 때만)
+      if (payload.economicPeriodName && payload.economicEffectName && payload.remainingTurns > 0) {
         set({
           modal: {
             type: "INFO" as const,
-            text: `📈 ${economicHistory.fullName}\n\n${payload.description}\n\n남은 턴: ${payload.remainingTurns}턴`,
+            text: `📈 ${economicHistory.fullName}\n\n${payload.economicDescription}\n\n남은 턴: ${payload.remainingTurns}턴`,
             onConfirm: () => set({ modal: { type: "NONE" as const } })
           }
         });
@@ -569,6 +586,13 @@ export const createWebSocketHandlers = (
     // INTERNAL_SERVER_ERROR 메시지 처리
     subscribeToTopic("INTERNAL_SERVER_ERROR", (message) => {
       console.error("❌ [WEBSOCKET] INTERNAL_SERVER_ERROR received:", message);
+      console.error("❌ [WEBSOCKET] Error details:", {
+        payload: message.payload,
+        message: message.message,
+        timestamp: new Date().toISOString(),
+        currentGamePhase: get().gamePhase,
+        currentPlayer: get().players[get().currentPlayerIndex]?.name
+      });
       const { payload } = message;
 
       // 세계여행 중 오류라면 세계여행 모드 해제
@@ -598,13 +622,29 @@ export const createWebSocketHandlers = (
         }));
       } else {
         // 일반적인 서버 오류 처리
-        set({
-          modal: {
-            type: "INFO" as const,
-            text: payload?.message || "서버 내부 오류가 발생했습니다.",
-            onConfirm: () => set({ modal: { type: "NONE" as const } })
-          }
-        });
+        const currentState = get();
+
+        // 주사위 굴리는 중 오류가 발생한 경우
+        if (currentState.gamePhase === "DICE_ROLLING") {
+          console.log("🎲 [INTERNAL_SERVER_ERROR] 주사위 굴리기 중 오류 발생 - 상태 복원");
+          set({
+            gamePhase: "WAITING_FOR_ROLL",
+            modal: {
+              type: "INFO" as const,
+              text: "주사위 굴리기 중 서버 오류가 발생했습니다. 다시 시도해주세요.",
+              onConfirm: () => set({ modal: { type: "NONE" as const } })
+            }
+          });
+        } else {
+          // 기타 상황에서의 서버 오류 처리
+          set({
+            modal: {
+              type: "INFO" as const,
+              text: payload?.message || "서버 내부 오류가 발생했습니다.",
+              onConfirm: () => set({ modal: { type: "NONE" as const } })
+            }
+          });
+        }
       }
     });
   },

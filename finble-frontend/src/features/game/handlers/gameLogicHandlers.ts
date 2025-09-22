@@ -95,17 +95,71 @@ export const createGameLogicHandlers = (
 
     set({ gamePhase: "DICE_ROLLING" });
 
-    if (gameId) {
+    if (gameId && currentPlayer) {
       console.log("📤 [WEBSOCKET] Sending USE_DICE:", {
         destination: `/app/game/${gameId}/roll-dice`,
         type: "USE_DICE",
-        payload: { userName: currentPlayer.name }
-      });
-      send(`/app/game/${gameId}/roll-dice`, {
-        type: "USE_DICE",
         payload: {
           userName: currentPlayer.name,
+          gameId: gameId,
+          playerIndex: currentPlayerIndex
         },
+        currentPlayer: {
+          name: currentPlayer.name,
+          id: currentPlayer.id,
+          position: currentPlayer.position,
+          isInJail: currentPlayer.isInJail
+        }
+      });
+
+      try {
+        send(`/app/game/${gameId}/roll-dice`, {
+          type: "USE_DICE",
+          payload: {
+            userName: currentPlayer.name,
+          },
+        });
+
+        // 5초 후에도 응답이 없으면 타임아웃 처리
+        setTimeout(() => {
+          const currentState = get();
+          if (currentState.gamePhase === "DICE_ROLLING") {
+            console.warn("⏰ [USE_DICE] 서버 응답 타임아웃 - 5초 경과");
+            set({
+              gamePhase: "WAITING_FOR_ROLL",
+              modal: {
+                type: "INFO",
+                text: "서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.",
+                onConfirm: () => set({ modal: { type: "NONE" } })
+              }
+            });
+          }
+        }, 5000);
+
+      } catch (error) {
+        console.error("❌ [WEBSOCKET] Failed to send USE_DICE:", error);
+        set({
+          gamePhase: "WAITING_FOR_ROLL",
+          modal: {
+            type: "INFO",
+            text: "주사위 굴리기 요청 중 오류가 발생했습니다. 다시 시도해주세요.",
+            onConfirm: () => set({ modal: { type: "NONE" } })
+          }
+        });
+      }
+    } else {
+      console.error("Cannot roll dice:", {
+        gameId: gameId || "NOT_SET",
+        currentPlayer: currentPlayer || "NOT_SET",
+        playerName: currentPlayer?.name || "UNKNOWN"
+      });
+      set({
+        gamePhase: "WAITING_FOR_ROLL",
+        modal: {
+          type: "INFO",
+          text: "게임 상태가 올바르지 않습니다. 페이지를 새로고침해주세요.",
+          onConfirm: () => set({ modal: { type: "NONE" } })
+        }
       });
     }
   },
@@ -120,7 +174,6 @@ export const createGameLogicHandlers = (
 
     // 시작점 통과 시 lapCount만 증가 (월급은 서버에서 이미 처리됨)
     if (newPosition >= board.length) {
-      updatedMoney += 200000;
       lapCount += 1;
     }
 

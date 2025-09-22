@@ -273,6 +273,13 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         window.location.href = '/lobby';
       });
 
+      // 경제역사 업데이트 구독 (대기실에서도 받을 수 있음)
+      const economicHistorySub = subscribeToTopic('ECONOMIC_HISTORY_UPDATE', (message) => {
+        console.log('📈 [ROOM] 경제역사 업데이트 수신:', message);
+        // 게임 시작 전 경제역사 정보는 로그만 기록
+        // 실제 처리는 게임 상태에서 담당
+      });
+
       // 게임 시작 메시지 구독
       const gameStartSub = subscribeToTopic('START_GAME_OBSERVE', (message) => {
         const currentWebSocketState = useWebSocketStore.getState();
@@ -317,6 +324,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
         exitUserSub();
         kickUserSub();
         kickedSub();
+        economicHistorySub();
         gameStartSub(); // cleanup에 추가
       }});
 
@@ -339,6 +347,10 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
       // Handle error, maybe navigate back to lobby
       throw error;
+    } finally {
+      // 항상 isEntering 상태를 리셋
+      set({ isEntering: false });
+      console.log('🔄 [ROOM_ENTRY] isEntering state reset to false');
     }
   },
   cleanup: () => {
