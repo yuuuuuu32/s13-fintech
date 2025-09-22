@@ -95,6 +95,7 @@ export interface GameState {
   serverCurrentPosition: number | null;
   isDiceRolled: boolean;
   economicHistory: EconomicHistory | null;
+  lastEconomicModalTurn: number | null; // 마지막으로 경제 효과 모달을 표시한 턴
   initializeGame: (initialState: GameInitialState) => void;
   setDicePower: (power: number) => void;
   rollDice: () => void;

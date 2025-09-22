@@ -64,17 +64,7 @@ export const handleCityCompanyTile = (
     }
 
     if (isMyTurn) {
-      const baseLandPrice = (currentTile as TileData & { landPrice?: number }).landPrice ?? currentTile.price ?? 0;
-      const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
-      const acquireCost = adjustedLandPrice * 2;
-      set({
-        modal: { type: "ACQUIRE_PROPERTY", tile: currentTile, acquireCost, toll },
-      });
-    } else {
-      // 다른 플레이어의 턴: 통행료 자동 지불 (서버 동기화)
-      const { gameId, send } = get();
-
-      // 낙관적 업데이트
+      // 내 턴일 때도 먼저 통행료를 지불하고 난 후 인수 모달 표시
       set((state) => {
         const updatedPlayers = [...state.players];
         const currentPlayerIndex = state.currentPlayerIndex;
@@ -92,30 +82,65 @@ export const handleCityCompanyTile = (
           money: updatedPlayers[ownerIndex].money + toll
         };
 
+        console.log("💰 [TOLL_PAYMENT] 통행료 지불 후 인수 모달 표시:", {
+          payerName: updatedPlayers[currentPlayerIndex].name,
+          ownerName: updatedPlayers[ownerIndex].name,
+          tollAmount: toll,
+          payerMoneyAfter: updatedPlayers[currentPlayerIndex].money,
+          ownerMoneyAfter: updatedPlayers[ownerIndex].money
+        });
+
+        const baseLandPrice = (currentTile as TileData & { landPrice?: number }).landPrice ?? currentTile.price ?? 0;
+        const adjustedLandPrice = state.applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
+        const acquireCost = adjustedLandPrice * 2;
+
+        return {
+          players: updatedPlayers,
+          modal: { type: "ACQUIRE_PROPERTY", tile: currentTile, acquireCost, toll }
+        };
+      });
+    } else {
+      // 다른 플레이어의 턴: 통행료 자동 지불 (클라이언트 사이드에서만 처리)
+
+      // 통행료 지불 처리 (서버 동기화 없이 클라이언트에서만)
+      set((state) => {
+        const updatedPlayers = [...state.players];
+        const currentPlayerIndex = state.currentPlayerIndex;
+        const ownerIndex = updatedPlayers.findIndex(p => p.id === owner.id);
+
+        // 통행료 지불
+        updatedPlayers[currentPlayerIndex] = {
+          ...updatedPlayers[currentPlayerIndex],
+          money: updatedPlayers[currentPlayerIndex].money - toll
+        };
+
+        // 소유자에게 통행료 지급
+        updatedPlayers[ownerIndex] = {
+          ...updatedPlayers[ownerIndex],
+          money: updatedPlayers[ownerIndex].money + toll
+        };
+
+        console.log("💰 [TOLL_PAYMENT] 통행료 자동 지불:", {
+          payerName: updatedPlayers[currentPlayerIndex].name,
+          ownerName: updatedPlayers[ownerIndex].name,
+          tollAmount: toll,
+          payerMoneyAfter: updatedPlayers[currentPlayerIndex].money,
+          ownerMoneyAfter: updatedPlayers[ownerIndex].money
+        });
+
         return {
           players: updatedPlayers,
           modal: { type: "NONE" as const }
         };
       });
 
-      // 서버에 동기화 메시지 전송
-      if (gameId && send) {
-        send(`/app/game/${gameId}/trade-land`, {
-          type: "TRADE_LAND",
-          payload: {
-            buyerName: currentPlayer.name,
-            landNum: currentPlayer.position,
-            isTollPayment: true,
-            tollAmount: toll
-          },
-        });
-      }
+      // 통행료 지불은 서버에 전송하지 않음 (백엔드 땅 거래 로직 방지)
     }
   } else {
     // 자신의 땅에 도착한 경우
     if (isMyTurn) {
       const canBuildMore = (currentTile.buildings?.level ?? 0) < 3;
-      const isBuildableType = currentTile.type === "city" || (currentTile as TileData & { type?: string }).type === "NORMAL";
+      const isBuildableType = (currentTile as TileData & { type?: string }).type === "NORMAL";
 
       console.log("🏗️ [BUILDING_CHECK] 건물 건설 가능 여부 확인:", {
         tileName: currentTile.name,
@@ -236,25 +261,25 @@ export const handleSpecialTile = (
           isInJail: true,
           jailTurns: 3,
         };
+
+        const playerName = updatedPlayers[state.currentPlayerIndex].name;
+        const modalText = isMyTurn
+          ? "감옥에 갇혔습니다! 다음 턴부터 3턴 동안 머물게 됩니다."
+          : `${playerName}님이 감옥에 갇혔습니다!`;
+
         return {
           players: updatedPlayers,
-          modal: isMyTurn ? {
+          modal: {
             type: "INFO",
-            text: "감옥에 갇혔습니다! 다음 턴부터 3턴 동안 머물게 됩니다.",
+            text: modalText,
             onConfirm: () => {
               set({ modal: { type: "NONE" as const } });
               console.log("🔒 [JAIL] 감옥 도착 처리 완료, 턴 종료");
               get().endTurn();
             },
-          } : { type: "NONE" as const },
+          },
         };
       });
-
-      // 다른 플레이어의 턴이면 바로 턴 종료
-      if (!isMyTurn) {
-        console.log("🔒 [JAIL] 다른 플레이어 감옥 도착, 턴 종료");
-        setTimeout(() => get().endTurn(), 100);
-      }
       break;
     // case "박람회": {
     //   if (isMyTurn) {
@@ -299,16 +324,8 @@ export const handleSpecialTile = (
       break;
 
     case "AIRPLANE":
-      // 백엔드에 세계여행 이벤트 요청 전송
-      if (send && isMyTurn) {
-        send('/app/game/world-travel', {
-          type: "WORLD_TRAVEL_EVENT",
-          payload: {
-            playerId: currentPlayer.id,
-            currentPosition: currentPlayer.position
-          }
-        });
-      }
+      // AIRPLANE 타일: 플레이어를 세계여행 모드로 설정만 함 (실제 여행은 다음 턴에 목적지 선택 시)
+      console.log("✈️ [AIRPLANE] 비행기 타일 도착 - 세계여행 모드 활성화");
 
       set((state) => {
         const updatedPlayers = [...state.players];
@@ -323,7 +340,7 @@ export const handleSpecialTile = (
             text: "세계여행! 다음 턴에 원하는 곳으로 이동할 수 있습니다.",
             onConfirm: () => {
               set({ modal: { type: "NONE" as const } });
-              console.log("✈️ [AIRPLANE] 세계여행 처리 완료, 턴 종료");
+              console.log("✈️ [AIRPLANE] 세계여행 모드 설정 완료, 턴 종료");
               get().endTurn();
             },
           } : { type: "NONE" as const },
@@ -332,7 +349,7 @@ export const handleSpecialTile = (
 
       // 다른 플레이어의 턴이면 바로 턴 종료
       if (!isMyTurn) {
-        console.log("✈️ [AIRPLANE] 다른 플레이어 세계여행, 턴 종료");
+        console.log("✈️ [AIRPLANE] 다른 플레이어 세계여행 모드 설정, 턴 종료");
         setTimeout(() => get().endTurn(), 100);
       }
       break;
