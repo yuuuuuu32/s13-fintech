@@ -139,6 +139,13 @@ export const createWebSocketHandlers = (
 
       const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn, userName, updatedAsset } = payload;
 
+      // 🎲 모든 클라이언트에서 즉시 주사위 애니메이션 시작
+      const currentState = get();
+      if (currentState.gamePhase !== "DICE_ROLLING") {
+        console.log("🎲 [DICE_SYNC] USE_DICE 수신 - 모든 클라이언트에서 주사위 애니메이션 시작");
+        set({ gamePhase: "DICE_ROLLING" });
+      }
+
       console.log("💰 [USE_DICE] 서버에서 받은 업데이트된 자산:", {
         userName,
         updatedAsset,
