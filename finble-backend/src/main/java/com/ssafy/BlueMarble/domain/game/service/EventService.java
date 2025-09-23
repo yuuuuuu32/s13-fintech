@@ -74,6 +74,7 @@ public class EventService {
 
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         CreateMapPayload.PlayerState user = gameState.getPlayers().get(userId);
+        log.info("TEST: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!user={}", user);
         if (user == null) {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
@@ -383,13 +384,11 @@ public class EventService {
         }
 
         // 10. 결과 메시지 전송 (찬스카드로 이동했을 수 있으므로 실제 플레이어 위치 사용)
-        String nextTurnUserName = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
         UseDicePayload payload = UseDicePayload.builder()
                 .userName(useDiceRequest.getUserName())
                 .diceNum1(diceNum1)
                 .diceNum2(diceNum2)
                 .curTurn(gameState.getGameTurn())
-                .nextTurnUserName(nextTurnUserName)
                 .diceNumSum(diceNumSum)
                 .currentPosition(player.getPosition()) // 실제 플레이어 위치 사용 (찬스카드 이동 반영)
                 .salaryBonus(salaryBonus)
