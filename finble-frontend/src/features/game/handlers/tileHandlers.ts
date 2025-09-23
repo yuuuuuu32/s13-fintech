@@ -278,25 +278,79 @@ export const handleSpecialTile = (
 
       if (isMyTurn) {
         console.log("✈️ [AIRPLANE] 내 턴 - 모달 표시");
+        console.log("✈️ [AIRPLANE] 현재 상태:", {
+          gamePhase: get().gamePhase,
+          currentModal: get().modal,
+          currentPlayerIndex: get().currentPlayerIndex
+        });
+
         set((state) => {
           const updatedPlayers = [...state.players];
           updatedPlayers[state.currentPlayerIndex] = {
             ...updatedPlayers[state.currentPlayerIndex],
             isTraveling: true,
           };
+
+          console.log("✈️ [AIRPLANE] 세계여행 모달 설정 중...");
+
           return {
             players: updatedPlayers,
+            gamePhase: "TILE_ACTION", // 안정적인 상태 유지
             modal: {
               type: "INFO",
               text: "세계여행! 다음 턴에 원하는 곳으로 이동할 수 있습니다.",
               onConfirm: () => {
                 console.log("✈️ [AIRPLANE] 모달 확인 버튼 클릭됨");
-                set({ modal: { type: "NONE" as const } });
-                get().endTurn();
+                set({
+                  modal: { type: "NONE" as const },
+                  gamePhase: "WAITING_FOR_TURN_END" // 서버에서 턴 관리하도록 대기 상태로 설정
+                });
+                // endTurn을 호출하지 않고 서버가 자동으로 턴을 관리하도록 함
               },
             },
           };
         });
+
+        // 모달 설정 후 상태 확인
+        setTimeout(() => {
+          const currentState = get();
+          console.log("✈️ [AIRPLANE] 모달 설정 후 상태 확인:", {
+            gamePhase: currentState.gamePhase,
+            modal: currentState.modal,
+            modalType: currentState.modal?.type,
+            modalText: currentState.modal?.text
+          });
+
+          // 모달이 사라졌다면 다시 설정
+          if (currentState.modal?.type !== "INFO" || !currentState.modal?.text?.includes("세계여행")) {
+            console.log("🚨 [AIRPLANE] 세계여행 모달이 사라짐 - 복원 시도");
+            set({
+              modal: {
+                type: "INFO",
+                text: "세계여행! 다음 턴에 원하는 곳으로 이동할 수 있습니다.",
+                onConfirm: () => {
+                  console.log("✈️ [AIRPLANE] 복원된 모달 확인 버튼 클릭됨");
+                  set({
+                    modal: { type: "NONE" as const },
+                    gamePhase: "WAITING_FOR_TURN_END"
+                  });
+                },
+              },
+            });
+          }
+        }, 100);
+
+        // 5초 후 자동 처리 (모달이 계속 사라지는 경우 대비)
+        setTimeout(() => {
+          const currentState = get();
+          if (currentState.modal?.type === "INFO" && currentState.modal?.text?.includes("세계여행")) {
+            console.log("✈️ [AIRPLANE] 5초 후 자동 처리");
+            set({
+              modal: { type: "NONE" as const },
+              gamePhase: "WAITING_FOR_TURN_END"
+            });
+          }
+        }, 5000);
       } else {
         console.log("✈️ [AIRPLANE] 다른 플레이어 턴 - 상태만 업데이트하고 endTurn 호출");
         set((state) => {
