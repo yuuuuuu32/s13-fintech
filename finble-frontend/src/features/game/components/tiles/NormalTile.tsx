@@ -2,28 +2,30 @@ import { Text } from '@react-three/drei';
 import type { TileData } from '../../data/boardData.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
 import Building from '../Building';
+import styles from './NormalTile.module.css'; // CSS 모듈 import
+
+// CSS 변수 값을 읽어오는 헬퍼 함수
+const getCSSVariable = (variableName: string, fallback: string) => {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim();
+  return value || fallback;
+};
 
 interface NormalTileProps {
   tile: TileData;
   tileIndex: number;
 }
 
-const getTileColor = (type: TileData['type']) => {
-  switch (type) {
-    case 'city': return '#86efac';
-    case 'company': return '#67e8f9';
-    default: return '#e5e5e5';
-  }
-}
-
 export function NormalTile({ tile, tileIndex }: NormalTileProps) {
   const players = useGameStore(state => state.players);
   const expoLocation = useGameStore(state => state.expoLocation);
 
-  const owner = players.find(p => p.properties.includes(tileIndex));
+  // 플레이어 배열 안전하게 변환
+  const playersArray = Array.isArray(players) ? players : Object.values(players || {});
+  const owner = playersArray.find(p => p.properties?.includes(tileIndex));
 
-  const TILE_WIDTH = 4;
-  const TILE_DEPTH = 6;
+  const TILE_WIDTH = 5; // 기본 너비 5로 변경
+  const TILE_DEPTH = 7; // 기본 깊이 7로 변경
   const TILE_HEIGHT = 0.2;
 
   let toll = tile.tolls?.[tile.buildings?.level || 0] || 0;
@@ -39,22 +41,21 @@ export function NormalTile({ tile, tileIndex }: NormalTileProps) {
 
   return (
     <>
-      <mesh position={[0, TILE_HEIGHT / 2 + 0.01, -(TILE_DEPTH / 2 - 0.25)]}>
-        <boxGeometry args={[TILE_WIDTH - 0.2, 0.05, 0.5]} />
-        <meshStandardMaterial color={getTileColor(tile.type)} />
-      </mesh>
+      {/* 기존 막대 장식 제거 */}
 
       {infoText && (
         <Text
-          position={[0, TILE_HEIGHT / 2 + 0.02, 1.5]}
+          position={[0, TILE_HEIGHT / 2 + 0.02, 2]}
           rotation={[-Math.PI / 2, 0, 0]}
-          fontSize={0.3}
-          color="#333"
+          fontSize={0.4}
+          color={getCSSVariable('--normal-tile-text-color', '#000000')}
           anchorX="center"
           anchorY="middle"
-          maxWidth={TILE_WIDTH - 0.8}
+          maxWidth={TILE_WIDTH - 1.5}
           textAlign="center"
           font="/fonts/Galmuri14.ttf"
+          outlineWidth={0.015}
+          outlineColor={getCSSVariable('--normal-tile-outline-color', '#ffffff')}
         >
           {infoText}
         </Text>

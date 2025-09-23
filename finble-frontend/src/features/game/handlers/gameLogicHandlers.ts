@@ -72,6 +72,7 @@ export const createGameLogicHandlers = (
   setIsDiceRolled: (isRolled: boolean) => set({ isDiceRolled: isRolled }),
 
   rollDice: () => {
+    console.log('🎲 rollDice 실행! 현재 gameId:', get().gameId);
     const { gamePhase, players, currentPlayerIndex, gameId, send, board } = get();
     const currentPlayer = players[currentPlayerIndex];
 
