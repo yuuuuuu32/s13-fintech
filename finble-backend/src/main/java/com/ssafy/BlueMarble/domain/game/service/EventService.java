@@ -297,8 +297,11 @@ public class EventService {
         }
 
         // 3. 주사위 던지기
-        int diceNum1 = random.nextInt(6) + 1;
-        int diceNum2 = random.nextInt(6) + 1;
+//        int diceNum1 = random.nextInt(6) + 1;
+//        int diceNum2 = random.nextInt(6) + 1;
+        //TODO : 테스트 이후 주석해제!!!
+        int diceNum1 = 4;
+        int diceNum2 = 4;
         int diceNumSum = diceNum1 + diceNum2;
         // 4. 위치 계산
         int currentPosition = player.getPosition();
@@ -311,7 +314,10 @@ public class EventService {
             salaryBonus = economicHistoryService.calculateSalaryWithEffect(baseSalary, gameState.getGameTurn());
             player.setMoney(player.getMoney() + salaryBonus);
         }
-
+        //5.1 감옥 자리라면 사용자 상태 업데이트 해야함
+        if (gameState.getCurrentMap().getCells().get(newPosition).getType().equals(Tile.TileType.JAIL)) {
+            player.setInJail(true);
+        }
         // 6. 새로운 위치로 이동
         player.setPosition(newPosition);
 
@@ -325,7 +331,7 @@ public class EventService {
             var targetCell = gameState.getCurrentMap().getCells().get(newPosition);
 
             // 국세청 칸 처리
-            if (targetCell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NTS) {
+            if (targetCell.getType() == Tile.TileType.NTS) {
                 handleNtsEvent(roomId, useDiceRequest.getUserName());
             }
             // 일반땅인 경우에만 통행료 처리
