@@ -204,12 +204,17 @@ export const createPlayerActions = (
           ? `${updatedPlayer.name}님이 파산했습니다.`
           : `통행료 ${toll.toLocaleString()}원을 지불했습니다.`;
 
+      // 통행료 지불은 토스트로 표시 (모달 충돌 방지)
+      get().addToast(
+        updatedPlayer.money < 0 ? "error" : "warning",
+        "💰 통행료 지불",
+        text,
+        3000
+      );
+
       return {
         players: currentPlayers,
-        modal: {
-          type: "INFO" as const,
-          text: text,
-        },
+        modal: { type: "NONE" as const },
       };
     });
 
@@ -246,8 +251,14 @@ export const createPlayerActions = (
             },
           };
         } else {
-          // 다른 플레이어의 턴: 자동 처리
-          console.log(`🔒 [JAIL_ESCAPE] ${currentPlayer.name}님이 감옥에서 탈출 (자동 처리)`);
+          // 다른 플레이어의 턴: 토스트로 표시하고 자동 처리
+          console.log(`🔒 [JAIL_ESCAPE] ${currentPlayer.name}님이 감옥에서 탈출 (토스트 표시)`);
+          get().addToast(
+            "success",
+            "🔓 감옥 탈출",
+            `${currentPlayer.name}님이 감옥에서 탈출했습니다!`,
+            3000
+          );
           setTimeout(() => get().endTurn(), 100);
           return {
             players: updatedPlayers,
@@ -273,8 +284,14 @@ export const createPlayerActions = (
             },
           };
         } else {
-          // 다른 플레이어의 턴: 자동 처리
-          console.log(`🔒 [JAIL_STAY] ${currentPlayer.name}님이 감옥에서 ${newJailTurns}턴 더 머무름 (자동 처리)`);
+          // 다른 플레이어의 턴: 토스트로 표시하고 자동 처리
+          console.log(`🔒 [JAIL_STAY] ${currentPlayer.name}님이 감옥에서 ${newJailTurns}턴 더 머무름 (토스트 표시)`);
+          get().addToast(
+            "info",
+            "🔒 감옥 대기",
+            `${currentPlayer.name}님이 감옥에서 ${newJailTurns}턴 더 머물게 됩니다.`,
+            3000
+          );
           setTimeout(() => get().endTurn(), 100);
           return {
             players: updatedPlayers,

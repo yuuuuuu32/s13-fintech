@@ -189,16 +189,20 @@ export const createSpecialLandHandlers = (
           money: updatedPlayers[ownerIndex].money + adjustedToll
         };
 
+        // 통행료 지불은 토스트로 표시 (모달 충돌 방지)
+        if (isMyTurn) {
+          get().addToast(
+            "warning",
+            `💰 ${tile.name} 통행료`,
+            `${adjustedToll.toLocaleString()}원을 지불했습니다.\n\n스페셜 땅은 인수할 수 없습니다.`,
+            3000
+          );
+          setTimeout(() => get().endTurn(), 500);
+        }
+
         return {
           players: updatedPlayers,
-          modal: isMyTurn ? {
-            type: "INFO",
-            text: `${tile.name}의 통행료 ${adjustedToll.toLocaleString()}원을 지불했습니다.\n\n스페셜 땅은 인수할 수 없습니다.`,
-            onConfirm: () => {
-              set({ modal: { type: "NONE" as const } });
-              get().endTurn();
-            }
-          } : { type: "NONE" as const }
+          modal: { type: "NONE" as const }
         };
       });
     } else {
@@ -207,16 +211,8 @@ export const createSpecialLandHandlers = (
       const isMyTurn = currentPlayer.id === currentUserId;
 
       if (isMyTurn) {
-        set({
-          modal: {
-            type: "INFO" as const,
-            text: `${tile.name}은(는) 당신의 소유입니다.`,
-            onConfirm: () => {
-              set({ modal: { type: "NONE" as const } });
-              get().endTurn();
-            },
-          },
-        });
+        get().addToast("info", `🏠 ${tile.name}`, "당신의 소유입니다.", 2000);
+        get().endTurn();
       } else {
         // 다른 플레이어 턴: 모달 없이 자동 처리
         set({ modal: { type: "NONE" as const } });

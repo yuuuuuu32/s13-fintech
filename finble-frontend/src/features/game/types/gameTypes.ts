@@ -37,6 +37,15 @@ export interface Player {
   lapCount: number;
 }
 
+export interface ToastMessage {
+  id: string;
+  type: "info" | "success" | "warning" | "error";
+  title: string;
+  message: string;
+  duration?: number; // ms, 기본값 3000
+  timestamp: number;
+}
+
 export interface EconomicHistory {
   periodName: string;
   effectName: string;
@@ -97,6 +106,7 @@ export interface GameState {
   isDiceRolled: boolean;
   economicHistory: EconomicHistory | null;
   lastEconomicModalTurn: number | null; // 마지막으로 경제 효과 모달을 표시한 턴
+  toastMessages: ToastMessage[]; // 토스트 메시지 배열
   initializeGame: (initialState: GameInitialState) => void;
   setDicePower: (power: number) => void;
   rollDice: () => void;
@@ -130,4 +140,6 @@ export interface GameState {
   send: (destination: string, body: Record<string, unknown>) => void;
   updateGameState: (newState: Partial<GameState>) => void;
   applyEconomicMultiplier: (baseValue: number, multiplierType: keyof Pick<EconomicHistory, 'salaryMultiplier' | 'tollMultiplier' | 'propertyPriceMultiplier' | 'buildingCostMultiplier' | 'chanceCardBonusMultiplier' | 'chanceCardPenaltyMultiplier'>) => number;
+  addToast: (type: ToastMessage["type"], title: string, message: string, duration?: number) => void;
+  removeToast: (id: string) => void;
 }

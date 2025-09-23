@@ -6,6 +6,7 @@ import type { TileData } from '../data/boardData.ts';
 import { useUserStore } from '../../../stores/useUserStore';
 import { Modal, Box, Typography, Button, Card, CardContent, LinearProgress, List, ListItem, ListItemButton, ListItemText, Checkbox, FormControlLabel, FormGroup, Tooltip } from '@mui/material';
 import styles from './GameUI.module.css';
+import ToastContainer from './ToastContainer.tsx';
 
 const BAIL_AMOUNT = 500000; 
 
@@ -836,6 +837,9 @@ export function GameUI() {
           )}
         </Box>
       </Modal>
+
+      {/* 토스트 메시지 컨테이너 */}
+      <ToastContainer />
     </Box>
   )
 }

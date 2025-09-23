@@ -56,13 +56,14 @@ export const createWebSocketHandlers = (
 
         set((state) => {
           const nextPlayerIndex = state.players.findIndex(p => p.name === payload.curPlayer);
-          if (nextPlayerIndex !== -1) {
+          if (nextPlayerIndex !== -1 && nextPlayerIndex !== state.currentPlayerIndex) {
             console.log("🔄 [TURN_DEBUG] 플레이어 인덱스 변경:", {
               previousIndex: state.currentPlayerIndex,
               nextIndex: nextPlayerIndex,
               previousPlayer: state.players[state.currentPlayerIndex]?.name,
               nextPlayer: state.players[nextPlayerIndex]?.name,
-              isLastPlayer: nextPlayerIndex === state.players.length - 1
+              isLastPlayer: nextPlayerIndex === state.players.length - 1,
+              actualChange: true
             });
 
             const newState = {
@@ -74,9 +75,121 @@ export const createWebSocketHandlers = (
               modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
             };
 
-            // Note: checkGameOver will be called at the end of endTurn, no need to call here
+            // 위치 무결성 검증 및 복원
+            setTimeout(() => {
+              const currentState = get();
+              const positionCheck = new Map();
+              let duplicateDetected = false;
+              const duplicateInfo: any[] = [];
+
+              currentState.players.forEach((player, index) => {
+                if (positionCheck.has(player.position)) {
+                  duplicateDetected = true;
+                  const existingPlayer = positionCheck.get(player.position);
+                  duplicateInfo.push({
+                    position: player.position,
+                    player1: existingPlayer,
+                    player2: { name: player.name, id: player.id, index }
+                  });
+                  console.error("🚨 [CRITICAL] GAME_STATE_CHANGE 후 위치 중복 감지!", {
+                    position: player.position,
+                    player1: existingPlayer,
+                    player2: { name: player.name, id: player.id, index },
+                    allPositions: currentState.players.map(p => ({ name: p.name, position: p.position })),
+                    currentPlayerIndex: currentState.currentPlayerIndex
+                  });
+                } else {
+                  positionCheck.set(player.position, { name: player.name, id: player.id, index });
+                }
+              });
+
+              // 위치 중복이 감지되면 복원 시도
+              if (duplicateDetected) {
+                console.log("🔧 [POSITION_RESTORE] 위치 중복 복원 시도:", duplicateInfo);
+
+                set((state) => {
+                  const restoredPlayers = [...state.players];
+
+                  // 중복된 플레이어들의 위치를 다른 안전한 위치로 분산
+                  duplicateInfo.forEach(({ position, player1, player2 }) => {
+                    // player1의 인덱스 찾기
+                    const player1Index = restoredPlayers.findIndex(p => p.id === player1.id);
+                    // player2의 인덱스 찾기
+                    const player2Index = restoredPlayers.findIndex(p => p.id === player2.id);
+
+                    if (player1Index !== -1 && player2Index !== -1) {
+                      // 현재 플레이어가 아닌 플레이어의 위치를 약간 조정
+                      if (player1Index !== state.currentPlayerIndex) {
+                        // player1을 이전 위치로 이동 (안전한 위치)
+                        restoredPlayers[player1Index] = {
+                          ...restoredPlayers[player1Index],
+                          position: Math.max(0, position - 1)
+                        };
+                        console.log("🔧 [POSITION_RESTORE] player1 위치 복원:", {
+                          playerName: player1.name,
+                          oldPosition: position,
+                          newPosition: Math.max(0, position - 1)
+                        });
+                      } else if (player2Index !== state.currentPlayerIndex) {
+                        // player2를 다음 위치로 이동 (안전한 위치)
+                        restoredPlayers[player2Index] = {
+                          ...restoredPlayers[player2Index],
+                          position: Math.min(35, position + 1) // 보드 크기를 36으로 가정
+                        };
+                        console.log("🔧 [POSITION_RESTORE] player2 위치 복원:", {
+                          playerName: player2.name,
+                          oldPosition: position,
+                          newPosition: Math.min(35, position + 1)
+                        });
+                      }
+                    }
+                  });
+
+                  console.log("🔧 [POSITION_RESTORE] 위치 복원 완료:", {
+                    beforeRestore: state.players.map(p => ({ name: p.name, position: p.position })),
+                    afterRestore: restoredPlayers.map(p => ({ name: p.name, position: p.position }))
+                  });
+
+                  return {
+                    players: restoredPlayers
+                  };
+                });
+
+                // 복원 후 다시 검증
+                setTimeout(() => {
+                  const verificationState = get();
+                  const verificationCheck = new Map();
+                  let stillDuplicated = false;
+
+                  verificationState.players.forEach((player, index) => {
+                    if (verificationCheck.has(player.position)) {
+                      stillDuplicated = true;
+                      console.error("🚨 [CRITICAL] 위치 복원 후에도 중복 존재!", {
+                        position: player.position,
+                        player1: verificationCheck.get(player.position),
+                        player2: { name: player.name, id: player.id, index }
+                      });
+                    } else {
+                      verificationCheck.set(player.position, { name: player.name, id: player.id, index });
+                    }
+                  });
+
+                  if (!stillDuplicated) {
+                    console.log("✅ [POSITION_RESTORE] 위치 복원 성공 - 중복 해결됨");
+                  }
+                }, 100);
+              }
+            }, 50);
 
             return newState;
+          } else {
+            console.log("🔄 [TURN_DEBUG] 플레이어 인덱스 변경 스킵:", {
+              reason: nextPlayerIndex === -1 ? "플레이어를 찾을 수 없음" : "이미 동일한 플레이어",
+              currentIndex: state.currentPlayerIndex,
+              nextIndex: nextPlayerIndex,
+              currentPlayer: state.players[state.currentPlayerIndex]?.name,
+              targetPlayer: payload.curPlayer
+            });
           }
           return {};
         });
@@ -141,11 +254,20 @@ export const createWebSocketHandlers = (
 
       const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn, userName, updatedAsset } = payload;
 
-      // 🎲 모든 클라이언트에서 즉시 주사위 애니메이션 시작
+      // 🎲 현재 플레이어의 주사위만 게임 상태 변경
       const currentState = get();
-      if (currentState.gamePhase !== "DICE_ROLLING") {
-        console.log("🎲 [DICE_SYNC] USE_DICE 수신 - 모든 클라이언트에서 주사위 애니메이션 시작");
+      const currentPlayer = currentState.players[currentState.currentPlayerIndex];
+      const isCurrentPlayerDice = currentPlayer && currentPlayer.name === userName;
+
+      if (isCurrentPlayerDice && currentState.gamePhase !== "DICE_ROLLING") {
+        console.log("🎲 [DICE_SYNC] 현재 플레이어의 USE_DICE 수신 - 주사위 애니메이션 시작");
         set({ gamePhase: "DICE_ROLLING" });
+      } else if (!isCurrentPlayerDice) {
+        console.log("👀 [DICE_SYNC] 다른 플레이어의 USE_DICE 수신 - 게임 상태 변경 안함:", {
+          dicePlayerName: userName,
+          currentPlayerName: currentPlayer?.name,
+          currentGamePhase: currentState.gamePhase
+        });
       }
 
       console.log("💰 [USE_DICE] 서버에서 받은 업데이트된 자산:", {
@@ -190,7 +312,25 @@ export const createWebSocketHandlers = (
       // 주사위 애니메이션이 끝난 후 (2초) 기물 이동 시작
       setTimeout(() => {
         console.log("🎬 [USE_DICE] 주사위 애니메이션 완료 - 기물 이동 시작");
-        get().movePlayer([diceNum1, diceNum2]);
+
+        // 현재 턴의 플레이어만 이동 처리
+        const currentState = get();
+        const currentPlayer = currentState.players[currentState.currentPlayerIndex];
+
+        if (currentPlayer && currentPlayer.name === userName) {
+          console.log("🏃 [USE_DICE] 현재 플레이어 이동 처리:", {
+            playerName: userName,
+            currentPlayerIndex: currentState.currentPlayerIndex,
+            dice: [diceNum1, diceNum2]
+          });
+          get().movePlayer([diceNum1, diceNum2]);
+        } else {
+          console.log("👀 [USE_DICE] 다른 플레이어의 주사위 - 이동 처리 건너뛰기:", {
+            dicePlayerName: userName,
+            currentPlayerName: currentPlayer?.name,
+            currentPlayerIndex: currentState.currentPlayerIndex
+          });
+        }
       }, 2000); // 주사위 애니메이션 시간과 동일
     }));
 
@@ -472,53 +612,24 @@ export const createWebSocketHandlers = (
 
         // 이번 턴에 이미 경제 효과 모달을 표시했는지 확인
         if (currentState.lastEconomicModalTurn !== currentTurn) {
-          console.log("📈 [ECONOMIC_HISTORY] 새로운 경제 시대 모달 표시:", {
+          console.log("📈 [ECONOMIC_HISTORY] 새로운 경제 시대 토스트 표시:", {
             turn: currentTurn,
             lastModalTurn: currentState.lastEconomicModalTurn,
             periodName: economicHistory.periodName,
-            effectName: economicHistory.effectName,
-            currentModalType: currentState.modal.type
+            effectName: economicHistory.effectName
           });
 
-          // 다른 모달이 활성화되어 있으면 경제 역사 모달을 지연시킴
-          if (currentState.modal.type !== "NONE") {
-            console.log("📈 [ECONOMIC_HISTORY] 다른 모달이 활성화됨 - 경제 역사 모달 지연:", {
-              currentModalType: currentState.modal.type,
-              delayTime: "3초"
-            });
+          // 경제 역사는 이제 토스트로 표시 (모달 충돌 방지)
+          get().addToast(
+            "info",
+            `📈 ${economicHistory.fullName}`,
+            `${payload.economicDescription}`,
+            5000 // 5초 동안 표시
+          );
 
-            // 3초 후에 다시 시도
-            setTimeout(() => {
-              const latestState = get();
-              if (latestState.modal.type === "NONE" && latestState.lastEconomicModalTurn !== currentTurn) {
-                console.log("📈 [ECONOMIC_HISTORY] 지연된 경제 역사 모달 표시");
-                set({
-                  modal: {
-                    type: "INFO" as const,
-                    text: `📈 ${economicHistory.fullName}\n\n${payload.economicDescription}\n\n남은 턴: ${payload.remainingTurns}턴`,
-                    onConfirm: () => {
-                      console.log("📈 [ECONOMIC_HISTORY] 지연된 경제 역사 모달 확인 완료 - 단순 모달 닫기");
-                      set({ modal: { type: "NONE" as const } });
-                    }
-                  },
-                  lastEconomicModalTurn: currentTurn
-                });
-              }
-            }, 3000);
-          } else {
-            // 모달이 비어있으면 바로 표시
-            set({
-              modal: {
-                type: "INFO" as const,
-                text: `📈 ${economicHistory.fullName}\n\n${payload.economicDescription}\n\n남은 턴: ${payload.remainingTurns}턴`,
-                onConfirm: () => {
-                  console.log("📈 [ECONOMIC_HISTORY] 경제 역사 모달 확인 완료 - 단순 모달 닫기");
-                  set({ modal: { type: "NONE" as const } });
-                }
-              },
-              lastEconomicModalTurn: currentTurn // 이번 턴에 모달을 표시했다고 기록
-            });
-          }
+          set({
+            lastEconomicModalTurn: currentTurn // 이번 턴에 토스트를 표시했다고 기록
+          });
         } else {
           console.log("📈 [ECONOMIC_HISTORY] 이미 이번 턴에 경제 효과 모달을 표시했으므로 스킵:", {
             turn: currentTurn,
@@ -591,13 +702,23 @@ export const createWebSocketHandlers = (
             return tile;
           });
 
-          // 위치 중복 검사
+          // 위치 중복 검사 및 즉시 복원
           const positionCheck = new Map();
+          let duplicateDetected = false;
+          const duplicateInfo: any[] = [];
+
           updatedPlayers.forEach((player, index) => {
             if (positionCheck.has(player.position)) {
+              duplicateDetected = true;
+              const existingPlayer = positionCheck.get(player.position);
+              duplicateInfo.push({
+                position: player.position,
+                player1: existingPlayer,
+                player2: { name: player.name, id: player.id, index }
+              });
               console.error("🚨 [CRITICAL] CONSTRUCT_BUILDING: 위치 중복 감지!", {
                 position: player.position,
-                player1: positionCheck.get(player.position),
+                player1: existingPlayer,
                 player2: { name: player.name, id: player.id, index },
                 allPositions: updatedPlayers.map(p => ({ name: p.name, position: p.position }))
               });
@@ -605,6 +726,41 @@ export const createWebSocketHandlers = (
               positionCheck.set(player.position, { name: player.name, id: player.id, index });
             }
           });
+
+          // 위치 중복이 감지되면 즉시 복원
+          if (duplicateDetected) {
+            console.log("🔧 [CONSTRUCT_BUILDING] 위치 중복 즉시 복원:", duplicateInfo);
+
+            duplicateInfo.forEach(({ position, player1, player2 }) => {
+              const player1Index = updatedPlayers.findIndex(p => p.id === player1.id);
+              const player2Index = updatedPlayers.findIndex(p => p.id === player2.id);
+
+              if (player1Index !== -1 && player2Index !== -1) {
+                // 현재 플레이어가 아닌 플레이어의 위치를 조정
+                if (player1Index !== state.currentPlayerIndex) {
+                  updatedPlayers[player1Index] = {
+                    ...updatedPlayers[player1Index],
+                    position: Math.max(0, position - 1)
+                  };
+                  console.log("🔧 [CONSTRUCT_BUILDING] player1 위치 복원:", {
+                    playerName: player1.name,
+                    oldPosition: position,
+                    newPosition: Math.max(0, position - 1)
+                  });
+                } else if (player2Index !== state.currentPlayerIndex) {
+                  updatedPlayers[player2Index] = {
+                    ...updatedPlayers[player2Index],
+                    position: Math.min(35, position + 1)
+                  };
+                  console.log("🔧 [CONSTRUCT_BUILDING] player2 위치 복원:", {
+                    playerName: player2.name,
+                    oldPosition: position,
+                    newPosition: Math.min(35, position + 1)
+                  });
+                }
+              }
+            });
+          }
 
           return {
             players: updatedPlayers,
@@ -666,22 +822,40 @@ export const createWebSocketHandlers = (
             ? `${payload.nickname}님이 보석금을 내고 감옥에서 탈출했습니다!`
             : `${payload.nickname}님의 감옥 탈출이 실패했습니다. 남은 감옥 턴: ${payload.turns}`;
 
-          return {
-            players: updatedPlayers,
-            gamePhase: payload.result && isMyJailEvent ? "WAITING_FOR_ROLL" as const : state.gamePhase,
-            modal: {
-              type: "INFO" as const,
-              text: resultText,
-              onConfirm: () => {
-                set({ modal: { type: "NONE" as const } });
-                // 내가 보석금을 성공적으로 낸 경우에만 턴 종료
-                if (payload.result && isMyJailEvent) {
-                  console.log("🔄 [JAIL_EVENT] 보석금 지불 성공 후 턴 종료");
-                  setTimeout(() => get().endTurn(), 100);
+          // 당사자는 모달, 다른 플레이어는 토스트
+          if (isMyJailEvent) {
+            return {
+              players: updatedPlayers,
+              gamePhase: payload.result ? "WAITING_FOR_ROLL" as const : state.gamePhase,
+              modal: {
+                type: "INFO" as const,
+                text: payload.result
+                  ? "보석금을 내고 감옥에서 탈출했습니다!"
+                  : `감옥 탈출에 실패했습니다. 남은 감옥 턴: ${payload.turns}`,
+                onConfirm: () => {
+                  set({ modal: { type: "NONE" as const } });
+                  if (payload.result) {
+                    console.log("🔄 [JAIL_EVENT] 보석금 지불 성공 후 턴 종료");
+                    setTimeout(() => get().endTurn(), 100);
+                  }
                 }
               }
-            }
-          };
+            };
+          } else {
+            // 다른 플레이어들에게는 토스트로 표시
+            get().addToast(
+              payload.result ? "success" : "warning",
+              payload.result ? "🔓 보석금 지불" : "🔒 감옥 탈출 실패",
+              resultText,
+              3000
+            );
+
+            return {
+              players: updatedPlayers,
+              gamePhase: state.gamePhase,
+              modal: { type: "NONE" as const }
+            };
+          }
         });
       }
     }));
@@ -1052,10 +1226,49 @@ export const createWebSocketHandlers = (
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { players, ...safeState } = newState;
       console.log("🛡️ [SAFE_UPDATE] Applying state without player positions to prevent snap-back");
-      set(safeState);
+
+      // curPlayer가 있으면 currentPlayerIndex도 업데이트
+      if (safeState.curPlayer) {
+        const nextPlayerIndex = currentState.players.findIndex(p => p.name === safeState.curPlayer);
+        if (nextPlayerIndex !== -1) {
+          console.log("🔄 [SAFE_UPDATE] curPlayer 감지 (with players) - currentPlayerIndex 업데이트:", {
+            curPlayer: safeState.curPlayer,
+            nextPlayerIndex,
+            previousIndex: currentState.currentPlayerIndex
+          });
+          set({
+            ...safeState,
+            currentPlayerIndex: nextPlayerIndex
+          });
+        } else {
+          set(safeState);
+        }
+      } else {
+        set(safeState);
+      }
     } else {
       console.log("✅ [SAFE_UPDATE] No players in state, applying full update");
-      set(newState);
+
+      // curPlayer가 있으면 currentPlayerIndex도 업데이트
+      if (newState.curPlayer) {
+        const currentState = get();
+        const nextPlayerIndex = currentState.players.findIndex(p => p.name === newState.curPlayer);
+        if (nextPlayerIndex !== -1) {
+          console.log("🔄 [SAFE_UPDATE] curPlayer 감지 - currentPlayerIndex 업데이트:", {
+            curPlayer: newState.curPlayer,
+            nextPlayerIndex,
+            previousIndex: currentState.currentPlayerIndex
+          });
+          set({
+            ...newState,
+            currentPlayerIndex: nextPlayerIndex
+          });
+        } else {
+          set(newState);
+        }
+      } else {
+        set(newState);
+      }
     }
   },
 });
