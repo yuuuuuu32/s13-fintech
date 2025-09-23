@@ -19,13 +19,6 @@ export const createPlayerActions = (
     const baseLandPrice = tile?.landPrice || tile?.price || 0;
     const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
 
-    console.log("🏗️ [BUY_PROPERTY] 일반 땅 구매 요청:", {
-      tileName: tile?.name,
-      tileIndex,
-      baseLandPrice,
-      adjustedLandPrice,
-      currentPlayerMoney: currentPlayer.money
-    });
 
     // 클라이언트 사이드 자금 체크 (경제 효과 적용된 가격 사용)
     if (currentPlayer.money < adjustedLandPrice) {
@@ -54,12 +47,6 @@ export const createPlayerActions = (
     const { gameId, send, players, currentPlayerIndex, board } = get();
     const currentPlayer = players[currentPlayerIndex];
 
-    console.log("🏗️ [BUY_PROPERTY_WITH_ITEMS] 일반 땅+건물 구매 요청:", {
-      tileName: purchaseData.tile?.name,
-      selectedItems: purchaseData.selectedItems,
-      totalCost: purchaseData.totalCost,
-      currentPlayerMoney: currentPlayer.money
-    });
 
     // 1. Check for funds (client-side check)
     if (currentPlayer.money < purchaseData.totalCost) {
@@ -227,11 +214,6 @@ export const createPlayerActions = (
 
     // 통행료 지불은 클라이언트 사이드에서만 처리하고 서버에 전송하지 않음
     // (백엔드에서 TRADE_LAND로 처리되어 땅이 거래되는 문제 방지)
-    console.log("💰 [TOLL_PAYMENT] 통행료 지불 완료 (클라이언트 전용):", {
-      payerName: currentPlayer.name,
-      tollAmount: toll,
-      tileIndex: tileIndex
-    });
   },
 
   handleJail: () => {
@@ -289,11 +271,6 @@ export const createPlayerActions = (
 
     // 서버에 감옥 탈출 메시지 전송 (낙관적 업데이트 제거)
     if (gameId) {
-      console.log("💰 [BAIL] 보석금 지불 요청 전송:", {
-        playerName: currentPlayer.name,
-        bailAmount: BAIL_AMOUNT,
-        currentMoney: currentPlayer.money
-      });
 
       send(`/app/game/${gameId}/jail-event`, {
         type: "JAIL_EVENT",
@@ -343,12 +320,6 @@ export const createPlayerActions = (
     const { send, players, currentPlayerIndex } = get();
     const currentPlayer = players[currentPlayerIndex];
 
-    console.log("✈️ [WORLD_TRAVEL] 세계여행 목적지 선택:", {
-      playerName: currentPlayer.name,
-      currentPosition: currentPlayer.position,
-      destinationPosition: tileIndex,
-      willSendToServer: !!send
-    });
 
     // 백엔드에 세계여행 목적지 전송
     if (send) {
@@ -373,13 +344,11 @@ export const createPlayerActions = (
       },
     });
 
-    console.log("✈️ [WORLD_TRAVEL] 서버 응답 대기 중...");
 
     // 타임아웃 처리: 10초 후에도 서버 응답이 없으면 오류 처리
     setTimeout(() => {
       const currentState = get();
       if (currentState.modal?.text === "세계여행 중입니다... 잠시만 기다려주세요.") {
-        console.error("⚠️ [WORLD_TRAVEL] 서버 응답 타임아웃");
         set({
           gamePhase: "WAITING_FOR_ROLL" as const,
           modal: {

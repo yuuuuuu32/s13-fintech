@@ -218,17 +218,30 @@ const BuyPropertyModalContent = ({ modal, buyPropertyWithItems, endTurn, current
 };
 
 // AcquirePropertyModalContent
-const AcquirePropertyModalContent = ({ modal, acquireProperty, payToll, currentPlayer, endTurn }) => (
-  <>
-    <Typography variant="h5" component="h2" fontWeight="bold">{modal.tile?.name} 인수</Typography>
-    <Typography sx={{ mt: 2 }}>통행료: {modal.toll?.toLocaleString()}원</Typography>
-    <Typography sx={{ mt: 1 }}>인수 비용: {modal.acquireCost?.toLocaleString()}원</Typography>
-    <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-      <Button variant="contained" onClick={() => { acquireProperty(); endTurn(); }} disabled={(currentPlayer?.money || 0) < (modal.acquireCost || 0)}>인수</Button>
-      <Button variant="outlined" onClick={() => { payToll(); endTurn(); }}>통행료만 지불</Button>
-    </Box>
-  </>
-);
+const AcquirePropertyModalContent = ({ modal, acquireProperty, payToll, currentPlayer, endTurn }) => {
+  const isPaidToll = modal.isPaidToll; // 통행료가 이미 지불되었는지 확인
+
+  return (
+    <>
+      <Typography variant="h5" component="h2" fontWeight="bold">{modal.tile?.name} 인수</Typography>
+      {isPaidToll && (
+        <Typography sx={{ mt: 2, color: 'success.main' }}>✓ 통행료 지불 완료</Typography>
+      )}
+      {!isPaidToll && (
+        <Typography sx={{ mt: 2 }}>통행료: {modal.toll?.toLocaleString()}원</Typography>
+      )}
+      <Typography sx={{ mt: 1 }}>인수 비용: {modal.acquireCost?.toLocaleString()}원</Typography>
+      <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+        <Button variant="contained" onClick={() => { acquireProperty(); endTurn(); }} disabled={(currentPlayer?.money || 0) < (modal.acquireCost || 0)}>인수</Button>
+        {isPaidToll ? (
+          <Button variant="outlined" onClick={endTurn}>인수 거부</Button>
+        ) : (
+          <Button variant="outlined" onClick={() => { payToll(); endTurn(); }}>통행료만 지불</Button>
+        )}
+      </Box>
+    </>
+  );
+};
 
 // ChanceCardModalContent
 const ChanceCardModalContent = ({ modal }) => (
@@ -281,27 +294,114 @@ const ExpoModalContent = ({ modal, selectExpoProperty }) => (
 );
 
 // ManagePropertyModalContent
-const ManagePropertyModalContent = ({ modal, buildBuilding, endTurn, board }) => (
-  <>
-    <Typography variant="h5" component="h2">{modal.tile?.name} 관리</Typography>
-    <Typography sx={{ mt: 2 }}>건물을 건설하여 통행료를 올릴 수 있습니다.</Typography>
-    <Typography sx={{ mt: 1, color: 'blue' }}>다음 건설: {BuildingType[(modal.tile?.buildings?.level ?? 0) + 1] || '최대 레벨'}</Typography>
-    <Typography sx={{ mt: 1 }}>비용: {modal.tile?.buildingPrice?.toLocaleString()}원</Typography>
-    <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-      <Button
-        variant="contained"
-        onClick={() => buildBuilding(board.findIndex(t => t.name === modal.tile?.name))}
-        disabled={(modal.tile?.buildings?.level ?? 0) >= 3}
-      >
-        건설
-      </Button>
-      <Button variant="outlined" onClick={endTurn}>다음에</Button>
-    </Box>
-    <Typography sx={{ mt: 2, fontSize: '0.8rem', color: 'gray' }}>
-      건물 레벨: {modal.tile?.buildings?.level ?? 0} / 3 (최대)
-    </Typography>
-  </>
-);
+const ManagePropertyModalContent = ({ modal, buildBuilding, endTurn, board, buyPropertyWithItems, currentPlayer }) => {
+  const [selectedItems, setSelectedItems] = useState({
+    house: false,
+    building: false,
+    hotel: false
+  });
+
+  const tile = modal.tile;
+  const currentLevel = tile?.buildings?.level ?? 0;
+  const landPrice = tile?.landPrice || tile?.price || 0;
+
+  // 각 건물 타입별 가격 (서버에서 오는 값 사용)
+  const housePrice = tile?.housePrice || 0;
+  const buildingPrice = tile?.buildingPrice || 0;
+  const hotelPrice = tile?.hotelPrice || 0;
+
+  // 현재 소유한 건물들 확인
+  const hasHouse = currentLevel >= 1;
+  const hasBuilding = currentLevel >= 2;
+  const hasHotel = currentLevel >= 3;
+
+  // 총 비용 계산
+  const totalCost =
+    (selectedItems.house && !hasHouse ? housePrice : 0) +
+    (selectedItems.building && !hasBuilding ? buildingPrice : 0) +
+    (selectedItems.hotel && !hasHotel ? hotelPrice : 0);
+
+  const canAfford = currentPlayer?.money >= totalCost;
+  const hasSelection = selectedItems.house || selectedItems.building || selectedItems.hotel;
+
+  const handleItemChange = (item) => {
+    setSelectedItems(prev => ({
+      ...prev,
+      [item]: !prev[item]
+    }));
+  };
+
+  const handlePurchase = () => {
+    if (hasSelection && canAfford) {
+      buyPropertyWithItems({
+        selectedItems,
+        totalCost,
+        tile
+      });
+      endTurn(); // 구매 후 턴 종료
+    }
+  };
+
+  return (
+    <>
+      <Typography variant="h5" component="h2">{tile?.name} 건물 관리</Typography>
+      <Typography sx={{ mt: 2 }}>구매할 건물을 선택하세요:</Typography>
+
+      <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column' }}>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={hasHouse || selectedItems.house}
+              onChange={() => handleItemChange('house')}
+              disabled={hasHouse}
+            />
+          }
+          label={`주택 (${housePrice.toLocaleString()}원) ${hasHouse ? '✓ 보유중' : ''}`}
+        />
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={hasBuilding || selectedItems.building}
+              onChange={() => handleItemChange('building')}
+              disabled={hasBuilding}
+            />
+          }
+          label={`빌딩 (${buildingPrice.toLocaleString()}원) ${hasBuilding ? '✓ 보유중' : ''}`}
+        />
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={hasHotel || selectedItems.hotel}
+              onChange={() => handleItemChange('hotel')}
+              disabled={hasHotel}
+            />
+          }
+          label={`호텔 (${hotelPrice.toLocaleString()}원) ${hasHotel ? '✓ 보유중' : ''}`}
+        />
+      </Box>
+
+      <Typography sx={{ mt: 2, fontWeight: 'bold' }}>
+        총 비용: {totalCost.toLocaleString()}원
+      </Typography>
+      <Typography sx={{ color: 'gray', fontSize: '0.9rem' }}>
+        보유 자금: {currentPlayer?.money?.toLocaleString()}원
+      </Typography>
+
+      <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+        <Button
+          variant="contained"
+          onClick={handlePurchase}
+          disabled={!hasSelection || !canAfford}
+        >
+          구매
+        </Button>
+        <Button variant="outlined" onClick={endTurn}>완료</Button>
+      </Box>
+    </>
+  );
+};
 
 // BuySpecialLandModalContent
 const BuySpecialLandModalContent = ({ modal, buySpecialLand, endTurn, currentPlayer }) => {
@@ -311,7 +411,7 @@ const BuySpecialLandModalContent = ({ modal, buySpecialLand, endTurn, currentPla
 
   const handlePurchase = () => {
     buySpecialLand(tile, landPrice);
-    // endTurn() 제거 - buySpecialLand에서 서버 응답 후 처리
+    endTurn(); // 구매 후 턴 종료
   };
 
   return (
@@ -550,7 +650,7 @@ export function GameUI() {
                   {economicHistory.description}
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                  {economicHistory.isBoom ? '📈 호황' : '📉 불황'} · 남은 턴: {economicHistory.remainingTurns}
+                  {economicHistory.isBoom ? '📈 호황' : '📉 불황'}
                 </Typography>
                 {(economicHistory.salaryMultiplier || economicHistory.propertyPriceMultiplier || economicHistory.buildingCostMultiplier) && (
                   <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #ddd' }}>
@@ -590,7 +690,7 @@ export function GameUI() {
               className={`${styles.economicText} ${economicHistory.isBoom ? styles.boomText : styles.bustText}`}
               sx={{ fontFamily: 'Galmuri14' }}
             >
-              📈 {economicHistory.fullName} (남은 턴: {economicHistory.remainingTurns})
+              📈 {economicHistory.fullName}
             </Typography>
           </Tooltip>
         )}
@@ -755,7 +855,7 @@ export function GameUI() {
             <ExpoModalContent modal={modal} selectExpoProperty={selectExpoProperty} />
           )}
            {modal.type === 'MANAGE_PROPERTY' && (
-            <ManagePropertyModalContent modal={modal} buildBuilding={buildBuilding} endTurn={endTurn} board={board} />
+            <ManagePropertyModalContent modal={modal} buildBuilding={buildBuilding} endTurn={endTurn} board={board} buyPropertyWithItems={buyPropertyWithItems} currentPlayer={currentPlayer} />
           )}
           {shouldShowGameOver && (
              <GameOverModalContent

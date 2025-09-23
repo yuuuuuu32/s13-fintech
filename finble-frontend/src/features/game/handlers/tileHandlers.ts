@@ -15,43 +15,8 @@ export const handleCityCompanyTile = (
   const currentUserId = useUserStore.getState().userInfo?.userId;
   const isMyTurn = currentPlayer.id === currentUserId;
 
-  console.log("🎮 [CITY/COMPANY] 턴 체크:", {
-    currentPlayerId: currentPlayer.id,
-    currentPlayerName: currentPlayer.name,
-    currentUserId: currentUserId,
-    isMyTurn: isMyTurn,
-    tileType: currentTile?.type,
-    tileName: currentTile?.name,
-    hasOwner: !!owner,
-    ownerName: owner?.name
-  });
 
-  console.log("🏢 [NORMAL_TILE] Debug info:", {
-    position: currentPlayer.position,
-    tileName: currentTile?.name,
-    tileType: currentTile?.type,
-    hasOwner: !!owner,
-    ownerName: owner?.name,
-    isMyTurn,
-    playerMoney: currentPlayer.money,
-    landPrice: currentTile.landPrice ?? currentTile.price ?? 0
-  });
 
-  // 소유자 확인을 위한 상세 로그
-  console.log("🔍 [OWNERSHIP_DEBUG] 소유권 확인 상세 정보:", {
-    currentPosition: currentPlayer.position,
-    allPlayersProperties: players.map(p => ({
-      name: p.name,
-      id: p.id,
-      properties: p.properties
-    })),
-    ownerFound: !!owner,
-    ownerDetails: owner ? {
-      name: owner.name,
-      id: owner.id,
-      properties: owner.properties
-    } : null
-  });
 
   if (!owner) {
     const baseLandPrice = (currentTile as TileData & { landPrice?: number }).landPrice ?? currentTile.price ?? 0;
@@ -72,71 +37,63 @@ export const handleCityCompanyTile = (
       }
     }
   } else if (owner.id !== currentPlayer.id) {
-    const baseToll = (currentTile as TileData & { toll?: number }).toll || currentTile.tolls?.[currentTile.buildings?.level || 0] || 50000;
+    const baseToll = currentTile.toll;
+    if (!baseToll) {
+      console.error("💰 [TOLL_ERROR] 서버에서 통행료 정보를 받지 못했습니다:", {
+        tileName: currentTile.name,
+        currentTile
+      });
+      return;
+    }
+
     let toll = get().applyEconomicMultiplier(baseToll, 'tollMultiplier');
 
     if (get().expoLocation === currentPlayer.position) {
       toll *= 2;
     }
 
+    // 먼저 통행료 자동 지불 (내 턴, 다른 플레이어 턴 상관없이)
+    set((state) => {
+      const updatedPlayers = [...state.players];
+      const currentPlayerIndex = state.currentPlayerIndex;
+      const ownerIndex = updatedPlayers.findIndex(p => p.id === owner.id);
+
+      // 통행료 지불
+      updatedPlayers[currentPlayerIndex] = {
+        ...updatedPlayers[currentPlayerIndex],
+        money: updatedPlayers[currentPlayerIndex].money - toll
+      };
+
+      // 소유자에게 통행료 지급
+      updatedPlayers[ownerIndex] = {
+        ...updatedPlayers[ownerIndex],
+        money: updatedPlayers[ownerIndex].money + toll
+      };
+
+      return {
+        players: updatedPlayers
+      };
+    });
+
     if (isMyTurn) {
-      // 통행료 지불/인수 선택 모달을 먼저 표시 (실제 결제는 선택 후)
+      // 통행료 지불 후 인수 여부만 묻기
       const baseLandPrice = (currentTile as TileData & { landPrice?: number }).landPrice ?? currentTile.price ?? 0;
       const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
       const acquireCost = adjustedLandPrice * 2;
 
-      console.log("💰 [OTHER_OWNED_LAND] 다른 플레이어 소유 땅 도착 - 선택 모달 표시:", {
-        tileName: currentTile.name,
-        ownerName: owner.name,
-        tollAmount: toll,
-        acquireCost: acquireCost,
-        currentPlayerMoney: currentPlayer.money
-      });
-
+      // 통행료 지불 완료 후 바로 인수 선택 모달 표시
       set({
         modal: {
           type: "ACQUIRE_PROPERTY",
           tile: currentTile,
           acquireCost,
-          toll
+          toll: 0, // 이미 지불했으므로 0
+          isPaidToll: true // 통행료 이미 지불됨을 표시
         }
       });
     } else {
-      // 다른 플레이어의 턴: 통행료 자동 지불 (클라이언트 사이드에서만 처리)
-
-      // 통행료 지불 처리 (서버 동기화 없이 클라이언트에서만)
-      set((state) => {
-        const updatedPlayers = [...state.players];
-        const currentPlayerIndex = state.currentPlayerIndex;
-        const ownerIndex = updatedPlayers.findIndex(p => p.id === owner.id);
-
-        // 통행료 지불
-        updatedPlayers[currentPlayerIndex] = {
-          ...updatedPlayers[currentPlayerIndex],
-          money: updatedPlayers[currentPlayerIndex].money - toll
-        };
-
-        // 소유자에게 통행료 지급
-        updatedPlayers[ownerIndex] = {
-          ...updatedPlayers[ownerIndex],
-          money: updatedPlayers[ownerIndex].money + toll
-        };
-
-        console.log("💰 [TOLL_PAYMENT] 통행료 자동 지불:", {
-          payerName: updatedPlayers[currentPlayerIndex].name,
-          ownerName: updatedPlayers[ownerIndex].name,
-          tollAmount: toll,
-          payerMoneyAfter: updatedPlayers[currentPlayerIndex].money,
-          ownerMoneyAfter: updatedPlayers[ownerIndex].money
-        });
-
-        return {
-          players: updatedPlayers,
-          modal: { type: "NONE" as const }
-        };
-      });
-
-      // 통행료 지불은 서버에 전송하지 않음 (백엔드 땅 거래 로직 방지)
+      // 다른 플레이어의 턴: 모달 표시하지 않음 (통행료는 이미 위에서 지불됨)
+      set({ modal: { type: "NONE" as const } });
     }
   } else {
     // 자신의 땅에 도착한 경우
@@ -144,27 +101,16 @@ export const handleCityCompanyTile = (
       const canBuildMore = (currentTile.buildings?.level ?? 0) < 3;
       const isBuildableType = (currentTile as TileData & { type?: string }).type === "NORMAL";
 
-      console.log("🏗️ [BUILDING_CHECK] 건물 건설 가능 여부 확인:", {
-        tileName: currentTile.name,
-        tileType: currentTile.type,
-        currentBuildingLevel: currentTile.buildings?.level ?? 0,
-        playerLapCount: currentPlayer.lapCount,
-        isBuildableType,
-        canBuildMore,
-        willShowModal: isBuildableType && canBuildMore
-      });
 
       if (isBuildableType && canBuildMore) {
-        console.log("🏗️ [BUILDING_MODAL] 건물 관리 모달 표시");
         set({
           gamePhase: "MANAGE_PROPERTY",
           modal: { type: "MANAGE_PROPERTY", tile: currentTile },
         });
       } else {
-        console.log("🏗️ [BUILDING_SKIP] 건물 건설 불가능:", {
-          reason: !isBuildableType ? "건설 불가능한 타일 타입" : "최대 건물 레벨 도달"
-        });
+        // 건물 건설 불가능한 경우 바로 턴 종료
         set({ modal: { type: "NONE" as const } });
+        get().endTurn();
       }
     } else {
       // 다른 플레이어의 턴: 모달 표시하지 않음
@@ -183,14 +129,6 @@ export const handleChanceTile = (
   const currentUserId = useUserStore.getState().userInfo?.userId;
   const isMyTurn = currentPlayer.id === currentUserId;
 
-  console.log("🎲 [CHANCE] 턴 체크:", {
-    currentPlayerId: currentPlayer.id,
-    currentPlayerName: currentPlayer.name,
-    currentUserId: currentUserId,
-    isMyTurn: isMyTurn,
-    tileType: currentTile?.type,
-    tileName: currentTile?.name
-  });
   const randomCard =
     chanceCards[Math.floor(Math.random() * chanceCards.length)];
 
@@ -235,14 +173,6 @@ export const handleSpecialTile = (
   const currentUserId = useUserStore.getState().userInfo?.userId;
   const isMyTurn = currentPlayer.id === currentUserId;
 
-  console.log("🏛️ [SPECIAL] 턴 체크:", {
-    currentPlayerId: currentPlayer.id,
-    currentPlayerName: currentPlayer.name,
-    currentUserId: currentUserId,
-    isMyTurn: isMyTurn,
-    tileType: currentTile?.type,
-    tileName: currentTile?.name
-  });
 
   switch (currentTile.type) {
     case "SPECIAL":
@@ -306,58 +236,67 @@ export const handleSpecialTile = (
     //   break;
     // }
     case "START":
-      console.log("🏠 [START] 시작점 도착");
       if (isMyTurn) {
+        console.log("🏠 [START] 내 턴 - 모달 표시");
         set({
           modal: {
             type: "INFO",
             text: "시작점에 도착했습니다! 월급을 받았습니다.",
             onConfirm: () => {
+              console.log("🏠 [START] 모달 확인 버튼 클릭됨");
               set({ modal: { type: "NONE" as const } });
-              console.log("🏠 [START] 시작점 처리 완료, 턴 종료");
               get().endTurn();
             },
           },
         });
       } else {
-        console.log("🏠 [START] 다른 플레이어 시작점 도착, 턴 종료");
+        console.log("🏠 [START] 다른 플레이어 턴 - endTurn 호출");
         setTimeout(() => get().endTurn(), 100);
       }
       break;
 
     case "AIRPLANE":
       // AIRPLANE 타일: 플레이어를 세계여행 모드로 설정만 함 (실제 여행은 다음 턴에 목적지 선택 시)
-      console.log("✈️ [AIRPLANE] 비행기 타일 도착 - 세계여행 모드 활성화");
 
-      set((state) => {
-        const updatedPlayers = [...state.players];
-        updatedPlayers[state.currentPlayerIndex] = {
-          ...updatedPlayers[state.currentPlayerIndex],
-          isTraveling: true,
-        };
-        return {
-          players: updatedPlayers,
-          modal: isMyTurn ? {
-            type: "INFO",
-            text: "세계여행! 다음 턴에 원하는 곳으로 이동할 수 있습니다.",
-            onConfirm: () => {
-              set({ modal: { type: "NONE" as const } });
-              console.log("✈️ [AIRPLANE] 세계여행 모드 설정 완료, 턴 종료");
-              get().endTurn();
+      if (isMyTurn) {
+        console.log("✈️ [AIRPLANE] 내 턴 - 모달 표시");
+        set((state) => {
+          const updatedPlayers = [...state.players];
+          updatedPlayers[state.currentPlayerIndex] = {
+            ...updatedPlayers[state.currentPlayerIndex],
+            isTraveling: true,
+          };
+          return {
+            players: updatedPlayers,
+            modal: {
+              type: "INFO",
+              text: "세계여행! 다음 턴에 원하는 곳으로 이동할 수 있습니다.",
+              onConfirm: () => {
+                console.log("✈️ [AIRPLANE] 모달 확인 버튼 클릭됨");
+                set({ modal: { type: "NONE" as const } });
+                get().endTurn();
+              },
             },
-          } : { type: "NONE" as const },
-        };
-      });
-
-      // 다른 플레이어의 턴이면 바로 턴 종료
-      if (!isMyTurn) {
-        console.log("✈️ [AIRPLANE] 다른 플레이어 세계여행 모드 설정, 턴 종료");
+          };
+        });
+      } else {
+        console.log("✈️ [AIRPLANE] 다른 플레이어 턴 - 상태만 업데이트하고 endTurn 호출");
+        set((state) => {
+          const updatedPlayers = [...state.players];
+          updatedPlayers[state.currentPlayerIndex] = {
+            ...updatedPlayers[state.currentPlayerIndex],
+            isTraveling: true,
+          };
+          return {
+            players: updatedPlayers,
+            modal: { type: "NONE" as const },
+          };
+        });
         setTimeout(() => get().endTurn(), 100);
       }
       break;
 
     default:
-      console.log("❓ [SPECIAL] 알 수 없는 특수 타일, 턴 종료");
       get().endTurn();
       break;
   }

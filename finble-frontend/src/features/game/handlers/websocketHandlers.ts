@@ -443,6 +443,7 @@ export const createWebSocketHandlers = (
           type: cell.type, // 백엔드에서 보내는 대문자 타입을 그대로 사용
           price: cell.landPrice || cell.toll,
           landPrice: cell.landPrice,
+          toll: cell.toll, // 통행료 정보 추가
           housePrice: cell.housePrice,
           buildingPrice: cell.buildingPrice,
           hotelPrice: cell.hotelPrice,
@@ -514,25 +515,9 @@ export const createWebSocketHandlers = (
 
     // CONSTRUCT_BUILDING 메시지 처리
     unsubscribeFunctions.push(subscribeToTopic("CONSTRUCT_BUILDING", (message) => {
-      console.log("📥 [WEBSOCKET] CONSTRUCT_BUILDING received:", {
-        result: message.payload?.result,
-        nickname: message.payload?.nickname,
-        landNum: message.payload?.landNum,
-        buildingType: message.payload?.buildingType,
-        actualBuildingCost: message.payload?.actualBuildingCost,
-        baseBuildingCost: message.payload?.baseBuildingCost,
-        updatedAsset: message.payload?.updatedAsset
-      });
       const { payload } = message;
 
       if (payload.result && payload.updatedAsset) {
-        console.log("✅ [CONSTRUCT_BUILDING] 건설 성공, 플레이어 자산 업데이트:", {
-          nickname: payload.nickname,
-          landNum: payload.landNum,
-          buildingType: payload.buildingType,
-          newMoney: payload.updatedAsset.money,
-          newProperties: payload.updatedAsset.lands
-        });
         set((state) => {
           const updatedPlayers = state.players.map(player => {
             if (player.name === payload.nickname) {
@@ -569,15 +554,6 @@ export const createWebSocketHandlers = (
           };
         });
       } else {
-        // CONSTRUCT_BUILDING 실패 처리
-        console.error("❌ [CONSTRUCT_BUILDING] 건설 실패:", {
-          result: payload.result,
-          nickname: payload.nickname,
-          landNum: payload.landNum,
-          buildingType: payload.buildingType,
-          errorMessage: payload.message || "건설에 실패했습니다."
-        });
-
         set({
           modal: {
             type: "INFO" as const,
@@ -666,39 +642,15 @@ export const createWebSocketHandlers = (
 
     // WORLD_TRAVEL_EVENT 메시지 처리
     unsubscribeFunctions.push(subscribeToTopic("WORLD_TRAVEL_EVENT", (message) => {
-      console.log("✈️ [WORLD_TRAVEL_RESPONSE] 서버 응답 수신:", {
-        message,
-        timestamp: new Date().toISOString()
-      });
-
       const { payload } = message;
 
-      if (!payload) {
-        console.error("❌ [WORLD_TRAVEL] payload 없음!");
-        return;
-      }
+      if (!payload) return;
 
       if (payload.result) {
-        console.log("✅ [WORLD_TRAVEL] 세계여행 성공, 모든 클라이언트 동기화 시작:", {
-          travelerNickname: payload.nickname,
-          destination: payload.endLand,
-          travelerAsset: payload.travelerAsset,
-          landOwner: payload.landOwner,
-          ownerAsset: payload.ownerAsset
-        });
 
         set((state) => {
           const updatedPlayers = state.players.map(player => {
             if (player.name === payload.nickname) {
-              console.log("🎯 [WORLD_TRAVEL_SYNC] 여행자 위치 업데이트:", {
-                playerId: player.id,
-                nickname: player.name,
-                oldPosition: player.position,
-                newPosition: payload.endLand,
-                positionChanged: player.position !== payload.endLand,
-                oldMoney: player.money,
-                newMoney: payload.travelerAsset ? payload.travelerAsset.money : player.money
-              });
 
               return {
                 ...player,
@@ -790,22 +742,6 @@ export const createWebSocketHandlers = (
       // 게임 중 새 유저 입장은 일반적으로 발생하지 않지만 로그 기록
     }));
 
-    // SPECIAL_CANNOT_BUILD 메시지 처리
-    unsubscribeFunctions.push(subscribeToTopic("SPECIAL_CANNOT_BUILD", (message) => {
-      console.log("❌ [WEBSOCKET] SPECIAL_CANNOT_BUILD received:", message);
-
-      set({
-        modal: {
-          type: "INFO" as const,
-          text: message.message || "특별땅에는 건물을 지을 수 없습니다.",
-          onConfirm: () => {
-            set({ modal: { type: "NONE" as const } });
-            // SPECIAL 땅 구매 실패 후 턴 종료
-            get().endTurn();
-          }
-        }
-      });
-    }));
 
     // INTERNAL_SERVER_ERROR 메시지 처리
     unsubscribeFunctions.push(subscribeToTopic("INTERNAL_SERVER_ERROR", (message) => {
@@ -965,9 +901,21 @@ export const createWebSocketHandlers = (
 
     const mappedState = {
       gameId: initialState.roomId,
-      board: initialState.currentMap.cells.map(
-        (cell) => cell || { name: "빈칸", type: "SPECIAL" as const }
-      ),
+      board: initialState.currentMap.cells.map((cell) => ({
+        name: cell?.name || "빈칸",
+        type: cell?.type || "SPECIAL" as const,
+        price: cell?.landPrice || cell?.toll,
+        landPrice: cell?.landPrice,
+        toll: cell?.toll, // 통행료 정보 추가
+        housePrice: cell?.housePrice,
+        buildingPrice: cell?.buildingPrice,
+        hotelPrice: cell?.hotelPrice,
+        buildings: cell?.buildingType === 'FIELD' ? { level: 0 as const } :
+                   cell?.buildingType === 'HOUSE' ? { level: 1 as const } :
+                   cell?.buildingType === 'BUILDING' ? { level: 2 as const } :
+                   cell?.buildingType === 'HOTEL' ? { level: 3 as const } : { level: 0 as const },
+        description: cell?.description
+      })),
       players: playersArray,
       currentPlayerIndex: initialState.currentPlayerIndex,
       gamePhase: "SELECTING_ORDER" as const,
