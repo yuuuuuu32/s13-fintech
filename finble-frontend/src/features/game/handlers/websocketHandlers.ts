@@ -890,51 +890,41 @@ export const createWebSocketHandlers = (
           }
         }
 
-        return {
-          players: updatedPlayers,
-          gamePhase: payload.result && isMyJailEvent ? "WAITING_FOR_ROLL" as const : state.gamePhase,
-          modal: {
-            type: "INFO" as const,
-            text: resultText,
-            onConfirm: () => {
-              set({ modal: { type: "NONE" as const } });
-
-          // 당사자는 모달, 다른 플레이어는 토스트
-          if (isMyJailEvent) {
-            return {
-              players: updatedPlayers,
-              gamePhase: payload.result ? "WAITING_FOR_ROLL" as const : state.gamePhase,
-              modal: {
-                type: "INFO" as const,
-                text: payload.result
-                  ? "보석금을 내고 감옥에서 탈출했습니다!"
-                  : `감옥 탈출에 실패했습니다. 남은 감옥 턴: ${payload.turns}`,
-                onConfirm: () => {
-                  set({ modal: { type: "NONE" as const } });
-                  if (payload.result) {
-                    console.log("🔄 [JAIL_EVENT] 보석금 지불 성공 후 턴 종료");
-                    setTimeout(() => get().endTurn(), 100);
-                  }
+        // 당사자는 모달, 다른 플레이어는 토스트
+        if (isMyJailEvent) {
+          return {
+            players: updatedPlayers,
+            gamePhase: payload.result ? "WAITING_FOR_ROLL" as const : state.gamePhase,
+            modal: {
+              type: "INFO" as const,
+              text: payload.result
+                ? "보석금을 내고 감옥에서 탈출했습니다! 이번 턴에 주사위를 굴릴 수 있습니다."
+                : `감옥 탈출에 실패했습니다. 남은 감옥 턴: ${payload.turns}`,
+              onConfirm: () => {
+                set({ modal: { type: "NONE" as const } });
+                if (payload.result) {
+                  console.log("🔄 [JAIL_EVENT] 보석금 지불 성공 - 즉시 주사위 굴리기 가능");
+                  // endTurn() 호출 제거 - 플레이어가 같은 턴에 주사위를 굴릴 수 있도록 함
                 }
               }
-            };
-          } else {
-            // 다른 플레이어들에게는 토스트로 표시
-            get().addToast(
-              payload.result ? "success" : "warning",
-              payload.result ? "🔓 보석금 지불" : "🔒 감옥 탈출 실패",
-              resultText,
-              3000
-            );
+            }
+          };
+        } else {
+          // 다른 플레이어들에게는 토스트로 표시
+          get().addToast(
+            payload.result ? "success" : "warning",
+            payload.result ? "🔓 보석금 지불" : "🔒 감옥 탈출 실패",
+            resultText,
+            3000
+          );
 
-            return {
-              players: updatedPlayers,
-              gamePhase: state.gamePhase,
-              modal: { type: "NONE" as const }
-            };
-          }
-        });
-      }
+          return {
+            players: updatedPlayers,
+            gamePhase: state.gamePhase,
+            modal: { type: "NONE" as const }
+          };
+        }
+      });
     }));
 
     // INVALID_JAIL_STATE 에러 처리
