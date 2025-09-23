@@ -123,7 +123,22 @@ export const createGameLogicHandlers = (
         isInJail: currentPlayer.isInJail,
         jailTurns: currentPlayer.jailTurns
       });
-      set({ modal: { type: "JAIL" } });
+
+      // JAIL 모달은 현재 플레이어에게만 표시 (다른 플레이어에게는 표시하지 않음)
+      const currentUserId = useUserStore.getState().userInfo?.userId;
+      const isMyTurn = currentPlayer.id === currentUserId;
+
+      if (isMyTurn) {
+        console.log("🔒 [JAIL_CHECK] 내 턴 - JAIL 모달 표시");
+        set({
+          modal: { type: "JAIL" },
+          gamePhase: "TILE_ACTION" // 감옥 모달이 표시되는 동안 안정적인 상태 유지
+        });
+      } else {
+        // 다른 플레이어의 턴: 감옥 처리를 자동으로 수행
+        console.log("🔒 [JAIL_CHECK] 다른 플레이어의 감옥 턴 - 자동 처리");
+        get().handleJail();
+      }
       return;
     }
 
@@ -274,6 +289,24 @@ export const createGameLogicHandlers = (
       note: "서버에서 받은 위치 사용"
     });
 
+    // 위치 중복 검사
+    const positionCheck = new Map();
+    updatedPlayers.forEach((player, index) => {
+      if (positionCheck.has(player.position)) {
+        console.error("🚨 [CRITICAL] MOVE_PLAYER: 위치 중복 감지!", {
+          position: player.position,
+          player1: positionCheck.get(player.position),
+          player2: { name: player.name, id: player.id, index },
+          allPositions: updatedPlayers.map(p => ({ name: p.name, position: p.position })),
+          diceValues,
+          serverCurrentPosition,
+          finalPosition
+        });
+      } else {
+        positionCheck.set(player.position, { name: player.name, id: player.id, index });
+      }
+    });
+
     set({
       players: updatedPlayers,
       dice: diceValues,
@@ -362,7 +395,8 @@ export const createGameLogicHandlers = (
       // 중요한 정보 모달이 열려있으면 유지, 그 외에는 닫기
       modal: (state.modal?.type === "INFO" &&
               (state.modal?.text?.includes("시작점에 도착") ||
-               state.modal?.text?.includes("세계여행")))
+               state.modal?.text?.includes("세계여행"))) ||
+             state.modal?.type === "JAIL"
                ? state.modal
                : { type: "NONE" as const },
       gamePhase: "WAITING_FOR_TURN_END",

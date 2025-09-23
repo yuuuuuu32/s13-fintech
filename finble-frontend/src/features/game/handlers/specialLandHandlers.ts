@@ -168,7 +168,10 @@ export const createSpecialLandHandlers = (
       }
       const adjustedToll = get().applyEconomicMultiplier(baseToll, 'tollMultiplier');
 
-      // 통행료 자동 지불 (내 턴, 다른 플레이어 턴 상관없이)
+      const currentUserId = useUserStore.getState().userInfo?.userId;
+      const isMyTurn = currentPlayer.id === currentUserId;
+
+      // 통행료 자동 지불 (내 턴, 다른 플레이어 턴 상관없이) - 모달과 함께 한 번에 처리
       set((state) => {
         const updatedPlayers = [...state.players];
         const currentPlayerIndex = state.currentPlayerIndex;
@@ -187,29 +190,17 @@ export const createSpecialLandHandlers = (
         };
 
         return {
-          players: updatedPlayers
-        };
-      });
-
-      const currentUserId = useUserStore.getState().userInfo?.userId;
-      const isMyTurn = currentPlayer.id === currentUserId;
-
-      if (isMyTurn) {
-        // 내 턴: 통행료 지불 완료 알림 후 턴 종료
-        set({
-          modal: {
+          players: updatedPlayers,
+          modal: isMyTurn ? {
             type: "INFO",
             text: `${tile.name}의 통행료 ${adjustedToll.toLocaleString()}원을 지불했습니다.\n\n스페셜 땅은 인수할 수 없습니다.`,
             onConfirm: () => {
               set({ modal: { type: "NONE" as const } });
               get().endTurn();
             }
-          }
-        });
-      } else {
-        // 다른 플레이어 턴: 모달 없이 자동 처리
-        set({ modal: { type: "NONE" as const } });
-      }
+          } : { type: "NONE" as const }
+        };
+      });
     } else {
       // 자신 소유 - 모달 확인 후 턴 종료
       const currentUserId = useUserStore.getState().userInfo?.userId;

@@ -92,6 +92,8 @@ export const createWebSocketHandlers = (
           console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE without curPlayer - excluding players:", JSON.stringify(payload, null, 2));
           const { players, ...safePayload } = payload;
           if (players) {
+            console.log("🚨 [CRITICAL] GAME_STATE_CHANGE has player data - this could cause position desync!");
+            console.log("🚨 [CRITICAL] Player data in GAME_STATE_CHANGE:", players);
             console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE BLOCKED player updates to prevent snap-back");
           }
           get().updateGameState(safePayload);
@@ -495,7 +497,10 @@ export const createWebSocketHandlers = (
                   modal: {
                     type: "INFO" as const,
                     text: `📈 ${economicHistory.fullName}\n\n${payload.economicDescription}\n\n남은 턴: ${payload.remainingTurns}턴`,
-                    onConfirm: () => set({ modal: { type: "NONE" as const } })
+                    onConfirm: () => {
+                      console.log("📈 [ECONOMIC_HISTORY] 지연된 경제 역사 모달 확인 완료 - 단순 모달 닫기");
+                      set({ modal: { type: "NONE" as const } });
+                    }
                   },
                   lastEconomicModalTurn: currentTurn
                 });
@@ -507,7 +512,10 @@ export const createWebSocketHandlers = (
               modal: {
                 type: "INFO" as const,
                 text: `📈 ${economicHistory.fullName}\n\n${payload.economicDescription}\n\n남은 턴: ${payload.remainingTurns}턴`,
-                onConfirm: () => set({ modal: { type: "NONE" as const } })
+                onConfirm: () => {
+                  console.log("📈 [ECONOMIC_HISTORY] 경제 역사 모달 확인 완료 - 단순 모달 닫기");
+                  set({ modal: { type: "NONE" as const } });
+                }
               },
               lastEconomicModalTurn: currentTurn // 이번 턴에 모달을 표시했다고 기록
             });
@@ -523,16 +531,45 @@ export const createWebSocketHandlers = (
 
     // CONSTRUCT_BUILDING 메시지 처리
     unsubscribeFunctions.push(subscribeToTopic("CONSTRUCT_BUILDING", (message) => {
+      console.log("📥 [WEBSOCKET] CONSTRUCT_BUILDING received:", message);
+      console.log("🔍 [CONSTRUCT_BUILDING] Payload detail:", JSON.stringify(message.payload, null, 2));
       const { payload } = message;
 
       if (payload.result && payload.updatedAsset) {
         set((state) => {
-          const updatedPlayers = state.players.map(player => {
+          console.log("🏗️ [CONSTRUCT_BUILDING] 플레이어 상태 업데이트 (위치 제외):", {
+            targetPlayer: payload.nickname,
+            currentPlayers: state.players.map(p => ({ name: p.name, position: p.position }))
+          });
+
+          const updatedPlayers = state.players.map((player, index) => {
             if (player.name === payload.nickname) {
+              console.log("🏗️ [CONSTRUCT_BUILDING] 타겟 플레이어 업데이트:", {
+                name: player.name,
+                playerId: player.id,
+                playerIndex: index,
+                currentPlayerIndex: state.currentPlayerIndex,
+                previousMoney: player.money,
+                newMoney: payload.updatedAsset.money,
+                previousProperties: player.properties,
+                newProperties: payload.updatedAsset.lands,
+                positionKept: player.position // 위치는 유지됨
+              });
+
+              // 안전성 검증: 다른 플레이어의 데이터를 실수로 덮어쓰지 않도록
+              if (player.position === undefined || player.position < 0) {
+                console.error("🚨 [CRITICAL] CONSTRUCT_BUILDING: 플레이어 위치 데이터 이상:", {
+                  playerName: player.name,
+                  position: player.position,
+                  fullPlayer: player
+                });
+              }
+
               return {
                 ...player,
                 money: payload.updatedAsset.money,
                 properties: payload.updatedAsset.lands || []
+                // position은 의도적으로 업데이트하지 않음 - 클라이언트에서 관리
               };
             }
             return player;
@@ -553,6 +590,21 @@ export const createWebSocketHandlers = (
               };
             }
             return tile;
+          });
+
+          // 위치 중복 검사
+          const positionCheck = new Map();
+          updatedPlayers.forEach((player, index) => {
+            if (positionCheck.has(player.position)) {
+              console.error("🚨 [CRITICAL] CONSTRUCT_BUILDING: 위치 중복 감지!", {
+                position: player.position,
+                player1: positionCheck.get(player.position),
+                player2: { name: player.name, id: player.id, index },
+                allPositions: updatedPlayers.map(p => ({ name: p.name, position: p.position }))
+              });
+            } else {
+              positionCheck.set(player.position, { name: player.name, id: player.id, index });
+            }
           });
 
           return {
@@ -650,19 +702,31 @@ export const createWebSocketHandlers = (
 
     // WORLD_TRAVEL_EVENT 메시지 처리
     unsubscribeFunctions.push(subscribeToTopic("WORLD_TRAVEL_EVENT", (message) => {
+      console.log("📥 [WEBSOCKET] WORLD_TRAVEL_EVENT received:", message);
+      console.log("🔍 [WORLD_TRAVEL_EVENT] Payload detail:", JSON.stringify(message.payload, null, 2));
       const { payload } = message;
 
       if (!payload) return;
 
       if (payload.result) {
+        console.log("✈️ [WORLD_TRAVEL_EVENT] 세계여행 성공 - 위치 업데이트 수행");
 
         set((state) => {
+          console.log("✈️ [WORLD_TRAVEL_EVENT] 현재 플레이어 위치들:", state.players.map(p => ({ name: p.name, position: p.position })));
+
           const updatedPlayers = state.players.map(player => {
             if (player.name === payload.nickname) {
+              console.log("✈️ [WORLD_TRAVEL_EVENT] 여행자 위치 업데이트:", {
+                travelerName: player.name,
+                previousPosition: player.position,
+                newPosition: payload.endLand,
+                previousMoney: player.money,
+                newMoney: payload.travelerAsset ? payload.travelerAsset.money : player.money
+              });
 
               return {
                 ...player,
-                position: payload.endLand,
+                position: payload.endLand, // 세계여행은 위치 업데이트 허용
                 isTraveling: false, // 여행 완료
                 money: payload.travelerAsset ? payload.travelerAsset.money : player.money,
                 properties: payload.travelerAsset ? payload.travelerAsset.lands || [] : player.properties

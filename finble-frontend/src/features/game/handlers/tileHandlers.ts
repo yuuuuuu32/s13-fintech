@@ -184,32 +184,50 @@ export const handleSpecialTile = (
       break;
 
     case "JAIL":
-      set((state) => {
-        const updatedPlayers = [...state.players];
-        updatedPlayers[state.currentPlayerIndex] = {
-          ...updatedPlayers[state.currentPlayerIndex],
-          isInJail: true,
-          jailTurns: 3,
-        };
+      if (isMyTurn) {
+        set((state) => {
+          const updatedPlayers = [...state.players];
+          updatedPlayers[state.currentPlayerIndex] = {
+            ...updatedPlayers[state.currentPlayerIndex],
+            isInJail: true,
+            jailTurns: 3,
+          };
 
-        const playerName = updatedPlayers[state.currentPlayerIndex].name;
-        const modalText = isMyTurn
-          ? "감옥에 갇혔습니다! 다음 턴부터 3턴 동안 머물게 됩니다."
-          : `${playerName}님이 감옥에 갇혔습니다!`;
-
-        return {
-          players: updatedPlayers,
-          modal: {
-            type: "INFO",
-            text: modalText,
-            onConfirm: () => {
-              set({ modal: { type: "NONE" as const } });
-              console.log("🔒 [JAIL] 감옥 도착 처리 완료, 턴 종료");
-              get().endTurn();
+          return {
+            players: updatedPlayers,
+            modal: {
+              type: "INFO",
+              text: "감옥에 갇혔습니다! 다음 턴부터 3턴 동안 머물게 됩니다.",
+              onConfirm: () => {
+                set({ modal: { type: "NONE" as const } });
+                console.log("🔒 [JAIL] 내 턴 - 감옥 도착 처리 완료, 턴 종료");
+                get().endTurn();
+              },
             },
-          },
-        };
-      });
+          };
+        });
+      } else {
+        // 다른 플레이어의 턴: 모달 없이 자동 처리
+        set((state) => {
+          const updatedPlayers = [...state.players];
+          updatedPlayers[state.currentPlayerIndex] = {
+            ...updatedPlayers[state.currentPlayerIndex],
+            isInJail: true,
+            jailTurns: 3,
+          };
+
+          const playerName = updatedPlayers[state.currentPlayerIndex].name;
+          console.log(`🔒 [JAIL] 다른 플레이어 턴 - ${playerName}님이 감옥에 갇힘 (자동 처리)`);
+
+          return {
+            players: updatedPlayers,
+            modal: { type: "NONE" as const }
+          };
+        });
+
+        // 다른 플레이어의 턴이면 잠시 후 자동으로 턴 종료
+        setTimeout(() => get().endTurn(), 100);
+      }
       break;
     // case "박람회": {
     //   if (isMyTurn) {

@@ -2,6 +2,7 @@ import type { GameState } from "../types/gameTypes.ts";
 import { BuildingType } from "../data/boardData.ts";
 import { BAIL_AMOUNT } from "../constants/gameConstants.ts";
 import { handleInsufficientFundsForToll } from "./tileHandlers.ts";
+import { useUserStore } from "../../../stores/useUserStore.ts";
 
 export const createPlayerActions = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
@@ -217,10 +218,13 @@ export const createPlayerActions = (
   },
 
   handleJail: () => {
+    const currentUserId = useUserStore.getState().userInfo?.userId;
+
     set((state) => {
       const updatedPlayers = [...state.players];
       const currentPlayer = updatedPlayers[state.currentPlayerIndex];
       const newJailTurns = currentPlayer.jailTurns - 1;
+      const isMyTurn = currentPlayer.id === currentUserId;
 
       if (newJailTurns <= 0) {
         updatedPlayers[state.currentPlayerIndex] = {
@@ -228,33 +232,55 @@ export const createPlayerActions = (
           isInJail: false,
           jailTurns: 0,
         };
-        return {
-          players: updatedPlayers,
-          modal: {
-            type: "INFO" as const,
-            text: "감옥에서 탈출했습니다! 다음 턴부터 정상 진행됩니다.",
-            onConfirm: () => {
-              set({ modal: { type: "NONE" as const } });
-              get().endTurn();
+
+        if (isMyTurn) {
+          return {
+            players: updatedPlayers,
+            modal: {
+              type: "INFO" as const,
+              text: "감옥에서 탈출했습니다! 다음 턴부터 정상 진행됩니다.",
+              onConfirm: () => {
+                set({ modal: { type: "NONE" as const } });
+                get().endTurn();
+              },
             },
-          },
-        };
+          };
+        } else {
+          // 다른 플레이어의 턴: 자동 처리
+          console.log(`🔒 [JAIL_ESCAPE] ${currentPlayer.name}님이 감옥에서 탈출 (자동 처리)`);
+          setTimeout(() => get().endTurn(), 100);
+          return {
+            players: updatedPlayers,
+            modal: { type: "NONE" as const }
+          };
+        }
       } else {
         updatedPlayers[state.currentPlayerIndex] = {
           ...currentPlayer,
           jailTurns: newJailTurns,
         };
-        return {
-          players: updatedPlayers,
-          modal: {
-            type: "INFO" as const,
-            text: `감옥 탈출까지 ${newJailTurns}턴 남았습니다.`,
-            onConfirm: () => {
-              set({ modal: { type: "NONE" as const } });
-              get().endTurn();
+
+        if (isMyTurn) {
+          return {
+            players: updatedPlayers,
+            modal: {
+              type: "INFO" as const,
+              text: `감옥 탈출까지 ${newJailTurns}턴 남았습니다.`,
+              onConfirm: () => {
+                set({ modal: { type: "NONE" as const } });
+                get().endTurn();
+              },
             },
-          },
-        };
+          };
+        } else {
+          // 다른 플레이어의 턴: 자동 처리
+          console.log(`🔒 [JAIL_STAY] ${currentPlayer.name}님이 감옥에서 ${newJailTurns}턴 더 머무름 (자동 처리)`);
+          setTimeout(() => get().endTurn(), 100);
+          return {
+            players: updatedPlayers,
+            modal: { type: "NONE" as const }
+          };
+        }
       }
     });
   },
