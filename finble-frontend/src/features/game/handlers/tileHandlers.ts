@@ -333,9 +333,14 @@ export const handleSpecialTile = (
                   console.log("✈️ [AIRPLANE] 복원된 모달 확인 버튼 클릭됨");
                   set({
                     modal: { type: "NONE" as const },
+<<<<<<< HEAD
                     gamePhase: "WAITING_FOR_ROLL"
                   });
                   get().endTurn();
+=======
+                    gamePhase: "WAITING_FOR_TURN_END"
+                  });
+>>>>>>> 50d1133ef1b4b77c9884d7d899c05d6c68365e97
                 },
               },
             });
@@ -349,9 +354,14 @@ export const handleSpecialTile = (
             console.log("✈️ [AIRPLANE] 5초 후 자동 처리");
             set({
               modal: { type: "NONE" as const },
+<<<<<<< HEAD
               gamePhase: "WAITING_FOR_ROLL"
             });
             get().endTurn();
+=======
+              gamePhase: "WAITING_FOR_TURN_END"
+            });
+>>>>>>> 50d1133ef1b4b77c9884d7d899c05d6c68365e97
           }
         }, 5000);
       } else {

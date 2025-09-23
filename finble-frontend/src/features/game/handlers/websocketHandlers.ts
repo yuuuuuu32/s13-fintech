@@ -102,6 +102,7 @@ export const createWebSocketHandlers = (
                   positionCheck.set(player.position, { name: player.name, id: player.id, index });
                 }
               });
+<<<<<<< HEAD
 
               // 위치 중복이 감지되면 복원 시도
               if (duplicateDetected) {
@@ -179,6 +180,8 @@ export const createWebSocketHandlers = (
                   }
                 }, 100);
               }
+=======
+>>>>>>> 50d1133ef1b4b77c9884d7d899c05d6c68365e97
             }, 50);
 
             return newState;
