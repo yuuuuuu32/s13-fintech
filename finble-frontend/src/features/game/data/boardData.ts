@@ -8,7 +8,7 @@ export const BuildingType = {
 // 각 칸(타일)의 데이터 타입을 정의합니다.
 export interface TileData { // [수정] export 추가
   name: string // 칸의 이름 (예: "서울", "찬스")
-  type: 'city' | 'company' | 'special' | 'chance' | 'JAIL' | 'AIRPLANE' // 칸의 종류
+  type: 'NORMAL' | 'SPECIAL' | 'CHANCE' | 'JAIL' | 'START' | 'AIRPLANE' | 'NTS' // 칸의 종류 (백엔드 enum과 일치)
   price?: number // 땅값 (도시, 건설사)
   buildingPrice?: number // 건물 1단계(주택) 건설 비용
   // 통행료: [기본, 주택, 빌딩, 호텔]
