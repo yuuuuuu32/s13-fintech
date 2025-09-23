@@ -30,22 +30,39 @@ export const createSpecialLandHandlers = (
       return;
     }
 
-    // 서버에 건설 메시지 전송
+    // 서버에 특수 땅 구매 메시지 전송 - CONSTRUCT_BUILDING 사용 (API 명세에 따름)
     if (gameId) {
+      console.log("🏛️ [SPECIAL_LAND] 특수 땅 구매 요청 전송 (CONSTRUCT_BUILDING):", {
+        tileName: tile.name,
+        tileIndex,
+        landPrice,
+        nickname: currentPlayer.name,
+        targetBuildingType: "FIELD",
+        note: "SPECIAL 땅은 FIELD 타입으로만 구매 가능"
+      });
+
       send(`/app/game/${gameId}/construct-building`, {
         type: "CONSTRUCT_BUILDING",
         payload: {
           nickname: currentPlayer.name,
           landNum: tileIndex,
-          targetBuildingType: "LAND", // 특수 땅도 'LAND' 타입으로 구매
+          targetBuildingType: "FIELD", // SPECIAL 땅은 땅만 구매 (FIELD)
         },
       });
+
+      // 모달 닫기 - 서버 응답은 CONSTRUCT_BUILDING 핸들러에서 처리
+      set({ modal: { type: "NONE" } });
     } else {
       console.error("Cannot construct building, gameId is not set");
+      // 오류 시에만 모달 유지하고 에러 표시
+      set({
+        modal: {
+          type: "INFO",
+          text: "게임 연결에 문제가 있어 구매할 수 없습니다.",
+          onConfirm: () => set({ modal: { type: "NONE" } })
+        }
+      });
     }
-
-    // 모달 닫기
-    set({ modal: { type: "NONE" } });
   },
 
   // 스페셜 땅 통행료 지불 (모달 없이 바로 처리)
@@ -133,20 +150,39 @@ export const createSpecialLandHandlers = (
     const owner = players.find((p) => p.properties.includes(tileIndex));
 
     if (!owner) {
-      // 주인이 없는 경우 - 구매 모달 표시
-      const landPrice = tile?.landPrice || tile?.price || 0;
+      // 주인이 없는 경우 - SPECIAL 땅 구매 모달 표시 (건물 건설 불가능)
+      const baseLandPrice = tile?.landPrice || tile?.price || 0;
+      const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
+
+      console.log("🏛️ [SPECIAL_LAND_PURCHASE] SPECIAL 땅 구매 모달 표시:", {
+        tileName: tile.name,
+        baseLandPrice,
+        adjustedLandPrice,
+        note: "SPECIAL 땅은 땅만 구매 가능, 건물 건설 불가능"
+      });
+
       set({
         modal: {
           type: "BUY_SPECIAL_LAND" as const,
           tile: tile,
-          landPrice: landPrice,
+          landPrice: adjustedLandPrice,
         },
       });
     } else if (owner.id !== currentPlayer.id) {
-      // 다른 플레이어 소유 - 통행료 바로 지불
-      const toll = tile?.landPrice || tile?.price || 0;
+      // 다른 플레이어 소유 - 통행료만 지불 (인수 불가능)
+      const baseToll = tile?.landPrice || tile?.price || 0;
+      const adjustedToll = get().applyEconomicMultiplier(baseToll, 'tollMultiplier');
+
+      console.log("💰 [SPECIAL_LAND_TOLL] SPECIAL 땅 통행료 지불:", {
+        tileName: tile.name,
+        ownerName: owner.name,
+        baseToll,
+        adjustedToll,
+        note: "SPECIAL 땅은 인수 불가능"
+      });
+
       const { paySpecialLandToll } = get();
-      paySpecialLandToll(tileIndex, toll);
+      paySpecialLandToll(tileIndex, adjustedToll);
     } else {
       // 자신 소유 - 아무 동작 없음
       set({
