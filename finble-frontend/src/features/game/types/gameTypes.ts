@@ -84,6 +84,7 @@ export interface GameState {
     text?: string;
     acquireCost?: number;
     toll?: number;
+    isPaidToll?: boolean;
     properties?: { name: string; index: number }[];
     requiredAmount?: number;
     onConfirm?: () => void;

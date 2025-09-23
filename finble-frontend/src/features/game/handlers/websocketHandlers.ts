@@ -332,6 +332,26 @@ export const createWebSocketHandlers = (
             console.log("🎲 [CHANCE_CARD] 찬스카드 모달 확인 버튼 클릭");
             set({ modal: { type: "NONE" as const } });
 
+            // 현재 플레이어만 게임 로직 실행
+            const currentState = get();
+            const currentPlayer = currentState.players[currentState.currentPlayerIndex];
+            const currentUserId = useUserStore.getState().userInfo?.userId;
+            const isMyTurn = currentPlayer.id === currentUserId;
+
+            if (!isMyTurn) {
+              console.log("🎲 [CHANCE_CARD] 내 턴이 아니므로 확인만 처리:", {
+                currentPlayer: currentPlayer.name,
+                myUserId: currentUserId,
+                isMyTurn
+              });
+              return;
+            }
+
+            console.log("🎲 [CHANCE_CARD] 현재 플레이어 - 게임 로직 실행:", {
+              currentPlayer: currentPlayer.name,
+              myUserId: currentUserId
+            });
+
             // 모든 플레이어 영향 카드의 경우 서버 업데이트 허용
             const isGlobalEffect = effectDescription && (
               effectDescription.includes("모든 플레이어") ||
@@ -430,6 +450,7 @@ export const createWebSocketHandlers = (
           type: cell.type, // 백엔드에서 보내는 대문자 타입을 그대로 사용
           price: cell.landPrice || cell.toll,
           landPrice: cell.landPrice,
+          toll: cell.toll, // 통행료 정보 추가
           housePrice: cell.housePrice,
           buildingPrice: cell.buildingPrice,
           hotelPrice: cell.hotelPrice,
@@ -453,17 +474,43 @@ export const createWebSocketHandlers = (
             turn: currentTurn,
             lastModalTurn: currentState.lastEconomicModalTurn,
             periodName: economicHistory.periodName,
-            effectName: economicHistory.effectName
+            effectName: economicHistory.effectName,
+            currentModalType: currentState.modal.type
           });
 
-          set({
-            modal: {
-              type: "INFO" as const,
-              text: `📈 ${economicHistory.fullName}\n\n${payload.economicDescription}\n\n남은 턴: ${payload.remainingTurns}턴`,
-              onConfirm: () => set({ modal: { type: "NONE" as const } })
-            },
-            lastEconomicModalTurn: currentTurn // 이번 턴에 모달을 표시했다고 기록
-          });
+          // 다른 모달이 활성화되어 있으면 경제 역사 모달을 지연시킴
+          if (currentState.modal.type !== "NONE") {
+            console.log("📈 [ECONOMIC_HISTORY] 다른 모달이 활성화됨 - 경제 역사 모달 지연:", {
+              currentModalType: currentState.modal.type,
+              delayTime: "3초"
+            });
+
+            // 3초 후에 다시 시도
+            setTimeout(() => {
+              const latestState = get();
+              if (latestState.modal.type === "NONE" && latestState.lastEconomicModalTurn !== currentTurn) {
+                console.log("📈 [ECONOMIC_HISTORY] 지연된 경제 역사 모달 표시");
+                set({
+                  modal: {
+                    type: "INFO" as const,
+                    text: `📈 ${economicHistory.fullName}\n\n${payload.economicDescription}\n\n남은 턴: ${payload.remainingTurns}턴`,
+                    onConfirm: () => set({ modal: { type: "NONE" as const } })
+                  },
+                  lastEconomicModalTurn: currentTurn
+                });
+              }
+            }, 3000);
+          } else {
+            // 모달이 비어있으면 바로 표시
+            set({
+              modal: {
+                type: "INFO" as const,
+                text: `📈 ${economicHistory.fullName}\n\n${payload.economicDescription}\n\n남은 턴: ${payload.remainingTurns}턴`,
+                onConfirm: () => set({ modal: { type: "NONE" as const } })
+              },
+              lastEconomicModalTurn: currentTurn // 이번 턴에 모달을 표시했다고 기록
+            });
+          }
         } else {
           console.log("📈 [ECONOMIC_HISTORY] 이미 이번 턴에 경제 효과 모달을 표시했으므로 스킵:", {
             turn: currentTurn,
@@ -475,7 +522,6 @@ export const createWebSocketHandlers = (
 
     // CONSTRUCT_BUILDING 메시지 처리
     unsubscribeFunctions.push(subscribeToTopic("CONSTRUCT_BUILDING", (message) => {
-      console.log("📥 [WEBSOCKET] CONSTRUCT_BUILDING received:", message);
       const { payload } = message;
 
       if (payload.result && payload.updatedAsset) {
@@ -499,7 +545,7 @@ export const createWebSocketHandlers = (
                 buildings: {
                   ...tile.buildings,
                   level: payload.buildingType === "FIELD" ? 0 :
-                         payload.buildingType === "HOUSE" ? 1 :
+                         payload.buildingType === "VILLA" ? 1 :
                          payload.buildingType === "BUILDING" ? 2 :
                          payload.buildingType === "HOTEL" ? 3 : 0
                 }
@@ -513,6 +559,17 @@ export const createWebSocketHandlers = (
             board: updatedBoard,
             modal: { type: "NONE" }
           };
+        });
+      } else {
+        set({
+          modal: {
+            type: "INFO" as const,
+            text: payload.message || "건설에 실패했습니다. 다시 시도해주세요.",
+            onConfirm: () => {
+              set({ modal: { type: "NONE" as const } });
+              get().endTurn();
+            }
+          }
         });
       }
     }));
@@ -592,39 +649,15 @@ export const createWebSocketHandlers = (
 
     // WORLD_TRAVEL_EVENT 메시지 처리
     unsubscribeFunctions.push(subscribeToTopic("WORLD_TRAVEL_EVENT", (message) => {
-      console.log("✈️ [WORLD_TRAVEL_RESPONSE] 서버 응답 수신:", {
-        message,
-        timestamp: new Date().toISOString()
-      });
-
       const { payload } = message;
 
-      if (!payload) {
-        console.error("❌ [WORLD_TRAVEL] payload 없음!");
-        return;
-      }
+      if (!payload) return;
 
       if (payload.result) {
-        console.log("✅ [WORLD_TRAVEL] 세계여행 성공, 모든 클라이언트 동기화 시작:", {
-          travelerNickname: payload.nickname,
-          destination: payload.endLand,
-          travelerAsset: payload.travelerAsset,
-          landOwner: payload.landOwner,
-          ownerAsset: payload.ownerAsset
-        });
 
         set((state) => {
           const updatedPlayers = state.players.map(player => {
             if (player.name === payload.nickname) {
-              console.log("🎯 [WORLD_TRAVEL_SYNC] 여행자 위치 업데이트:", {
-                playerId: player.id,
-                nickname: player.name,
-                oldPosition: player.position,
-                newPosition: payload.endLand,
-                positionChanged: player.position !== payload.endLand,
-                oldMoney: player.money,
-                newMoney: payload.travelerAsset ? payload.travelerAsset.money : player.money
-              });
 
               return {
                 ...player,
@@ -667,6 +700,30 @@ export const createWebSocketHandlers = (
             modal: { type: "NONE" }
           };
         });
+
+        // 세계여행 완료 후 도착한 타일의 액션 실행
+        console.log("✈️ [WORLD_TRAVEL] 세계여행 완료, 도착 타일 액션 실행:", {
+          travelerNickname: payload.nickname,
+          destination: payload.endLand
+        });
+
+        setTimeout(() => {
+          const currentState = get();
+          console.log("✈️ [WORLD_TRAVEL] 타일 액션 실행 시작:", {
+            gamePhase: currentState.gamePhase,
+            currentPlayerIndex: currentState.currentPlayerIndex,
+            travelerName: payload.nickname
+          });
+
+          // 세계여행한 플레이어가 현재 플레이어인지 확인
+          const travelerPlayer = currentState.players.find(p => p.name === payload.nickname);
+          if (travelerPlayer && currentState.players[currentState.currentPlayerIndex].id === travelerPlayer.id) {
+            console.log("✈️ [WORLD_TRAVEL] 현재 플레이어의 세계여행, 타일 액션 처리");
+            get().handleTileAction("세계여행 후");
+          } else {
+            console.log("✈️ [WORLD_TRAVEL] 다른 플레이어의 세계여행, 타일 액션 건너뛰기");
+          }
+        }, 100); // 상태 업데이트 완료 후 실행
       } else {
         console.error("❌ [WORLD_TRAVEL] 세계여행 실패:", payload);
 
@@ -691,6 +748,7 @@ export const createWebSocketHandlers = (
       console.log("📥 [WEBSOCKET] ENTER_NEW_USER received in game:", message);
       // 게임 중 새 유저 입장은 일반적으로 발생하지 않지만 로그 기록
     }));
+
 
     // INTERNAL_SERVER_ERROR 메시지 처리
     unsubscribeFunctions.push(subscribeToTopic("INTERNAL_SERVER_ERROR", (message) => {
@@ -850,9 +908,21 @@ export const createWebSocketHandlers = (
 
     const mappedState = {
       gameId: initialState.roomId,
-      board: initialState.currentMap.cells.map(
-        (cell) => cell || { name: "빈칸", type: "SPECIAL" as const }
-      ),
+      board: initialState.currentMap.cells.map((cell) => ({
+        name: cell?.name || "빈칸",
+        type: cell?.type || "SPECIAL" as const,
+        price: cell?.landPrice || cell?.toll,
+        landPrice: cell?.landPrice,
+        toll: cell?.toll, // 통행료 정보 추가
+        housePrice: cell?.housePrice,
+        buildingPrice: cell?.buildingPrice,
+        hotelPrice: cell?.hotelPrice,
+        buildings: cell?.buildingType === 'FIELD' ? { level: 0 as const } :
+                   cell?.buildingType === 'HOUSE' ? { level: 1 as const } :
+                   cell?.buildingType === 'BUILDING' ? { level: 2 as const } :
+                   cell?.buildingType === 'HOTEL' ? { level: 3 as const } : { level: 0 as const },
+        description: cell?.description
+      })),
       players: playersArray,
       currentPlayerIndex: initialState.currentPlayerIndex,
       gamePhase: "SELECTING_ORDER" as const,

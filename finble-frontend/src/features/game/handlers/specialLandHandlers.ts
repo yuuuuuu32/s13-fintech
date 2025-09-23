@@ -1,5 +1,6 @@
 import type { GameState } from "../types/gameTypes.ts";
 import type { TileData } from "../data/boardData.ts";
+import { useUserStore } from "../../../stores/useUserStore.ts";
 
 // 스페셜 땅 위치 (MapService.java의 EVENT_CELLS와 동일)
 const SPECIAL_LAND_POSITIONS = [5, 13, 21, 28, 31]; // 광주, 대전, 구미, 부산, 서울
@@ -30,22 +31,31 @@ export const createSpecialLandHandlers = (
       return;
     }
 
-    // 서버에 건설 메시지 전송
+    // 서버에 특수 땅 구매 메시지 전송 - CONSTRUCT_BUILDING 사용 (API 명세에 따름)
     if (gameId) {
+
       send(`/app/game/${gameId}/construct-building`, {
         type: "CONSTRUCT_BUILDING",
         payload: {
           nickname: currentPlayer.name,
           landNum: tileIndex,
-          targetBuildingType: "LAND", // 특수 땅도 'LAND' 타입으로 구매
+          targetBuildingType: "FIELD", // SPECIAL 땅은 땅만 구매 (FIELD)
         },
       });
+
+      // 모달 닫기 - 서버 응답은 CONSTRUCT_BUILDING 핸들러에서 처리
+      set({ modal: { type: "NONE" } });
     } else {
       console.error("Cannot construct building, gameId is not set");
+      // 오류 시에만 모달 유지하고 에러 표시
+      set({
+        modal: {
+          type: "INFO",
+          text: "게임 연결에 문제가 있어 구매할 수 없습니다.",
+          onConfirm: () => set({ modal: { type: "NONE" } })
+        }
+      });
     }
-
-    // 모달 닫기
-    set({ modal: { type: "NONE" } });
   },
 
   // 스페셜 땅 통행료 지불 (모달 없이 바로 처리)
@@ -75,6 +85,7 @@ export const createSpecialLandHandlers = (
         money: updatedPlayers[ownerIdx].money + toll,
       };
 
+      const { board } = get();
       const tileName = board[tileIndex]?.name || "스페셜 땅";
 
       return {
@@ -133,29 +144,92 @@ export const createSpecialLandHandlers = (
     const owner = players.find((p) => p.properties.includes(tileIndex));
 
     if (!owner) {
-      // 주인이 없는 경우 - 구매 모달 표시
-      const landPrice = tile?.landPrice || tile?.price || 0;
+      // 주인이 없는 경우 - SPECIAL 땅 구매 모달 표시 (건물 건설 불가능)
+      const baseLandPrice = tile?.landPrice || tile?.price || 0;
+      const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
+
+
       set({
         modal: {
           type: "BUY_SPECIAL_LAND" as const,
           tile: tile,
-          landPrice: landPrice,
+          landPrice: adjustedLandPrice,
         },
       });
     } else if (owner.id !== currentPlayer.id) {
-      // 다른 플레이어 소유 - 통행료 바로 지불
-      const toll = tile?.landPrice || tile?.price || 0;
-      const { paySpecialLandToll } = get();
-      paySpecialLandToll(tileIndex, toll);
-    } else {
-      // 자신 소유 - 아무 동작 없음
-      set({
-        modal: {
-          type: "INFO" as const,
-          text: `${tile.name}은(는) 당신의 소유입니다.`,
-          onConfirm: () => set({ modal: { type: "NONE" as const } }),
-        },
+      // 다른 플레이어 소유 - 통행료만 지불 (인수 불가능)
+      const baseToll = tile?.toll;
+      if (!baseToll) {
+        console.error("💰 [SPECIAL_TOLL_ERROR] 특수 땅 통행료 정보를 받지 못했습니다:", {
+          tileName: tile.name,
+          tile
+        });
+        return;
+      }
+      const adjustedToll = get().applyEconomicMultiplier(baseToll, 'tollMultiplier');
+
+      // 통행료 자동 지불 (내 턴, 다른 플레이어 턴 상관없이)
+      set((state) => {
+        const updatedPlayers = [...state.players];
+        const currentPlayerIndex = state.currentPlayerIndex;
+        const ownerIndex = updatedPlayers.findIndex(p => p.id === owner.id);
+
+        // 통행료 지불
+        updatedPlayers[currentPlayerIndex] = {
+          ...updatedPlayers[currentPlayerIndex],
+          money: updatedPlayers[currentPlayerIndex].money - adjustedToll
+        };
+
+        // 소유자에게 통행료 지급
+        updatedPlayers[ownerIndex] = {
+          ...updatedPlayers[ownerIndex],
+          money: updatedPlayers[ownerIndex].money + adjustedToll
+        };
+
+        return {
+          players: updatedPlayers
+        };
       });
+
+      const currentUserId = useUserStore.getState().userInfo?.userId;
+      const isMyTurn = currentPlayer.id === currentUserId;
+
+      if (isMyTurn) {
+        // 내 턴: 통행료 지불 완료 알림 후 턴 종료
+        set({
+          modal: {
+            type: "INFO",
+            text: `${tile.name}의 통행료 ${adjustedToll.toLocaleString()}원을 지불했습니다.\n\n스페셜 땅은 인수할 수 없습니다.`,
+            onConfirm: () => {
+              set({ modal: { type: "NONE" as const } });
+              get().endTurn();
+            }
+          }
+        });
+      } else {
+        // 다른 플레이어 턴: 모달 없이 자동 처리
+        set({ modal: { type: "NONE" as const } });
+      }
+    } else {
+      // 자신 소유 - 모달 확인 후 턴 종료
+      const currentUserId = useUserStore.getState().userInfo?.userId;
+      const isMyTurn = currentPlayer.id === currentUserId;
+
+      if (isMyTurn) {
+        set({
+          modal: {
+            type: "INFO" as const,
+            text: `${tile.name}은(는) 당신의 소유입니다.`,
+            onConfirm: () => {
+              set({ modal: { type: "NONE" as const } });
+              get().endTurn();
+            },
+          },
+        });
+      } else {
+        // 다른 플레이어 턴: 모달 없이 자동 처리
+        set({ modal: { type: "NONE" as const } });
+      }
     }
   },
 });

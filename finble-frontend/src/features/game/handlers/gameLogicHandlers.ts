@@ -357,10 +357,16 @@ export const createGameLogicHandlers = (
       });
     }
 
-    set({
-      modal: { type: "NONE" as const },
+    console.log("🏁 [END_TURN] 게임 페이즈 변경 (모달은 유지)");
+    set((state) => ({
+      // 중요한 정보 모달이 열려있으면 유지, 그 외에는 닫기
+      modal: (state.modal?.type === "INFO" &&
+              (state.modal?.text?.includes("시작점에 도착") ||
+               state.modal?.text?.includes("세계여행")))
+               ? state.modal
+               : { type: "NONE" as const },
       gamePhase: "WAITING_FOR_TURN_END",
-    });
+    }));
 
 
     // Check for game over conditions after turn ends

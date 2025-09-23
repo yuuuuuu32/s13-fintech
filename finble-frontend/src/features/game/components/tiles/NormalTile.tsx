@@ -28,7 +28,7 @@ export function NormalTile({ tile, tileIndex }: NormalTileProps) {
   const TILE_DEPTH = 7; // 기본 깊이 7로 변경
   const TILE_HEIGHT = 0.2;
 
-  let toll = tile.tolls?.[tile.buildings?.level || 0] || 0;
+  let toll = tile.toll || 0;
   if (expoLocation === tileIndex) {
       toll *= 2;
   }

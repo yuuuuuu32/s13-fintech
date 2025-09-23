@@ -11,8 +11,7 @@ export interface TileData { // [수정] export 추가
   type: 'NORMAL' | 'SPECIAL' | 'CHANCE' | 'JAIL' | 'START' | 'AIRPLANE' | 'NTS' // 칸의 종류 (백엔드 enum과 일치)
   price?: number // 땅값 (도시, 건설사)
   buildingPrice?: number // 건물 1단계(주택) 건설 비용
-  // 통행료: [기본, 주택, 빌딩, 호텔]
-  tolls?: number[]
+  toll?: number // 서버에서 오는 현재 통행료
   // 건물 상태를 저장할 객체 추가
   buildings?: {
       level: 0 | 1 | 2 | 3; // 0: 없음, 1: 주택, 2: 빌딩, 3: 호텔
