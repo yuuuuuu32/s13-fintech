@@ -75,111 +75,7 @@ export const createWebSocketHandlers = (
               modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
             };
 
-            // 위치 무결성 검증 및 복원
-            setTimeout(() => {
-              const currentState = get();
-              const positionCheck = new Map();
-              let duplicateDetected = false;
-              const duplicateInfo: any[] = [];
-
-              currentState.players.forEach((player, index) => {
-                if (positionCheck.has(player.position)) {
-                  duplicateDetected = true;
-                  const existingPlayer = positionCheck.get(player.position);
-                  duplicateInfo.push({
-                    position: player.position,
-                    player1: existingPlayer,
-                    player2: { name: player.name, id: player.id, index }
-                  });
-                  console.error("🚨 [CRITICAL] GAME_STATE_CHANGE 후 위치 중복 감지!", {
-                    position: player.position,
-                    player1: existingPlayer,
-                    player2: { name: player.name, id: player.id, index },
-                    allPositions: currentState.players.map(p => ({ name: p.name, position: p.position })),
-                    currentPlayerIndex: currentState.currentPlayerIndex
-                  });
-                } else {
-                  positionCheck.set(player.position, { name: player.name, id: player.id, index });
-                }
-              });
-
-              // 위치 중복이 감지되면 복원 시도
-              if (duplicateDetected) {
-                console.log("🔧 [POSITION_RESTORE] 위치 중복 복원 시도:", duplicateInfo);
-
-                set((state) => {
-                  const restoredPlayers = [...state.players];
-
-                  // 중복된 플레이어들의 위치를 다른 안전한 위치로 분산
-                  duplicateInfo.forEach(({ position, player1, player2 }) => {
-                    // player1의 인덱스 찾기
-                    const player1Index = restoredPlayers.findIndex(p => p.id === player1.id);
-                    // player2의 인덱스 찾기
-                    const player2Index = restoredPlayers.findIndex(p => p.id === player2.id);
-
-                    if (player1Index !== -1 && player2Index !== -1) {
-                      // 현재 플레이어가 아닌 플레이어의 위치를 약간 조정
-                      if (player1Index !== state.currentPlayerIndex) {
-                        // player1을 이전 위치로 이동 (안전한 위치)
-                        restoredPlayers[player1Index] = {
-                          ...restoredPlayers[player1Index],
-                          position: Math.max(0, position - 1)
-                        };
-                        console.log("🔧 [POSITION_RESTORE] player1 위치 복원:", {
-                          playerName: player1.name,
-                          oldPosition: position,
-                          newPosition: Math.max(0, position - 1)
-                        });
-                      } else if (player2Index !== state.currentPlayerIndex) {
-                        // player2를 다음 위치로 이동 (안전한 위치)
-                        restoredPlayers[player2Index] = {
-                          ...restoredPlayers[player2Index],
-                          position: Math.min(35, position + 1) // 보드 크기를 36으로 가정
-                        };
-                        console.log("🔧 [POSITION_RESTORE] player2 위치 복원:", {
-                          playerName: player2.name,
-                          oldPosition: position,
-                          newPosition: Math.min(35, position + 1)
-                        });
-                      }
-                    }
-                  });
-
-                  console.log("🔧 [POSITION_RESTORE] 위치 복원 완료:", {
-                    beforeRestore: state.players.map(p => ({ name: p.name, position: p.position })),
-                    afterRestore: restoredPlayers.map(p => ({ name: p.name, position: p.position }))
-                  });
-
-                  return {
-                    players: restoredPlayers
-                  };
-                });
-
-                // 복원 후 다시 검증
-                setTimeout(() => {
-                  const verificationState = get();
-                  const verificationCheck = new Map();
-                  let stillDuplicated = false;
-
-                  verificationState.players.forEach((player, index) => {
-                    if (verificationCheck.has(player.position)) {
-                      stillDuplicated = true;
-                      console.error("🚨 [CRITICAL] 위치 복원 후에도 중복 존재!", {
-                        position: player.position,
-                        player1: verificationCheck.get(player.position),
-                        player2: { name: player.name, id: player.id, index }
-                      });
-                    } else {
-                      verificationCheck.set(player.position, { name: player.name, id: player.id, index });
-                    }
-                  });
-
-                  if (!stillDuplicated) {
-                    console.log("✅ [POSITION_RESTORE] 위치 복원 성공 - 중복 해결됨");
-                  }
-                }, 100);
-              }
-            }, 50);
+            console.log("🔄 [GAME_STATE_CHANGE] 턴 정보만 업데이트, 위치는 건드리지 않음");
 
             return newState;
           } else {
@@ -714,65 +610,7 @@ export const createWebSocketHandlers = (
             return tile;
           });
 
-          // 위치 중복 검사 및 즉시 복원
-          const positionCheck = new Map();
-          let duplicateDetected = false;
-          const duplicateInfo: any[] = [];
-
-          updatedPlayers.forEach((player, index) => {
-            if (positionCheck.has(player.position)) {
-              duplicateDetected = true;
-              const existingPlayer = positionCheck.get(player.position);
-              duplicateInfo.push({
-                position: player.position,
-                player1: existingPlayer,
-                player2: { name: player.name, id: player.id, index }
-              });
-              console.error("🚨 [CRITICAL] CONSTRUCT_BUILDING: 위치 중복 감지!", {
-                position: player.position,
-                player1: existingPlayer,
-                player2: { name: player.name, id: player.id, index },
-                allPositions: updatedPlayers.map(p => ({ name: p.name, position: p.position }))
-              });
-            } else {
-              positionCheck.set(player.position, { name: player.name, id: player.id, index });
-            }
-          });
-
-          // 위치 중복이 감지되면 즉시 복원
-          if (duplicateDetected) {
-            console.log("🔧 [CONSTRUCT_BUILDING] 위치 중복 즉시 복원:", duplicateInfo);
-
-            duplicateInfo.forEach(({ position, player1, player2 }) => {
-              const player1Index = updatedPlayers.findIndex(p => p.id === player1.id);
-              const player2Index = updatedPlayers.findIndex(p => p.id === player2.id);
-
-              if (player1Index !== -1 && player2Index !== -1) {
-                // 현재 플레이어가 아닌 플레이어의 위치를 조정
-                if (player1Index !== state.currentPlayerIndex) {
-                  updatedPlayers[player1Index] = {
-                    ...updatedPlayers[player1Index],
-                    position: Math.max(0, position - 1)
-                  };
-                  console.log("🔧 [CONSTRUCT_BUILDING] player1 위치 복원:", {
-                    playerName: player1.name,
-                    oldPosition: position,
-                    newPosition: Math.max(0, position - 1)
-                  });
-                } else if (player2Index !== state.currentPlayerIndex) {
-                  updatedPlayers[player2Index] = {
-                    ...updatedPlayers[player2Index],
-                    position: Math.min(35, position + 1)
-                  };
-                  console.log("🔧 [CONSTRUCT_BUILDING] player2 위치 복원:", {
-                    playerName: player2.name,
-                    oldPosition: position,
-                    newPosition: Math.min(35, position + 1)
-                  });
-                }
-              }
-            });
-          }
+          console.log("🏗️ [CONSTRUCT_BUILDING] 플레이어 위치는 절대 변경하지 않음 - 머니와 자산 정보만 업데이트");
 
           return {
             players: updatedPlayers,
@@ -1295,41 +1133,36 @@ export const createWebSocketHandlers = (
     const currentState = get();
 
     if (newState.players) {
-      console.log("🚨 [CRITICAL] updateGameState called with players data - comparing positions:");
+      console.log("🚨 [BLOCKED] updateGameState called with players data - COMPLETELY BLOCKED to prevent position sync issues");
       const newPlayers = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
 
       currentState.players.forEach((currentPlayer) => {
         const serverPlayer = newPlayers.find(p => p.id === currentPlayer.id);
         if (serverPlayer && serverPlayer.position !== currentPlayer.position) {
-          console.log(`🚨 [CRITICAL] Position mismatch for ${currentPlayer.name}:`);
-          console.log(`  Current: ${currentPlayer.position} -> Server wants: ${serverPlayer.position}`);
-          console.log(`  This would cause SNAP-BACK if applied!`);
+          console.log(`🚨 [POSITION_MISMATCH_BLOCKED] ${currentPlayer.name}:`);
+          console.log(`  Current: ${currentPlayer.position} -> Server wants: ${serverPlayer.position} (IGNORED)`);
         }
       });
 
-      // 위치 제외한 안전한 업데이트
+      // 플레이어 데이터가 있는 경우 완전히 차단 - curPlayer만 업데이트
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { players, ...safeState } = newState;
-      console.log("🛡️ [SAFE_UPDATE] Applying state without player positions to prevent snap-back");
+      console.log("🛡️ [COMPLETE_BLOCK] ONLY updating non-player state to prevent any position corruption");
 
-      // curPlayer가 있으면 currentPlayerIndex도 업데이트
+      // curPlayer가 있으면 currentPlayerIndex만 업데이트 (다른 모든 것 무시)
       if (safeState.curPlayer) {
         const nextPlayerIndex = currentState.players.findIndex(p => p.name === safeState.curPlayer);
         if (nextPlayerIndex !== -1) {
-          console.log("🔄 [SAFE_UPDATE] curPlayer 감지 (with players) - currentPlayerIndex 업데이트:", {
+          console.log("🔄 [MINIMAL_UPDATE] ONLY updating currentPlayerIndex:", {
             curPlayer: safeState.curPlayer,
             nextPlayerIndex,
             previousIndex: currentState.currentPlayerIndex
           });
           set({
-            ...safeState,
-            currentPlayerIndex: nextPlayerIndex
+            currentPlayerIndex: nextPlayerIndex,
+            currentTurn: safeState.gameTurn || currentState.currentTurn
           });
-        } else {
-          set(safeState);
         }
-      } else {
-        set(safeState);
       }
     } else {
       console.log("✅ [SAFE_UPDATE] No players in state, applying full update");
