@@ -9,6 +9,7 @@ import type { Player as PlayerData } from "../types/gameTypes.ts";
 import type { TileData } from "../data/boardData.ts";
 import { useGameStore } from "../store/useGameStore.ts";
 import { useUserStore } from "../../../stores/useUserStore.ts";
+import { PixelPlayer } from "./PixelPlayer";
 
 // --- Props 타입 정의 ---
 interface PlayerProps {
@@ -331,44 +332,16 @@ export function Player({ player }: PlayerProps) {
       lastKnownPositionRef.current = safePosition;
       prevPositionRef.current = safePosition;
     }
-  }, [isModalOpen, api, player.position, board, playerIndex, players.length]); // --- 렌더링 ---
+  }, [isModalOpen, api, player.position, board, playerIndex, players.length]);
 
+  // --- 렌더링 ---
   if (!player) return null;
-
-  const characterColors = {
-    cone: "#4A90E2",
-    sphere: "#E74C3C",
-    box: "#F39C12",
-    torus: "#9B59B6",
-  };
 
   return (
     <animated.mesh ref={meshRef} position={springs.position as any} castShadow>
-           {" "}
-      {player.character === "cone" && (
-        <Cone args={[0.5, 1]}>
-          <meshStandardMaterial color={characterColors.cone} />
-        </Cone>
-      )}
-           {" "}
-      {player.character === "sphere" && (
-        <Sphere args={[0.5]}>
-          <meshStandardMaterial color={characterColors.sphere} />
-        </Sphere>
-      )}
-           {" "}
-      {player.character === "box" && (
-        <Box args={[0.8, 0.8, 0.8]}>
-          <meshStandardMaterial color={characterColors.box} />
-        </Box>
-      )}
-           {" "}
-      {player.character === "torus" && (
-        <Torus args={[0.5, 0.2, 8, 16]}>
-          <meshStandardMaterial color={characterColors.torus} />
-        </Torus>
-      )}
-         {" "}
+      {/* 3D 도형 대신 PixelPlayer 컴포넌트를 사용합니다. */}
+      <PixelPlayer character={player.character} />
     </animated.mesh>
   );
 }
+
