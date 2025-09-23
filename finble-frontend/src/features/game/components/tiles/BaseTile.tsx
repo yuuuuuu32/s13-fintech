@@ -122,15 +122,13 @@ export function BaseTile({ tile, tileIndex, position, children, width, depth, ro
       <Text
         position={[0, TOTAL_HEIGHT + 0.02, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={0.5}
+        fontSize={0.8}
         color="#000000"
         anchorX="center"
         anchorY="middle"
         maxWidth={TILE_WIDTH - 0.8}
         textAlign="center"
         font="/fonts/Galmuri14.ttf"
-        outlineWidth={0.02}
-        outlineColor="#ffffff"
       >
         {tile.name}
       </Text>
