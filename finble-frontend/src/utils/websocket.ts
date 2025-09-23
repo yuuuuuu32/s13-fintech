@@ -17,11 +17,52 @@ const WEBSOCKET_URL = getWebSocketUrl();
 
 let webSocket: WebSocket | null = null; // 순수 WebSocket 객체
 let reconnectTimeout: NodeJS.Timeout | null = null;
+let connectionQualityMonitor: NodeJS.Timeout | null = null;
 let isConnected = false; // 연결 상태 추적
 let manualDisconnect = false; // 수동 연결 종료 플래그
+let reconnectAttempts = 0; // 재연결 시도 횟수
+const MAX_RECONNECT_ATTEMPTS = 5;
 
 export const getWebSocketStatus = (): boolean => {
   return isConnected;
+};
+
+// 연결 품질 모니터링 함수
+const startConnectionQualityMonitor = () => {
+  if (connectionQualityMonitor) {
+    clearInterval(connectionQualityMonitor);
+  }
+
+  connectionQualityMonitor = setInterval(() => {
+    const store = useWebSocketStore.getState();
+    const now = Date.now();
+    const timeSinceLastMessage = now - store.lastMessageTime;
+
+    // 경제 효과 업데이트 중이면 더 관대한 기준 적용
+    const timeout = store.isEconomicUpdateInProgress ? store.heavyOperationTimeout : 15000;
+
+    if (!isConnected) {
+      store.setConnectionQuality('disconnected');
+    } else if (timeSinceLastMessage > timeout) {
+      store.setConnectionQuality('poor');
+      console.warn('🔔 [CONNECTION_MONITOR] Poor connection quality detected:', {
+        timeSinceLastMessage,
+        timeout,
+        isEconomicUpdate: store.isEconomicUpdateInProgress
+      });
+    } else if (timeSinceLastMessage > timeout / 2) {
+      store.setConnectionQuality('unstable');
+    } else {
+      store.setConnectionQuality('good');
+    }
+  }, 5000); // 5초마다 체크
+};
+
+const stopConnectionQualityMonitor = () => {
+  if (connectionQualityMonitor) {
+    clearInterval(connectionQualityMonitor);
+    connectionQualityMonitor = null;
+  }
 };
 
 // 구독 콜백을 저장할 맵 (메시지 타입별로 여러 콜백이 있을 수 있음)
@@ -54,8 +95,16 @@ export const initializeWebSocket = () => {
     });
 
     isConnected = true;
-    useWebSocketStore.getState().setIsConnected(true);
-    useWebSocketStore.getState().setIsWebSocketReady(true); // WebSocket 준비 완료 상태 설정
+    reconnectAttempts = 0; // 재연결 성공 시 카운터 리셋
+    const store = useWebSocketStore.getState();
+    store.setIsConnected(true);
+    store.setIsWebSocketReady(true);
+    store.setConnectionQuality('good');
+    store.updateLastMessageTime();
+
+    // 연결 품질 모니터링 시작
+    startConnectionQualityMonitor();
+
     if (reconnectTimeout) {
       clearTimeout(reconnectTimeout);
       reconnectTimeout = null;
@@ -64,6 +113,10 @@ export const initializeWebSocket = () => {
 
   webSocket.onmessage = (event) => {
     const timestamp = new Date().toISOString();
+
+    // 메시지 수신 시 마지막 메시지 시간 업데이트
+    useWebSocketStore.getState().updateLastMessageTime();
+
     console.log('🌐 [WEBSOCKET_INTERCEPTOR] RAW MESSAGE RECEIVED:', {
       timestamp,
       rawData: event.data,
@@ -163,23 +216,43 @@ export const initializeWebSocket = () => {
       reason: event.reason,
       wasClean: event.wasClean,
       manualDisconnect,
-      willReconnect: !manualDisconnect,
+      reconnectAttempts,
+      willReconnect: !manualDisconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS,
       stackTrace: new Error().stack?.split('\n').slice(1, 3).join(' → ')
     });
 
     isConnected = false;
-    useWebSocketStore.getState().setIsConnected(false);
-    useWebSocketStore.getState().setIsWebSocketReady(false); // WebSocket 준비 상태 초기화
-    if (!manualDisconnect) { // 수동 종료가 아닐 경우에만 재연결
+    const store = useWebSocketStore.getState();
+    store.setIsConnected(false);
+    store.setIsWebSocketReady(false);
+    store.setConnectionQuality('disconnected');
+
+    // 연결 품질 모니터링 중지
+    stopConnectionQualityMonitor();
+
+    // 경제 효과 업데이트 중이었다면 상태 리셋
+    if (store.isEconomicUpdateInProgress) {
+      console.warn('🔄 [CONNECTION] Economic update was in progress during disconnect');
+      store.setEconomicUpdateInProgress(false);
+    }
+
+    if (!manualDisconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       if (!reconnectTimeout) {
+        reconnectAttempts++;
+        const delay = Math.min(5000 * reconnectAttempts, 30000); // 점진적 지연 (최대 30초)
+
         reconnectTimeout = setTimeout(() => {
           console.log('🔄 [SERVER_AUDIT] Attempting WebSocket reconnection...', {
             timestamp: new Date().toISOString(),
-            attemptNumber: 1
+            attemptNumber: reconnectAttempts,
+            maxAttempts: MAX_RECONNECT_ATTEMPTS
           });
           initializeWebSocket();
-        }, 5000);
+        }, delay);
       }
+    } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      console.error('🚨 [CONNECTION] Max reconnection attempts reached. Manual intervention required.');
+      // 여기서 사용자에게 알림을 보낼 수 있음
     }
   };
 

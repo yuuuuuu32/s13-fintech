@@ -1,9 +1,9 @@
+import { useUserStore } from "../../../stores/useUserStore.ts";
 import type { GameState, GameInitialState, Player } from "../types/gameTypes.ts";
 import { sendMessage, subscribeToTopic } from "../../../utils/websocket.ts";
 import { CHARACTER_PREFABS } from "../constants/gameConstants.ts";
 
-// 찬스카드 처리 후 다음 GAME_STATE_CHANGE에서 플레이어 정보 허용
-let allowNextPlayerUpdate = false;
+
 
 // 구독 해제 함수들을 저장할 배열
 let unsubscribeFunctions: (() => void)[] = [];
@@ -193,25 +193,31 @@ export const createWebSocketHandlers = (
           }
           return {};
         });
-      } else {
-        // 찬스카드 후 플레이어 업데이트 허용 체크
-        if (allowNextPlayerUpdate && payload.players) {
-          console.log("🎲 [CHANCE_CARD_UPDATE] 찬스카드 후 서버 플레이어 상태 업데이트 허용:", JSON.stringify(payload, null, 2));
-          allowNextPlayerUpdate = false; // 한 번만 허용
-          get().updateGameState(payload);
-        } else {
-          // GAME_STATE_CHANGE는 위치 업데이트하지 않음 - 게임 상태만
-          console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE without curPlayer - excluding players:", JSON.stringify(payload, null, 2));
-          const { players, ...safePayload } = payload;
-          if (players) {
-            console.log("🚨 [CRITICAL] GAME_STATE_CHANGE has player data - this could cause position desync!");
-            console.log("🚨 [CRITICAL] Player data in GAME_STATE_CHANGE:", players);
-            console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE BLOCKED player updates to prevent snap-back");
-          }
-          get().updateGameState(safePayload);
-        }
-      }
-    }));
+              } else {
+                // GAME_STATE_CHANGE는 위치 업데이트하지 않음 - 게임 상태만
+                console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE without curPlayer - merging players state:", JSON.stringify(payload, null, 2));
+                
+                if (payload.players) {
+                  const newPlayers = Array.isArray(payload.players) ? payload.players : Object.values(payload.players);
+                  const currentPlayers = get().players;
+      
+                  const updatedPlayers = currentPlayers.map(clientPlayer => {
+                    const serverPlayer = newPlayers.find(p => p.id === clientPlayer.id);
+                                  if (serverPlayer) {
+                                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                    const { position, ...serverData } = serverPlayer;
+                                    return { ...clientPlayer, ...serverData, position: clientPlayer.position };
+                                  }
+                                  return clientPlayer;
+                                });
+                                
+                                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                const { players, ...safePayload } = payload;
+                                set({ ...safePayload, players: updatedPlayers });      
+                } else {
+                  get().updateGameState(payload);
+                }
+              }    }));
 
     unsubscribeFunctions.push(subscribeToTopic("START_GAME_OBSERVE", (message) => {
       console.log("📥 [WEBSOCKET] START_GAME_OBSERVE received:", message);
@@ -236,15 +242,32 @@ export const createWebSocketHandlers = (
       const { payload } = message;
       if (payload.currentPlayerIndex !== undefined) {
         console.log("🔄 Turn changing to player index:", payload.currentPlayerIndex);
-        console.log("🎮 Setting gamePhase to WAITING_FOR_ROLL");
-        set((state) => ({
-          currentPlayerIndex: payload.currentPlayerIndex,
-          currentTurn: payload.currentTurn || get().currentTurn,
-          gamePhase: "WAITING_FOR_ROLL",
-          isDiceRolled: false, // Reset for the next turn
-          // 찬스카드 모달이 떠있으면 유지
-          modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
-        }));
+
+        set((state) => {
+          const newCurrentPlayer = state.players[payload.currentPlayerIndex];
+
+          // 세계여행 중인 플레이어의 턴이면 바로 세계여행 모드로 설정
+          if (newCurrentPlayer?.isTraveling) {
+            console.log("✈️ [TURN_START] 세계여행 중인 플레이어의 턴 - 바로 WORLD_TRAVEL_MOVE 모드로 진입");
+            return {
+              currentPlayerIndex: payload.currentPlayerIndex,
+              currentTurn: payload.currentTurn || state.currentTurn,
+              gamePhase: "WORLD_TRAVEL_MOVE" as const,
+              isDiceRolled: false,
+              modal: { type: "NONE" as const },
+            };
+          } else {
+            console.log("🎮 Setting gamePhase to WAITING_FOR_ROLL");
+            return {
+              currentPlayerIndex: payload.currentPlayerIndex,
+              currentTurn: payload.currentTurn || state.currentTurn,
+              gamePhase: "WAITING_FOR_ROLL" as const,
+              isDiceRolled: false, // Reset for the next turn
+              // 찬스카드 모달이 떠있으면 유지
+              modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" as const },
+            };
+          }
+        });
       }
     }));
 
@@ -494,18 +517,7 @@ export const createWebSocketHandlers = (
               myUserId: currentUserId
             });
 
-            // 모든 플레이어 영향 카드의 경우 서버 업데이트 허용
-            const isGlobalEffect = effectDescription && (
-              effectDescription.includes("모든 플레이어") ||
-              effectDescription.includes("전체 플레이어") ||
-              cardName === "경기 침체" ||
-              cardName === "경기 호황"
-            );
 
-            if (isGlobalEffect) {
-              console.log("🌍 [GLOBAL_EFFECT] 전체 영향 카드 - 서버 플레이어 업데이트 허용 설정");
-              allowNextPlayerUpdate = true;
-            }
 
             // 위치가 변경되었다면 다시 타일 액션 처리
             if (newPosition !== undefined && newPosition !== null) {
@@ -787,87 +799,160 @@ export const createWebSocketHandlers = (
       console.log("📥 [WEBSOCKET] JAIL_EVENT received:", message);
       const { payload } = message;
 
-      if (payload.result !== undefined) {
-        const currentUserId = useUserStore.getState().userInfo?.userId;
-
-        set((state) => {
-          const updatedPlayers = state.players.map(player => {
-            if (player.name === payload.nickname) {
-              console.log("🔓 [JAIL_EVENT] 플레이어 상태 업데이트:", {
-                playerName: player.name,
-                escapeResult: payload.result,
-                previousMoney: player.money,
-                newMoney: payload.updatedAsset ? payload.updatedAsset.money : player.money,
-                previousProperties: player.properties,
-                newProperties: payload.updatedAsset ? payload.updatedAsset.lands : player.properties,
-                jailTurns: payload.turns,
-                isInJail: payload.turns > 0
-              });
-
-              return {
-                ...player,
-                money: payload.updatedAsset ? payload.updatedAsset.money : player.money,
-                properties: payload.updatedAsset ? payload.updatedAsset.lands || [] : player.properties,
-                isInJail: payload.turns > 0,
-                jailTurns: payload.turns || 0
-              };
-            }
-            return player;
-          });
-
-          const isMyJailEvent = updatedPlayers[state.currentPlayerIndex]?.id === currentUserId &&
-                                updatedPlayers[state.currentPlayerIndex]?.name === payload.nickname;
-
-          const resultText = payload.result
-            ? `${payload.nickname}님이 보석금을 내고 감옥에서 탈출했습니다!`
-            : `${payload.nickname}님의 감옥 탈출이 실패했습니다. 남은 감옥 턴: ${payload.turns}`;
-
-          // 당사자는 모달, 다른 플레이어는 토스트
-          if (isMyJailEvent) {
-            return {
-              players: updatedPlayers,
-              gamePhase: payload.result ? "WAITING_FOR_ROLL" as const : state.gamePhase,
-              modal: {
-                type: "INFO" as const,
-                text: payload.result
-                  ? "보석금을 내고 감옥에서 탈출했습니다!"
-                  : `감옥 탈출에 실패했습니다. 남은 감옥 턴: ${payload.turns}`,
-                onConfirm: () => {
-                  set({ modal: { type: "NONE" as const } });
-                  if (payload.result) {
-                    console.log("🔄 [JAIL_EVENT] 보석금 지불 성공 후 턴 종료");
-                    setTimeout(() => get().endTurn(), 100);
-                  }
-                }
-              }
-            };
-          } else {
-            // 다른 플레이어들에게는 토스트로 표시
-            get().addToast(
-              payload.result ? "success" : "warning",
-              payload.result ? "🔓 보석금 지불" : "🔒 감옥 탈출 실패",
-              resultText,
-              3000
-            );
-
-            return {
-              players: updatedPlayers,
-              gamePhase: state.gamePhase,
-              modal: { type: "NONE" as const }
-            };
+      // 서버 응답 검증
+      if (payload.result === undefined) {
+        console.error("❌ [JAIL_EVENT] 서버 응답에 result가 없습니다:", payload);
+        set({
+          modal: {
+            type: "INFO" as const,
+            text: "서버에서 잘못된 응답을 받았습니다. 다시 시도해주세요.",
+            onConfirm: () => set({ modal: { type: "NONE" as const } })
           }
         });
+        return;
       }
+
+      // 서버는 userName 또는 nickname을 보낼 수 있음 (호환성 처리)
+      const playerName = payload.nickname || payload.userName;
+      if (!playerName) {
+        console.error("❌ [JAIL_EVENT] 서버 응답에 플레이어 이름이 없습니다:", payload);
+        set({
+          modal: {
+            type: "INFO" as const,
+            text: "서버 응답이 올바르지 않습니다.",
+            onConfirm: () => set({ modal: { type: "NONE" as const } })
+          }
+        });
+        return;
+      }
+
+      const currentUserId = useUserStore.getState().userInfo?.userId;
+
+      set((state) => {
+        const updatedPlayers = state.players.map(player => {
+          if (player.name === playerName) {
+            console.log("🔓 [JAIL_EVENT] 플레이어 상태 업데이트:", {
+              playerName: player.name,
+              escapeResult: payload.result,
+              previousMoney: player.money,
+              newMoney: payload.updatedAsset ? payload.updatedAsset.money : player.money,
+              previousProperties: player.properties,
+              newProperties: payload.updatedAsset ? payload.updatedAsset.lands : player.properties,
+              jailTurns: payload.turns,
+              isInJail: payload.turns > 0,
+              serverResponse: payload
+            });
+
+            return {
+              ...player,
+              money: payload.updatedAsset ? payload.updatedAsset.money : player.money,
+              properties: payload.updatedAsset ? payload.updatedAsset.lands || [] : player.properties,
+              isInJail: payload.turns > 0,
+              jailTurns: payload.turns || 0
+            };
+          }
+          return player;
+        });
+
+        const isMyJailEvent = updatedPlayers[state.currentPlayerIndex]?.id === currentUserId &&
+                              updatedPlayers[state.currentPlayerIndex]?.name === playerName;
+
+        let resultText: string;
+
+        // JAIL_EVENT는 보석금 지불 결과만 처리 (감옥 입소는 클라이언트에서 자동 처리)
+        if (payload.result) {
+          // 감옥 탈출 성공
+          resultText = `${playerName}님이 보석금을 내고 감옥에서 탈출했습니다!`;
+          console.log("🔓 [JAIL_EVENT] 보석금 지불 성공:", {
+            playerName: playerName,
+            isMyJailEvent
+          });
+        } else {
+          // 감옥 탈출 실패
+          if (payload.errorMessage) {
+            resultText = `감옥 탈출 실패: ${payload.errorMessage}`;
+          } else if (payload.turns !== undefined) {
+            resultText = `${playerName}님의 감옥 탈출이 실패했습니다. 남은 감옥 턴: ${payload.turns}`;
+          } else {
+            resultText = `${playerName}님의 감옥 탈출이 실패했습니다. 감옥 상태를 확인해주세요.`;
+          }
+
+          // 내 턴이고 실패한 경우 추가 디버깅 정보 로깅
+          if (isMyJailEvent) {
+            console.error("❌ [JAIL_EVENT] 내 보석금 지불 실패 상세 정보:", {
+              playerName: playerName,
+              result: payload.result,
+              turns: payload.turns,
+              errorMessage: payload.errorMessage,
+              serverPayload: payload,
+              currentPlayerState: updatedPlayers[state.currentPlayerIndex]
+            });
+          }
+        }
+
+        // 당사자는 모달, 다른 플레이어는 토스트
+        if (isMyJailEvent) {
+          return {
+            players: updatedPlayers,
+            gamePhase: payload.result ? "WAITING_FOR_ROLL" as const : state.gamePhase,
+            modal: {
+              type: "INFO" as const,
+              text: payload.result
+                ? "보석금을 내고 감옥에서 탈출했습니다! 이번 턴에 주사위를 굴릴 수 있습니다."
+                : `감옥 탈출에 실패했습니다. 남은 감옥 턴: ${payload.turns}`,
+              onConfirm: () => {
+                set({ modal: { type: "NONE" as const } });
+                if (payload.result) {
+                  console.log("🔄 [JAIL_EVENT] 보석금 지불 성공 - 즉시 주사위 굴리기 가능");
+                  // endTurn() 호출 제거 - 플레이어가 같은 턴에 주사위를 굴릴 수 있도록 함
+                }
+              }
+            }
+          };
+        } else {
+          // 다른 플레이어들에게는 토스트로 표시
+          get().addToast(
+            payload.result ? "success" : "warning",
+            payload.result ? "🔓 보석금 지불" : "🔒 감옥 탈출 실패",
+            resultText,
+            3000
+          );
+
+          return {
+            players: updatedPlayers,
+            gamePhase: state.gamePhase,
+            modal: { type: "NONE" as const }
+          };
+        }
+      });
     }));
 
     // INVALID_JAIL_STATE 에러 처리
     unsubscribeFunctions.push(subscribeToTopic("INVALID_JAIL_STATE", (message) => {
-      console.log("❌ [WEBSOCKET] INVALID_JAIL_STATE received:", message);
+      console.error("❌ [WEBSOCKET] INVALID_JAIL_STATE received:", {
+        message: message.message,
+        payload: message.payload,
+        timestamp: new Date().toISOString(),
+        currentPlayerState: get().players[get().currentPlayerIndex]
+      });
+
+      // 사용자에게 더 구체적인 안내 제공
+      let errorText = "감옥 상태가 올바르지 않습니다.";
+
+      if (message.message) {
+        errorText = message.message;
+      } else if (message.payload?.errorCode === "JAIL_FIRST_TURN") {
+        errorText = "감옥에 들어간 첫 턴에는 보석금을 낼 수 없습니다. 다음 턴부터 보석금으로 탈출할 수 있습니다.";
+      } else if (message.payload?.errorCode === "NOT_IN_JAIL") {
+        errorText = "현재 감옥에 있지 않아 보석금을 낼 수 없습니다.";
+      } else if (message.payload?.errorCode === "INSUFFICIENT_FUNDS") {
+        errorText = "보석금이 부족합니다.";
+      }
 
       set({
         modal: {
           type: "INFO" as const,
-          text: message.message || "감옥 상태가 올바르지 않습니다.",
+          text: errorText,
           onConfirm: () => set({ modal: { type: "NONE" as const } })
         }
       });

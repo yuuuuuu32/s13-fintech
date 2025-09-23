@@ -2,6 +2,7 @@ import type { GameState, Player } from "../types/gameTypes.ts";
 import type { TileData } from "../data/boardData.ts";
 import { useUserStore } from "../../../stores/useUserStore.ts";
 
+
 export const handleCityCompanyTile = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
   get: () => GameState,
@@ -167,9 +168,7 @@ export const handleSpecialTile = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
   get: () => GameState,
   currentTile: TileData,
-  currentPlayer: Player,
-  board: TileData[],
-  send?: (destination: string, body: Record<string, unknown>) => void
+  currentPlayer: Player
 ) => {
   const currentUserId = useUserStore.getState().userInfo?.userId;
   const isMyTurn = currentPlayer.id === currentUserId;
@@ -187,6 +186,7 @@ export const handleSpecialTile = (
       break;
 
     case "JAIL":
+      // API 명세: 감옥 도착 시 자동으로 3턴간 이동 불가 (서버 통신 불필요)
       if (isMyTurn) {
         set((state) => {
           const updatedPlayers = [...state.players];

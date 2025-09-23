@@ -143,7 +143,7 @@ export const createPlayerActions = (
   },
 
   payToll: () => {
-    const { gameId, send, players, currentPlayerIndex, modal, board } = get();
+    const { players, currentPlayerIndex, modal, board } = get();
     if (!modal.toll) {
       set({ modal: { type: "NONE" as const } });
       return;
@@ -225,6 +225,11 @@ export const createPlayerActions = (
   handleJail: () => {
     const currentUserId = useUserStore.getState().userInfo?.userId;
 
+    console.log("🔒 [HANDLE_JAIL] 감옥 턴 처리 시작:", {
+      currentPlayer: get().players[get().currentPlayerIndex],
+      note: "보석금 지불 기회 없이 턴만 소모"
+    });
+
     set((state) => {
       const updatedPlayers = [...state.players];
       const currentPlayer = updatedPlayers[state.currentPlayerIndex];
@@ -232,21 +237,27 @@ export const createPlayerActions = (
       const isMyTurn = currentPlayer.id === currentUserId;
 
       if (newJailTurns <= 0) {
+        // 감옥 탈출 (3턴 완료)
         updatedPlayers[state.currentPlayerIndex] = {
           ...currentPlayer,
           isInJail: false,
           jailTurns: 0,
         };
 
+        console.log("🔓 [HANDLE_JAIL] 3턴 완료로 자동 탈출:", {
+          playerName: currentPlayer.name,
+          isMyTurn
+        });
+
         if (isMyTurn) {
           return {
             players: updatedPlayers,
+            gamePhase: "WAITING_FOR_ROLL" as const,
             modal: {
               type: "INFO" as const,
-              text: "감옥에서 탈출했습니다! 다음 턴부터 정상 진행됩니다.",
+              text: "감옥에서 탈출했습니다! 이번 턴에 주사위를 굴릴 수 있습니다.",
               onConfirm: () => {
                 set({ modal: { type: "NONE" as const } });
-                get().endTurn();
               },
             },
           };
@@ -266,10 +277,18 @@ export const createPlayerActions = (
           };
         }
       } else {
+        // 감옥에서 계속 머무름 (턴만 소모)
         updatedPlayers[state.currentPlayerIndex] = {
           ...currentPlayer,
           jailTurns: newJailTurns,
         };
+
+        console.log("🔒 [HANDLE_JAIL] 감옥에서 턴 소모:", {
+          playerName: currentPlayer.name,
+          remainingTurns: newJailTurns,
+          isMyTurn,
+          note: "보석금 지불 기회 없이 턴만 소모됨"
+        });
 
         if (isMyTurn) {
           return {
@@ -306,32 +325,160 @@ export const createPlayerActions = (
     const { gameId, send, players, currentPlayerIndex } = get();
     const currentPlayer = players[currentPlayerIndex];
 
+    console.log("🔓 [PAY_BAIL] 보석금 지불 시도 - 상세 상태:", {
+      playerName: currentPlayer.name,
+      playerId: currentPlayer.id,
+      playerMoney: currentPlayer.money,
+      bailAmount: BAIL_AMOUNT,
+      isInJail: currentPlayer.isInJail,
+      jailTurns: currentPlayer.jailTurns,
+      gameId,
+      gamePhase: get().gamePhase,
+      currentPlayerIndex,
+      allPlayersJailStatus: players.map(p => ({
+        name: p.name,
+        isInJail: p.isInJail,
+        jailTurns: p.jailTurns
+      })),
+      timestamp: new Date().toISOString()
+    });
+
+    // 감옥 상태 검증
+    if (!currentPlayer.isInJail) {
+      console.error("❌ [PAY_BAIL] 플레이어가 감옥에 있지 않습니다:", {
+        playerName: currentPlayer.name,
+        isInJail: currentPlayer.isInJail,
+        jailTurns: currentPlayer.jailTurns
+      });
+      set({
+        modal: {
+          type: "INFO" as const,
+          text: "현재 감옥에 있지 않아 보석금을 낼 수 없습니다."
+        }
+      });
+      return;
+    }
+
+    if (currentPlayer.jailTurns <= 0) {
+      console.error("❌ [PAY_BAIL] 감옥 턴이 0 이하입니다:", {
+        playerName: currentPlayer.name,
+        jailTurns: currentPlayer.jailTurns
+      });
+      set({
+        modal: {
+          type: "INFO" as const,
+          text: "감옥 상태가 올바르지 않습니다."
+        }
+      });
+      return;
+    }
+
+    // API 명세: 감옥 첫 턴(jailTurns = 3)에는 보석금 지불 불가, 다음 턴(jailTurns = 2)부터 가능
+    if (currentPlayer.jailTurns > 2) {
+      console.warn("⏳ [PAY_BAIL] 감옥 첫 턴에는 보석금 지불 불가:", {
+        playerName: currentPlayer.name,
+        jailTurns: currentPlayer.jailTurns,
+        note: "API 명세에 따라 다음 턴(jailTurns=2)부터 보석금 지불 가능"
+      });
+      set({
+        modal: {
+          type: "INFO" as const,
+          text: "감옥에 들어간 첫 턴에는 보석금을 낼 수 없습니다. 다음 턴부터 보석금으로 탈출할 수 있습니다.",
+          onConfirm: () => set({ modal: { type: "NONE" as const } })
+        }
+      });
+      return;
+    }
+
     // 클라이언트 사이드 자금 체크
     if (currentPlayer.money < BAIL_AMOUNT) {
+      console.warn("💰 [PAY_BAIL] 보석금 부족:", {
+        playerMoney: currentPlayer.money,
+        requiredAmount: BAIL_AMOUNT,
+        shortage: BAIL_AMOUNT - currentPlayer.money
+      });
       set({ modal: { type: "INFO" as const, text: "보석금이 부족합니다." } });
       return;
     }
 
-    // 서버에 감옥 탈출 메시지 전송 (낙관적 업데이트 제거)
+    // 서버에 감옥 탈출 메시지 전송
     if (gameId) {
+      const payload = {
+        nickname: currentPlayer.name,
+        escape: true,
+      };
 
-      send(`/app/game/${gameId}/jail-event`, {
+      console.log("📤 [PAY_BAIL] 서버에 보석금 지불 요청 전송:", {
+        destination: `/app/game/${gameId}/jail-event`,
         type: "JAIL_EVENT",
-        payload: {
-          nickname: currentPlayer.name,
-          escape: true,
+        payload,
+        playerState: {
+          name: currentPlayer.name,
+          money: currentPlayer.money,
+          isInJail: currentPlayer.isInJail,
+          jailTurns: currentPlayer.jailTurns
         },
+        gameState: {
+          gamePhase: get().gamePhase,
+          currentPlayerIndex,
+          gameId
+        },
+        expectation: "서버가 플레이어 감옥 상태를 인식하고 보석금 지불을 처리해야 함",
+        timestamp: new Date().toISOString()
       });
 
-      // 서버 응답 대기 모달 표시
+      try {
+        send(`/app/game/${gameId}/jail-event`, {
+          type: "JAIL_EVENT",
+          payload,
+        });
+
+        // 서버 응답 대기 모달 표시
+        set({
+          modal: {
+            type: "INFO" as const,
+            text: "보석금을 지불하는 중입니다...",
+          }
+        });
+
+        // 타임아웃 처리: 10초 후에도 응답이 없으면 에러 처리
+        setTimeout(() => {
+          const currentState = get();
+          if (currentState.modal?.text === "보석금을 지불하는 중입니다...") {
+            console.error("⏰ [PAY_BAIL] 서버 응답 타임아웃");
+            set({
+              modal: {
+                type: "INFO" as const,
+                text: "서버 응답이 없습니다. 다시 시도해주세요.",
+                onConfirm: () => set({ modal: { type: "NONE" as const } })
+              }
+            });
+          }
+        }, 10000);
+
+      } catch (error) {
+        console.error("❌ [PAY_BAIL] 서버 전송 중 오류:", {
+          error: error.message || error,
+          gameId,
+          playerName: currentPlayer.name
+        });
+        set({
+          modal: {
+            type: "INFO" as const,
+            text: "보석금 지불 요청 중 오류가 발생했습니다. 다시 시도해주세요.",
+            onConfirm: () => set({ modal: { type: "NONE" as const } })
+          }
+        });
+      }
+    } else {
+      console.error("❌ [PAY_BAIL] 게임 ID가 설정되지 않음");
       set({
         modal: {
           type: "INFO" as const,
-          text: "보석금을 지불하는 중입니다...",
+          text: "게임 연결 상태에 문제가 있습니다. 페이지를 새로고침해주세요.",
+          onConfirm: () => set({ modal: { type: "NONE" as const } })
         }
       });
-    } else {
-      console.error("Cannot sync bail payment, gameId is not set");
     }
   },
 
