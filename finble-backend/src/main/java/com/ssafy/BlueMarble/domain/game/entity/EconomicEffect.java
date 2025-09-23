@@ -8,67 +8,67 @@ import lombok.RequiredArgsConstructor;
 public enum EconomicEffect {
 
     MODERN_BOOM(
-        EconomicPeriod.MODERN,
-        true,
-        "산업혁명",
-        "산업혁명과 2차 산업혁명으로 공업화, 철강·화학·전기 산업 발달, 세계 무역이 확대되고 있습니다.",
-        1.5, 1.2, 1.2
+            EconomicPeriod.MODERN,
+            true,
+            "산업혁명",
+            "산업혁명과 2차 산업혁명으로 공업화, 철강·화학·전기 산업 발달, 세계 무역이 확대되고 있습니다.",
+            1.06, 1.04, 1.03   // 급여, 부동산, 건설비
     ),
 
     MODERN_RECESSION(
-        EconomicPeriod.MODERN,
-        false,
-        "1873년 장기불황",
-        "경기침체로 안전자산인 부동산으로 자금이 몰리고 있습니다.",
-        1.0, 1.1, 0.9
+            EconomicPeriod.MODERN,
+            false,
+            "1873년 장기불황",
+            "경기 침체로 소비가 둔화되고 투자 심리가 위축되고 있습니다.",
+            0.97, 1.01, 0.99
     ),
 
     CONTEMPORARY_BOOM(
-        EconomicPeriod.CONTEMPORARY,
-        true,
-        "광란의 20년대",
-        "1920년대 미국 중심의 대량생산과 소비 호황으로 경제가 급성장하고 있습니다.",
-        1.6, 1.3, 1.3
+            EconomicPeriod.CONTEMPORARY,
+            true,
+            "광란의 20년대",
+            "대량생산·대량소비 확대로 생산성과 고용이 늘고 있습니다.",
+            1.08, 1.06, 1.04
     ),
 
     CONTEMPORARY_RECESSION(
-        EconomicPeriod.CONTEMPORARY,
-        false,
-        "1929년 대공황",
-        "경제 불안으로 금과 부동산 등 안전자산 수요가 급증하고 있습니다.",
-        0.5, 1.2, 0.8
+            EconomicPeriod.CONTEMPORARY,
+            false,
+            "1929년 대공황",
+            "금융 불안으로 신용이 경색되고 실물 경기가 급격히 위축되고 있습니다.",
+            0.94, 1.02, 0.97
     ),
 
     RECENT_BOOM(
-        EconomicPeriod.RECENT,
-        true,
-        "세계화와 IT혁명",
-        "1980~90년대 세계화와 IT혁명으로 정보통신과 금융자유화가 경제성장을 이끌고 있습니다.",
-        1.7, 1.4, 1.4
+            EconomicPeriod.RECENT,
+            true,
+            "세계화와 IT혁명",
+            "글로벌 밸류체인과 ICT 혁신이 생산성 향상을 견인하고 있습니다.",
+            1.10, 1.08, 1.05
     ),
 
     RECENT_RECESSION(
-        EconomicPeriod.RECENT,
-        false,
-        "글로벌 금융위기",
-        "금융위기로 투자자들이 안전자산인 부동산으로 몰리고 있습니다.",
-        0.5, 1.3, 0.7
+            EconomicPeriod.RECENT,
+            false,
+            "글로벌 금융위기",
+            "신용 경색과 자산 조정으로 투자가 위축되고 있습니다.",
+            0.92, 1.03, 0.95
     ),
 
     FUTURE_BOOM(
-        EconomicPeriod.FUTURE,
-        true,
-        "4차 산업혁명",
-        "AI, 로봇, 바이오 혁신으로 4차 산업혁명이 새로운 경제성장을 이끌고 있습니다.",
-        1.8, 1.5, 1.5
+            EconomicPeriod.FUTURE,
+            true,
+            "4차 산업혁명",
+            "AI·로봇·바이오 등 범용기술이 새로운 성장 동력을 제공합니다.",
+            1.12, 1.10, 1.06   // 급여, 부동산, 건설비
     ),
 
     FUTURE_RECESSION(
-        EconomicPeriod.FUTURE,
-        false,
-        "기후·자원 위기",
-        "자원 부족으로 실물자산인 부동산 가치가 상승하고 있습니다.",
-        0.5, 1.4, 0.7
+            EconomicPeriod.FUTURE,
+            false,
+            "기후·자원 위기",
+            "자원 제약과 공급망 불안으로 비용 압력이 커지고 있습니다.",
+            0.90, 1.04, 0.93
     );
     
     private final EconomicPeriod period;
