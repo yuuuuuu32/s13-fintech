@@ -72,7 +72,7 @@ function AutoOrthoCamera({ boardSize }: { boardSize: number }) {
 function GameScene() {
     const playersArray = useGameStore(state => Array.isArray(state.players) ? state.players : Object.values(state.players || {}));
     return (
-        <group scale={1.2} position={[0, 1.5, 0]}>
+        <group scale={0.8} position={[0, -0.5, 1]}>
             <Board />
             {playersArray.map((player) => (
                 <Player key={player.id} player={player} />

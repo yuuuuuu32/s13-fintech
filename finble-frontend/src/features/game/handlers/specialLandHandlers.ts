@@ -220,6 +220,7 @@ export const createSpecialLandHandlers = (
       } else {
         // 다른 플레이어 턴: 모달 없이 자동 처리
         set({ modal: { type: "NONE" as const } });
+        get().endTurn();
       }
     }
   },

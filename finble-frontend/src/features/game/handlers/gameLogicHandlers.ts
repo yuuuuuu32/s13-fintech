@@ -142,16 +142,6 @@ export const createGameLogicHandlers = (
       return;
     }
 
-    if (currentPlayer.isTraveling) {
-      set({
-        modal: {
-          type: "INFO",
-          text: "세계여행! 이동할 칸을 보드에서 직접 클릭하세요.",
-          onConfirm: () => set({ gamePhase: "WORLD_TRAVEL_MOVE", modal: { type: "NONE" as const } }),
-        },
-      });
-      return;
-    }
 
     set({ gamePhase: "DICE_ROLLING" });
 

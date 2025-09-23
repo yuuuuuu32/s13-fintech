@@ -289,32 +289,128 @@ export const createPlayerActions = (
     const { gameId, send, players, currentPlayerIndex } = get();
     const currentPlayer = players[currentPlayerIndex];
 
+    console.log("🔓 [PAY_BAIL] 보석금 지불 시도:", {
+      playerName: currentPlayer.name,
+      playerId: currentPlayer.id,
+      playerMoney: currentPlayer.money,
+      bailAmount: BAIL_AMOUNT,
+      isInJail: currentPlayer.isInJail,
+      jailTurns: currentPlayer.jailTurns,
+      gameId
+    });
+
+    // 감옥 상태 검증
+    if (!currentPlayer.isInJail) {
+      console.error("❌ [PAY_BAIL] 플레이어가 감옥에 있지 않습니다:", {
+        playerName: currentPlayer.name,
+        isInJail: currentPlayer.isInJail,
+        jailTurns: currentPlayer.jailTurns
+      });
+      set({
+        modal: {
+          type: "INFO" as const,
+          text: "현재 감옥에 있지 않아 보석금을 낼 수 없습니다."
+        }
+      });
+      return;
+    }
+
+    if (currentPlayer.jailTurns <= 0) {
+      console.error("❌ [PAY_BAIL] 감옥 턴이 0 이하입니다:", {
+        playerName: currentPlayer.name,
+        jailTurns: currentPlayer.jailTurns
+      });
+      set({
+        modal: {
+          type: "INFO" as const,
+          text: "감옥 상태가 올바르지 않습니다."
+        }
+      });
+      return;
+    }
+
     // 클라이언트 사이드 자금 체크
     if (currentPlayer.money < BAIL_AMOUNT) {
+      console.warn("💰 [PAY_BAIL] 보석금 부족:", {
+        playerMoney: currentPlayer.money,
+        requiredAmount: BAIL_AMOUNT,
+        shortage: BAIL_AMOUNT - currentPlayer.money
+      });
       set({ modal: { type: "INFO" as const, text: "보석금이 부족합니다." } });
       return;
     }
 
-    // 서버에 감옥 탈출 메시지 전송 (낙관적 업데이트 제거)
+    // 서버에 감옥 탈출 메시지 전송
     if (gameId) {
+      const payload = {
+        nickname: currentPlayer.name,
+        escape: true,
+      };
 
-      send(`/app/game/${gameId}/jail-event`, {
+      console.log("📤 [PAY_BAIL] 서버에 보석금 지불 요청 전송:", {
+        destination: `/app/game/${gameId}/jail-event`,
         type: "JAIL_EVENT",
-        payload: {
-          nickname: currentPlayer.name,
-          escape: true,
-        },
+        payload,
+        playerState: {
+          name: currentPlayer.name,
+          money: currentPlayer.money,
+          isInJail: currentPlayer.isInJail,
+          jailTurns: currentPlayer.jailTurns
+        }
       });
 
-      // 서버 응답 대기 모달 표시
+      try {
+        send(`/app/game/${gameId}/jail-event`, {
+          type: "JAIL_EVENT",
+          payload,
+        });
+
+        // 서버 응답 대기 모달 표시
+        set({
+          modal: {
+            type: "INFO" as const,
+            text: "보석금을 지불하는 중입니다...",
+          }
+        });
+
+        // 타임아웃 처리: 10초 후에도 응답이 없으면 에러 처리
+        setTimeout(() => {
+          const currentState = get();
+          if (currentState.modal?.text === "보석금을 지불하는 중입니다...") {
+            console.error("⏰ [PAY_BAIL] 서버 응답 타임아웃");
+            set({
+              modal: {
+                type: "INFO" as const,
+                text: "서버 응답이 없습니다. 다시 시도해주세요.",
+                onConfirm: () => set({ modal: { type: "NONE" as const } })
+              }
+            });
+          }
+        }, 10000);
+
+      } catch (error) {
+        console.error("❌ [PAY_BAIL] 서버 전송 중 오류:", {
+          error: error.message || error,
+          gameId,
+          playerName: currentPlayer.name
+        });
+        set({
+          modal: {
+            type: "INFO" as const,
+            text: "보석금 지불 요청 중 오류가 발생했습니다. 다시 시도해주세요.",
+            onConfirm: () => set({ modal: { type: "NONE" as const } })
+          }
+        });
+      }
+    } else {
+      console.error("❌ [PAY_BAIL] 게임 ID가 설정되지 않음");
       set({
         modal: {
           type: "INFO" as const,
-          text: "보석금을 지불하는 중입니다...",
+          text: "게임 연결 상태에 문제가 있습니다. 페이지를 새로고침해주세요.",
+          onConfirm: () => set({ modal: { type: "NONE" as const } })
         }
       });
-    } else {
-      console.error("Cannot sync bail payment, gameId is not set");
     }
   },
 
