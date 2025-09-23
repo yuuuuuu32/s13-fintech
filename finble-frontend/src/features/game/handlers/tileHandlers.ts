@@ -236,8 +236,8 @@ export const handleSpecialTile = (
           };
         });
 
-        // 다른 플레이어의 턴이면 잠시 후 자동으로 턴 종료
-        setTimeout(() => get().endTurn(), 100);
+        // 다른 플레이어의 턴에는 턴 종료를 호출하지 않음
+        // setTimeout(() => get().endTurn(), 100);
       }
       break;
     // case "박람회": {
@@ -342,20 +342,20 @@ export const handleSpecialTile = (
           }
         }, 100);
 
-        // 5초 후 자동 처리 (모달이 계속 사라지는 경우 대비)
-        setTimeout(() => {
-          const currentState = get();
-          if (currentState.modal?.type === "INFO" && currentState.modal?.text?.includes("세계여행")) {
-            console.log("✈️ [AIRPLANE] 5초 후 자동 처리");
-            set({
-              modal: { type: "NONE" as const },
-              gamePhase: "WAITING_FOR_ROLL"
-            });
-            get().endTurn();
-          }
-        }, 5000);
+        // 5초 후 자동 처리 (모달이 계속 사라지는 경우 대비) -> 버그 수정으로 제거
+        // setTimeout(() => {
+        //   const currentState = get();
+        //   if (currentState.modal?.type === "INFO" && currentState.modal?.text?.includes("세계여행")) {
+        //     console.log("✈️ [AIRPLANE] 5초 후 자동 처리");
+        //     set({
+        //       modal: { type: "NONE" as const },
+        //       gamePhase: "WAITING_FOR_ROLL"
+        //     });
+        //     get().endTurn();
+        //   }
+        // }, 5000);
       } else {
-        console.log("✈️ [AIRPLANE] 다른 플레이어 턴 - 상태만 업데이트하고 endTurn 호출");
+        console.log("✈️ [AIRPLANE] 다른 플레이어 턴 - 상태만 업데이트 (턴 종료 호출 안함)");
         set((state) => {
           const updatedPlayers = [...state.players];
           updatedPlayers[state.currentPlayerIndex] = {
@@ -367,7 +367,7 @@ export const handleSpecialTile = (
             modal: { type: "NONE" as const },
           };
         });
-        setTimeout(() => get().endTurn(), 100);
+        // setTimeout(() => get().endTurn(), 100); // BUG: 다른 클라이언트가 턴을 종료시키면 안됨
       }
       break;
 
