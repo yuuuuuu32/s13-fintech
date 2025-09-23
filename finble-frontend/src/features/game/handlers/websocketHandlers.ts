@@ -66,6 +66,20 @@ export const createWebSocketHandlers = (
               actualChange: true
             });
 
+            const newCurrentPlayer = state.players[nextPlayerIndex];
+
+            // Check if the new player is supposed to be traveling
+            if (newCurrentPlayer?.isTraveling) {
+                console.log("✈️ [TURN_START] 세계여행 중인 플레이어의 턴 - 바로 WORLD_TRAVEL_MOVE 모드로 진입");
+                return {
+                    currentPlayerIndex: nextPlayerIndex,
+                    currentTurn: payload.gameTurn ?? state.currentTurn,
+                    gamePhase: "WORLD_TRAVEL_MOVE", // Set the correct phase
+                    isDiceRolled: false,
+                    modal: { type: "NONE" },
+                };
+            }
+
             const newState = {
               currentPlayerIndex: nextPlayerIndex,
               currentTurn: payload.gameTurn ?? state.currentTurn,
@@ -102,7 +116,7 @@ export const createWebSocketHandlers = (
                                   if (serverPlayer) {
                                     // eslint-disable-next-line @typescript-eslint/no-unused-vars
                                     const { position, ...serverData } = serverPlayer;
-                                    return { ...clientPlayer, ...serverData, position: clientPlayer.position };
+                                    return { ...clientPlayer, ...serverData, position: clientPlayer.position, isTraveling: clientPlayer.isTraveling };
                                   }
                                   return clientPlayer;
                                 });

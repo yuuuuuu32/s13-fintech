@@ -312,54 +312,18 @@ export const handleSpecialTile = (
           };
         });
 
-        // 모달 설정 후 상태 확인
-        setTimeout(() => {
-          const currentState = get();
-          console.log("✈️ [AIRPLANE] 모달 설정 후 상태 확인:", {
-            gamePhase: currentState.gamePhase,
-            modal: currentState.modal,
-            modalType: currentState.modal?.type,
-            modalText: currentState.modal?.text
-          });
-
-          // 모달이 사라졌다면 다시 설정
-          if (currentState.modal?.type !== "INFO" || !currentState.modal?.text?.includes("세계여행")) {
-            console.log("🚨 [AIRPLANE] 세계여행 모달이 사라짐 - 복원 시도");
-            set({
-              modal: {
-                type: "INFO",
-                text: "세계여행! 다음 턴에 원하는 곳으로 이동할 수 있습니다.",
-                onConfirm: () => {
-                  console.log("✈️ [AIRPLANE] 복원된 모달 확인 버튼 클릭됨");
-                  set({
-                    modal: { type: "NONE" as const },
-                    gamePhase: "WAITING_FOR_ROLL"
-                  });
-                  get().endTurn();
-                },
-              },
-            });
-          }
-        }, 100);
-
-        // 5초 후 자동 처리 (모달이 계속 사라지는 경우 대비) -> 버그 수정으로 제거
-        // setTimeout(() => {
-        //   const currentState = get();
-        //   if (currentState.modal?.type === "INFO" && currentState.modal?.text?.includes("세계여행")) {
-        //     console.log("✈️ [AIRPLANE] 5초 후 자동 처리");
-        //     set({
-        //       modal: { type: "NONE" as const },
-        //       gamePhase: "WAITING_FOR_ROLL"
-        //     });
-        //     get().endTurn();
-        //   }
-        // }, 5000);
+        // 모달 자동 복원 로직 제거 (근본 원인 해결로 불필요)
       } else {
         console.log("✈️ [AIRPLANE] 다른 플레이어 턴 - 상태만 업데이트 (턴 종료 호출 안함)");
         set((state) => {
+          const playerToUpdateIndex = state.players.findIndex(p => p.id === currentPlayer.id);
+          if (playerToUpdateIndex === -1) {
+            console.error("✈️ [AIRPLANE] 버그: 상태 업데이트할 플레이어를 찾지 못했습니다.", { playerToUpdateName: currentPlayer.name });
+            return {};
+          }
           const updatedPlayers = [...state.players];
-          updatedPlayers[state.currentPlayerIndex] = {
-            ...updatedPlayers[state.currentPlayerIndex],
+          updatedPlayers[playerToUpdateIndex] = {
+            ...updatedPlayers[playerToUpdateIndex],
             isTraveling: true,
           };
           return {
