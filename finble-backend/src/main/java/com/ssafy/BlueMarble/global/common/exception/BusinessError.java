@@ -55,6 +55,7 @@ public enum BusinessError {
     INVALID_BUILDING_TYPE(HttpStatus.BAD_REQUEST, "유효하지 않은 건물 타입입니다."),
     MAX_BUILDING_REACHED(HttpStatus.BAD_REQUEST, "최대 건물 레벨에 도달했습니다."),
     CANNOT_TRADE(HttpStatus.BAD_REQUEST, "주인이 없어 거래할 수 없습니다."),
+    CANNOT_CONSTRUCT(HttpStatus.BAD_REQUEST, "건물을 지을 수 없는 땅 입니다.")
     ;
 
 

@@ -65,7 +65,6 @@ public class LandService {
 
         // 4.1 경제역사 효과를 적용한 실제 가격 계산
         Long basePrice = targetCell.getToll();
-        ;
         Long actualPrice = economicHistoryService.calculatePropertyPriceWithEffect(basePrice, gameState.getGameTurn());
         log.info("[TRADE] 경제역사 효과 적용: 기본가격={}, 적용가격={}",
                 basePrice, actualPrice);
@@ -170,15 +169,38 @@ public class LandService {
         log.info("[CONSTRUCT] player null? {}", user == null);
         GameMap mapData = gameState.getCurrentMap();
 
+        //2.1 건설을 하려는 사람이 현재 셀에 서있는지 체크
+        if(user.getPosition() != constructRequest.getLandNum()){
+            throw new BusinessException(BusinessError.INVALID_BEHAVIOR);
+        }
+
         //3. 건설시도 ( 건설 자금이 충분한지 / 현재 건설하려는 땅을 소유하고 있는지 체크해야함)
         Tile targetCell = mapData.getCells().get(constructRequest.getLandNum());
 
-        //3.0 특별 땅이라면 건물을 지을 수 없음
-        if (targetCell.getType().equals(Tile.TileType.SPECIAL)) {
+        //3.1 특별 땅이라면 건물을 지을 수 없음, 일반땅이 아니라면 지을 수 없음(감옥 세계여행 국세청 등등)
+        if (targetCell.getType().equals(Tile.TileType.SPECIAL) && !constructRequest.getTargetBuildingType().equals(Tile.BuildingType.FIELD)) {
             throw new BusinessException(BusinessError.SPECIAL_CANNOT_BUILD);
         }
 
-        //3.0.1 목표 건물 타입까지의 총 건설 비용 계산
+        if(!targetCell.getType().equals(Tile.TileType.NORMAL)) {
+            throw new BusinessException(BusinessError.CANNOT_CONSTRUCT);
+        }
+
+        //3.2 땅 소유 여부 확인 및 땅 구매 처리
+        boolean needLandPurchase = false;
+        Long landPurchaseCost = 0L;
+        
+        if (targetCell.getOwnerName() == null) {
+            // 땅이 소유되지 않은 경우 - 땅 구매 필요
+            needLandPurchase = true;
+            landPurchaseCost = (long) targetCell.getLandPrice(); // 경제효과가 이미 적용된 가격
+            log.info("[CONSTRUCT] 땅 구매 필요: 땅 가격={}", landPurchaseCost);
+        } else if (!targetCell.getOwnerName().equals(constructRequest.getNickname())) {
+            // 다른 사람이 소유한 땅인 경우
+            throw new BusinessException(BusinessError.CANNOT_TRADE);
+        }
+
+        //3.3 목표 건물 타입까지의 총 건설 비용 계산
         Tile.BuildingType currentType = targetCell.getBuildingType();
         Tile.BuildingType targetType = constructRequest.getTargetBuildingType();
 
@@ -186,9 +208,13 @@ public class LandService {
         log.info("[CONSTRUCT] 건설 비용 계산: {} -> {} = {} (Redis에서 가져온 경제효과 적용된 비용)",
                 currentType, targetType, totalBuildingCost);
 
-        //3.1 유효성 검사
-        // 현재 건물 타입보다 높은 타입만 건설 가능
-        if (targetType.ordinal() <= currentType.ordinal()) {
+        //3.4 총 비용 계산 (땅 구매 + 건물 건설)
+        Long totalCost = landPurchaseCost + totalBuildingCost;
+        log.info("[CONSTRUCT] 총 비용: 땅구매={} + 건설={} = {}", landPurchaseCost, totalBuildingCost, totalCost);
+
+        //3.5 유효성 검사
+        // 현재 건물 타입보다 높은 타입만 건설 가능 (FIELD는 땅 구매로 처리)
+        if (targetType != Tile.BuildingType.FIELD && targetType.ordinal() <= currentType.ordinal()) {
             throw new BusinessException(BusinessError.INVALID_BUILDING_TYPE);
         }
 
@@ -197,21 +223,32 @@ public class LandService {
             throw new BusinessException(BusinessError.MAX_BUILDING_REACHED);
         }
 
-        // 건설 자금이 충분한지 확인
-        if (totalBuildingCost > user.getMoney()) {
+        // 총 비용이 충분한지 확인
+        if (totalCost > user.getMoney()) {
             throw new BusinessException(BusinessError.INSUFFICIENT_MONEY);
         }
 
-        //3.1 건물 타입을 목표 타입으로 변경
+        //3.6 땅 구매 처리
+        if (needLandPurchase) {
+            targetCell.setOwnerName(constructRequest.getNickname());
+            if (user.getOwnedProperties() == null) {
+                user.setOwnedProperties(new ArrayList<>());
+            }
+            user.getOwnedProperties().add(targetCell.getCellNumber());
+            log.info("[CONSTRUCT] 땅 구매 완료: 소유자={}, 소유 땅 목록={}", constructRequest.getNickname(), user.getOwnedProperties());
+        }
+
+        //3.7 건물 타입을 목표 타입으로 변경
         targetCell.setBuildingType(targetType);
         log.info("[CONSTRUCT] 건물 타입 변경: {} -> {}", currentType, targetType);
 
-        // 3.2 건설 비용 차감 (총 건설 비용)
-        user.setMoney(user.getMoney() - totalBuildingCost);
-        log.info("[CONSTRUCT] 건설 비용 차감: 잔액={}, 차감액={}", user.getMoney(), totalBuildingCost);
+        // 3.8 총 비용 차감 (땅 구매 + 건설 비용)
+        user.setMoney(user.getMoney() - totalCost);
+        log.info("[CONSTRUCT] 총 비용 차감: 잔액={}, 차감액={}", user.getMoney(), totalCost);
 
         //4. 업데이트된 상태를 Redis에 저장
         gameRedisService.saveGameMapState(roomId, gameState);
+        
         //5. 메시지 전달 (경제역사 효과 적용된 건설 비용 정보 포함)
         ConstructPayload payload = ConstructPayload.builder()
                 .result(true)
@@ -231,6 +268,9 @@ public class LandService {
         JsonNode payloadNode = objectMapper.valueToTree(payload);
         MessageDto message = new MessageDto(MessageType.CONSTRUCT_BUILDING, payloadNode);
         sessionMessageService.sendMessageToRoom(roomId, message);
+        
+        //6. 토지 거래 후 승리 조건 체크
+        victoryService.checkAllVictoryConditions(roomId, gameState);
     }
 
     /**
@@ -240,9 +280,14 @@ public class LandService {
                                             Tile targetCell) {
         Tile.BuildingType current = targetCell.getBuildingType();
 
+        // FIELD가 목표라면 땅 구매 비용 반환
+        if (target == Tile.BuildingType.FIELD) {
+            return 0L;
+        }
+
         Long totalCost = 0L;
 
-        // 현재 타입 다음부터 목표 타입까지의 각 단계 비용 계산
+        // 현재 타입의 다음 단계부터 목표 타입까지의 각 단계 비용 계산
         for (int i = current.ordinal() + 1; i <= target.ordinal(); i++) {
             Tile.BuildingType buildingType = Tile.BuildingType.values()[i];
             Long stepCost = getBuildingCostFromTile(buildingType, targetCell);
