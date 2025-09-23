@@ -289,13 +289,23 @@ export const createGameLogicHandlers = (
       note: "서버에서 받은 위치 사용"
     });
 
-    // 위치 중복 검사
+    // 위치 중복 검사 및 복원
     const positionCheck = new Map();
+    let duplicateDetected = false;
+    const duplicateInfo: any[] = [];
+
     updatedPlayers.forEach((player, index) => {
       if (positionCheck.has(player.position)) {
+        duplicateDetected = true;
+        const existingPlayer = positionCheck.get(player.position);
+        duplicateInfo.push({
+          position: player.position,
+          player1: existingPlayer,
+          player2: { name: player.name, id: player.id, index }
+        });
         console.error("🚨 [CRITICAL] MOVE_PLAYER: 위치 중복 감지!", {
           position: player.position,
-          player1: positionCheck.get(player.position),
+          player1: existingPlayer,
           player2: { name: player.name, id: player.id, index },
           allPositions: updatedPlayers.map(p => ({ name: p.name, position: p.position })),
           diceValues,
@@ -306,6 +316,41 @@ export const createGameLogicHandlers = (
         positionCheck.set(player.position, { name: player.name, id: player.id, index });
       }
     });
+
+    // 위치 중복이 감지되면 즉시 복원
+    if (duplicateDetected) {
+      console.log("🔧 [MOVE_PLAYER] 위치 중복 즉시 복원:", duplicateInfo);
+
+      duplicateInfo.forEach(({ position, player1, player2 }) => {
+        const player1Index = updatedPlayers.findIndex(p => p.id === player1.id);
+        const player2Index = updatedPlayers.findIndex(p => p.id === player2.id);
+
+        if (player1Index !== -1 && player2Index !== -1) {
+          // 현재 이동 중인 플레이어가 아닌 플레이어의 위치를 조정
+          if (player1Index !== currentPlayerIndex) {
+            updatedPlayers[player1Index] = {
+              ...updatedPlayers[player1Index],
+              position: Math.max(0, position - 1)
+            };
+            console.log("🔧 [MOVE_PLAYER] player1 위치 복원:", {
+              playerName: player1.name,
+              oldPosition: position,
+              newPosition: Math.max(0, position - 1)
+            });
+          } else if (player2Index !== currentPlayerIndex) {
+            updatedPlayers[player2Index] = {
+              ...updatedPlayers[player2Index],
+              position: Math.min(35, position + 1)
+            };
+            console.log("🔧 [MOVE_PLAYER] player2 위치 복원:", {
+              playerName: player2.name,
+              oldPosition: position,
+              newPosition: Math.min(35, position + 1)
+            });
+          }
+        }
+      });
+    }
 
     set({
       players: updatedPlayers,

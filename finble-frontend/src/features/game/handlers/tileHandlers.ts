@@ -109,6 +109,7 @@ export const handleCityCompanyTile = (
         });
       } else {
         // 건물 건설 불가능한 경우 바로 턴 종료
+        get().addToast("info", `🏠 ${currentTile.name}`, "당신의 소유 땅입니다. 건물을 더 지을 수 없습니다.", 2000);
         set({ modal: { type: "NONE" as const } });
         get().endTurn();
       }
@@ -209,7 +210,7 @@ export const handleSpecialTile = (
           };
         });
       } else {
-        // 다른 플레이어의 턴: 모달 없이 자동 처리
+        // 다른 플레이어의 턴: 토스트로 표시하고 자동 처리
         set((state) => {
           const updatedPlayers = [...state.players];
           updatedPlayers[state.currentPlayerIndex] = {
@@ -219,7 +220,15 @@ export const handleSpecialTile = (
           };
 
           const playerName = updatedPlayers[state.currentPlayerIndex].name;
-          console.log(`🔒 [JAIL] 다른 플레이어 턴 - ${playerName}님이 감옥에 갇힘 (자동 처리)`);
+          console.log(`🔒 [JAIL] 다른 플레이어 턴 - ${playerName}님이 감옥에 갇힘 (토스트 표시)`);
+
+          // 다른 플레이어들에게 토스트로 알림
+          get().addToast(
+            "warning",
+            "🔒 감옥 입성",
+            `${playerName}님이 감옥에 갇혔습니다! (3턴간 움직일 수 없음)`,
+            4000
+          );
 
           return {
             players: updatedPlayers,
@@ -255,18 +264,9 @@ export const handleSpecialTile = (
     // }
     case "START":
       if (isMyTurn) {
-        console.log("🏠 [START] 내 턴 - 모달 표시");
-        set({
-          modal: {
-            type: "INFO",
-            text: "시작점에 도착했습니다! 월급을 받았습니다.",
-            onConfirm: () => {
-              console.log("🏠 [START] 모달 확인 버튼 클릭됨");
-              set({ modal: { type: "NONE" as const } });
-              get().endTurn();
-            },
-          },
-        });
+        console.log("🏠 [START] 내 턴 - 토스트 표시");
+        get().addToast("success", "🏠 시작점 도착!", "월급을 받았습니다.", 2000);
+        get().endTurn();
       } else {
         console.log("🏠 [START] 다른 플레이어 턴 - endTurn 호출");
         setTimeout(() => get().endTurn(), 100);
@@ -303,9 +303,10 @@ export const handleSpecialTile = (
                 console.log("✈️ [AIRPLANE] 모달 확인 버튼 클릭됨");
                 set({
                   modal: { type: "NONE" as const },
-                  gamePhase: "WAITING_FOR_TURN_END" // 서버에서 턴 관리하도록 대기 상태로 설정
+                  gamePhase: "WAITING_FOR_ROLL" // 다음 턴 대기 상태로 설정
                 });
-                // endTurn을 호출하지 않고 서버가 자동으로 턴을 관리하도록 함
+                console.log("✈️ [AIRPLANE] 세계여행 설정 완료, 턴 종료");
+                get().endTurn();
               },
             },
           };
@@ -332,8 +333,9 @@ export const handleSpecialTile = (
                   console.log("✈️ [AIRPLANE] 복원된 모달 확인 버튼 클릭됨");
                   set({
                     modal: { type: "NONE" as const },
-                    gamePhase: "WAITING_FOR_TURN_END"
+                    gamePhase: "WAITING_FOR_ROLL"
                   });
+                  get().endTurn();
                 },
               },
             });
@@ -347,8 +349,9 @@ export const handleSpecialTile = (
             console.log("✈️ [AIRPLANE] 5초 후 자동 처리");
             set({
               modal: { type: "NONE" as const },
-              gamePhase: "WAITING_FOR_TURN_END"
+              gamePhase: "WAITING_FOR_ROLL"
             });
+            get().endTurn();
           }
         }, 5000);
       } else {
