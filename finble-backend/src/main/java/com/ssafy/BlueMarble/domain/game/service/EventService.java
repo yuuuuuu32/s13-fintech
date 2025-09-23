@@ -314,9 +314,13 @@ public class EventService {
             salaryBonus = economicHistoryService.calculateSalaryWithEffect(baseSalary, gameState.getGameTurn());
             player.setMoney(player.getMoney() + salaryBonus);
         }
+
         //5.1 감옥 자리라면 사용자 상태 업데이트 해야함
         if (gameState.getCurrentMap().getCells().get(newPosition).getType().equals(Tile.TileType.JAIL)) {
             player.setInJail(true);
+            player.setJailTurns(3);
+            gameRedisService.saveGameMapState(roomId, gameState);
+            log.info("현재 플레이어가 감옥에 갔나요? : {}", player.isInJail());
         }
         // 6. 새로운 위치로 이동
         player.setPosition(newPosition);

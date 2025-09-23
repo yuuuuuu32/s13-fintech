@@ -142,6 +142,18 @@ public class TimerService {
                 return;
             }
 
+
+            // 감옥에 있다면 턴을 줄여주는걸로 대신해야함
+            if(currentPlayer.isInJail()){
+                currentPlayer.setJailTurns(currentPlayer.getJailTurns() - 1);
+                // 만기 채웠으면 초기화 시켜주자
+                if(currentPlayer.getJailTurns() <= 0){
+                    currentPlayer.setInJail(false);
+                    currentPlayer.setJailTurns(0);
+                }
+            }
+
+
             TurnInfoDto payload = TurnInfoDto.builder()
                     .roomId(roomId)
                     .gameTurn(gameState.getGameTurn())
@@ -151,6 +163,7 @@ public class TimerService {
             JsonNode payloadNode = objectMapper.valueToTree(payload);
             MessageDto message = new MessageDto(MessageType.GAME_STATE_CHANGE, payloadNode);
             sessionMessageService.sendMessageToRoom(roomId, message);
+            gameRedisService.saveGameMapState(roomId, gameState);
 
             // 경제 효과를 타일과 플레이어에게 실제 적용 (2턴마다 적용)
             if (gameState.getGameTurn() > 0 && gameState.getGameTurn() % 2 == 0){

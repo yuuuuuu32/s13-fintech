@@ -37,6 +37,7 @@ export const useGameStore = create<GameState>()((set, get) => {
     isDiceRolled: false,
     economicHistory: null,
     lastEconomicModalTurn: null,
+    toastMessages: [],
 
     // 웹소켓 관련 메서드
     connect: websocketHandlers.connect,
@@ -116,6 +117,34 @@ export const useGameStore = create<GameState>()((set, get) => {
 
       const result = Math.round(baseValue * multiplier);
       return result;
+    },
+
+    // 토스트 메시지 관리
+    addToast: (type, title, message, duration = 3000) => {
+      const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const toast = {
+        id,
+        type,
+        title,
+        message,
+        duration,
+        timestamp: Date.now()
+      };
+
+      set((state) => ({
+        toastMessages: [...state.toastMessages, toast]
+      }));
+
+      // 자동 제거
+      setTimeout(() => {
+        get().removeToast(id);
+      }, duration);
+    },
+
+    removeToast: (id) => {
+      set((state) => ({
+        toastMessages: state.toastMessages.filter(toast => toast.id !== id)
+      }));
     },
   };
 });
