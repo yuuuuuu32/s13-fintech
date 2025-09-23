@@ -295,6 +295,7 @@ export const createGameLogicHandlers = (
       players: updatedPlayers,
       dice: diceValues,
       gamePhase: "PLAYER_MOVING",
+      serverCurrentPosition: null, // 사용한 값은 즉시 초기화하여 다른 곳에서 재사용 방지
     });
 
     // 애니메이션 시뮬레이션을 위한 지연 후 타일 액션 처리
