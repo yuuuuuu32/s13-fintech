@@ -56,13 +56,14 @@ export const createWebSocketHandlers = (
 
         set((state) => {
           const nextPlayerIndex = state.players.findIndex(p => p.name === payload.curPlayer);
-          if (nextPlayerIndex !== -1) {
+          if (nextPlayerIndex !== -1 && nextPlayerIndex !== state.currentPlayerIndex) {
             console.log("🔄 [TURN_DEBUG] 플레이어 인덱스 변경:", {
               previousIndex: state.currentPlayerIndex,
               nextIndex: nextPlayerIndex,
               previousPlayer: state.players[state.currentPlayerIndex]?.name,
               nextPlayer: state.players[nextPlayerIndex]?.name,
-              isLastPlayer: nextPlayerIndex === state.players.length - 1
+              isLastPlayer: nextPlayerIndex === state.players.length - 1,
+              actualChange: true
             });
 
             const newState = {
@@ -74,9 +75,34 @@ export const createWebSocketHandlers = (
               modal: state.modal.type === "CHANCE_CARD" ? state.modal : { type: "NONE" },
             };
 
-            // Note: checkGameOver will be called at the end of endTurn, no need to call here
+            // 위치 무결성 검증
+            setTimeout(() => {
+              const currentState = get();
+              const positionCheck = new Map();
+              currentState.players.forEach((player, index) => {
+                if (positionCheck.has(player.position)) {
+                  console.error("🚨 [CRITICAL] GAME_STATE_CHANGE 후 위치 중복 감지!", {
+                    position: player.position,
+                    player1: positionCheck.get(player.position),
+                    player2: { name: player.name, id: player.id, index },
+                    allPositions: currentState.players.map(p => ({ name: p.name, position: p.position })),
+                    currentPlayerIndex: currentState.currentPlayerIndex
+                  });
+                } else {
+                  positionCheck.set(player.position, { name: player.name, id: player.id, index });
+                }
+              });
+            }, 50);
 
             return newState;
+          } else {
+            console.log("🔄 [TURN_DEBUG] 플레이어 인덱스 변경 스킵:", {
+              reason: nextPlayerIndex === -1 ? "플레이어를 찾을 수 없음" : "이미 동일한 플레이어",
+              currentIndex: state.currentPlayerIndex,
+              nextIndex: nextPlayerIndex,
+              currentPlayer: state.players[state.currentPlayerIndex]?.name,
+              targetPlayer: payload.curPlayer
+            });
           }
           return {};
         });
