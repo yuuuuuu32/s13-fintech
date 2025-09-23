@@ -310,7 +310,7 @@ const BuySpecialLandModalContent = ({ modal, buySpecialLand, endTurn, currentPla
 
   const handlePurchase = () => {
     buySpecialLand(tile, landPrice);
-    endTurn();
+    // endTurn() 제거 - buySpecialLand에서 서버 응답 후 처리
   };
 
   return (

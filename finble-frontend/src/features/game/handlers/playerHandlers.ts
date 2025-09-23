@@ -10,12 +10,25 @@ export const createPlayerActions = (
   buyProperty: () => {
     const { gameId, send, players, currentPlayerIndex, modal, board } = get();
     const tileIndex = board.findIndex((t) => t.name === modal.tile?.name);
-    if (tileIndex === -1 || !modal.tile?.price) return;
+    if (tileIndex === -1) return;
 
     const currentPlayer = players[currentPlayerIndex];
+    const tile = modal.tile;
 
-    // 클라이언트 사이드 자금 체크
-    if (currentPlayer.money < modal.tile.price) {
+    // 경제 효과가 적용된 가격 계산 (BuyPropertyModalContent와 동일한 로직)
+    const baseLandPrice = tile?.landPrice || tile?.price || 0;
+    const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
+
+    console.log("🏗️ [BUY_PROPERTY] 일반 땅 구매 요청:", {
+      tileName: tile?.name,
+      tileIndex,
+      baseLandPrice,
+      adjustedLandPrice,
+      currentPlayerMoney: currentPlayer.money
+    });
+
+    // 클라이언트 사이드 자금 체크 (경제 효과 적용된 가격 사용)
+    if (currentPlayer.money < adjustedLandPrice) {
       set({ modal: { type: "INFO" as const, text: "자산이 부족하여 구매할 수 없습니다." } });
       return;
     }
@@ -27,7 +40,7 @@ export const createPlayerActions = (
         payload: {
           nickname: currentPlayer.name,
           landNum: tileIndex,
-          targetBuildingType: "LAND",
+          targetBuildingType: "FIELD", // 백엔드 enum에 맞게 FIELD 사용
         },
       });
     } else {
@@ -41,6 +54,13 @@ export const createPlayerActions = (
     const { gameId, send, players, currentPlayerIndex, board } = get();
     const currentPlayer = players[currentPlayerIndex];
 
+    console.log("🏗️ [BUY_PROPERTY_WITH_ITEMS] 일반 땅+건물 구매 요청:", {
+      tileName: purchaseData.tile?.name,
+      selectedItems: purchaseData.selectedItems,
+      totalCost: purchaseData.totalCost,
+      currentPlayerMoney: currentPlayer.money
+    });
+
     // 1. Check for funds (client-side check)
     if (currentPlayer.money < purchaseData.totalCost) {
       set({ modal: { type: "INFO" as const, text: "자산이 부족하여 구매할 수 없습니다." } });
@@ -53,7 +73,7 @@ export const createPlayerActions = (
       return;
     }
 
-    let targetBuildingType = "LAND";
+    let targetBuildingType = "FIELD"; // 백엔드 enum에 맞게 FIELD 사용
     if (purchaseData.selectedItems.hotel) {
       targetBuildingType = "HOTEL";
     } else if (purchaseData.selectedItems.building) {

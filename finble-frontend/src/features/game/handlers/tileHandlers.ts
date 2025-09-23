@@ -37,6 +37,22 @@ export const handleCityCompanyTile = (
     landPrice: currentTile.landPrice ?? currentTile.price ?? 0
   });
 
+  // 소유자 확인을 위한 상세 로그
+  console.log("🔍 [OWNERSHIP_DEBUG] 소유권 확인 상세 정보:", {
+    currentPosition: currentPlayer.position,
+    allPlayersProperties: players.map(p => ({
+      name: p.name,
+      id: p.id,
+      properties: p.properties
+    })),
+    ownerFound: !!owner,
+    ownerDetails: owner ? {
+      name: owner.name,
+      id: owner.id,
+      properties: owner.properties
+    } : null
+  });
+
   if (!owner) {
     const baseLandPrice = (currentTile as TileData & { landPrice?: number }).landPrice ?? currentTile.price ?? 0;
     const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
@@ -64,40 +80,26 @@ export const handleCityCompanyTile = (
     }
 
     if (isMyTurn) {
-      // 내 턴일 때도 먼저 통행료를 지불하고 난 후 인수 모달 표시
-      set((state) => {
-        const updatedPlayers = [...state.players];
-        const currentPlayerIndex = state.currentPlayerIndex;
-        const ownerIndex = updatedPlayers.findIndex(p => p.id === owner.id);
+      // 통행료 지불/인수 선택 모달을 먼저 표시 (실제 결제는 선택 후)
+      const baseLandPrice = (currentTile as TileData & { landPrice?: number }).landPrice ?? currentTile.price ?? 0;
+      const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
+      const acquireCost = adjustedLandPrice * 2;
 
-        // 통행료 지불
-        updatedPlayers[currentPlayerIndex] = {
-          ...updatedPlayers[currentPlayerIndex],
-          money: updatedPlayers[currentPlayerIndex].money - toll
-        };
+      console.log("💰 [OTHER_OWNED_LAND] 다른 플레이어 소유 땅 도착 - 선택 모달 표시:", {
+        tileName: currentTile.name,
+        ownerName: owner.name,
+        tollAmount: toll,
+        acquireCost: acquireCost,
+        currentPlayerMoney: currentPlayer.money
+      });
 
-        // 소유자에게 통행료 지급
-        updatedPlayers[ownerIndex] = {
-          ...updatedPlayers[ownerIndex],
-          money: updatedPlayers[ownerIndex].money + toll
-        };
-
-        console.log("💰 [TOLL_PAYMENT] 통행료 지불 후 인수 모달 표시:", {
-          payerName: updatedPlayers[currentPlayerIndex].name,
-          ownerName: updatedPlayers[ownerIndex].name,
-          tollAmount: toll,
-          payerMoneyAfter: updatedPlayers[currentPlayerIndex].money,
-          ownerMoneyAfter: updatedPlayers[ownerIndex].money
-        });
-
-        const baseLandPrice = (currentTile as TileData & { landPrice?: number }).landPrice ?? currentTile.price ?? 0;
-        const adjustedLandPrice = state.applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
-        const acquireCost = adjustedLandPrice * 2;
-
-        return {
-          players: updatedPlayers,
-          modal: { type: "ACQUIRE_PROPERTY", tile: currentTile, acquireCost, toll }
-        };
+      set({
+        modal: {
+          type: "ACQUIRE_PROPERTY",
+          tile: currentTile,
+          acquireCost,
+          toll
+        }
       });
     } else {
       // 다른 플레이어의 턴: 통행료 자동 지불 (클라이언트 사이드에서만 처리)
