@@ -14,10 +14,10 @@ const getCSSVariable = (variableName: string, fallback: string) => {
 // 플레이어 색상 함수
 const getPlayerColor = (character: string) => {
   const characterColors = {
-    'cone': getCSSVariable('--player-cone-color', '#4A90E2'),
-    'sphere': getCSSVariable('--player-sphere-color', '#E74C3C'),
-    'box': getCSSVariable('--player-box-color', '#F39C12'),
-    'torus': getCSSVariable('--player-torus-color', '#9B59B6')
+    'p1': getCSSVariable('--player-cone-color', '#4A90E2'),
+    'p2': getCSSVariable('--player-sphere-color', '#E74C3C'),
+    'p3': getCSSVariable('--player-box-color', '#F39C12'),
+    'p4': getCSSVariable('--player-torus-color', '#9B59B6')
   };
   return characterColors[character] || getCSSVariable('--player-default-color', '#FFFFFF');
 };
