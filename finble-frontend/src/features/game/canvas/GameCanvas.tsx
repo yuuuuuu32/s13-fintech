@@ -90,10 +90,6 @@ function BoardWithPhysics() {
   );
 }
 
-function BoardWithoutPhysics() {
-  return <GameScene />;
-}
-
 
 // ==== Main GameCanvas Component ====
 export default function GameCanvas() {
@@ -207,7 +203,14 @@ export default function GameCanvas() {
           <pointLight position={[25, 8, 15]} color="#d24bff" intensity={25} distance={80} />
 
           {/* Game Board and Pieces */}
-          <Suspense fallback={<BoardWithoutPhysics />}>
+          <Suspense fallback={
+            <group scale={1.2} position={[0, 1.5, 0]}>
+              <mesh>
+                <boxGeometry args={[1, 0.1, 1]} />
+                <meshBasicMaterial color="#444" />
+              </mesh>
+            </group>
+          }>
             <BoardWithPhysics />
           </Suspense>
 

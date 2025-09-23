@@ -432,9 +432,7 @@ export function GameUI() {
 
   const navigate = useNavigate();
 
-  const [gauge, setGauge] = useState(0);
-  const gaugeRef = useRef<number | null>(null);
-  const [isCharging, setIsCharging] = useState(false);
+  // 파워 게이지 관련 상태 제거 (즉시 실행으로 변경)
   const [timeLeft, setTimeLeft] = useState(30);
 
   const winner = winnerId ? players.find(p => p.id === winnerId) : null;
@@ -466,36 +464,12 @@ export function GameUI() {
     }
   }, [isMyTurn, currentPlayerIndex, gamePhase]); // Also depend on gamePhase
 
-  useEffect(() => {
-    return () => {
-      if (gaugeRef.current) {
-        clearInterval(gaugeRef.current);
-      }
-    }
-  }, []);
+  // 파워 게이지 정리 useEffect 제거
 
-  const handleChargeStart = () => {
+  const handleDiceClick = () => {
     if (gamePhase !== 'WAITING_FOR_ROLL' || !isMyTurn) return;
-    setIsCharging(true);
-    setGauge(0);
-    let power = 0;
-    let direction = 1;
-    const interval = setInterval(() => {
-      power += direction * 2;
-      if (power > 100) { power = 100; direction = -1; }
-      if (power < 0) { power = 0; direction = 1; }
-      setGauge(power);
-    }, 20);
-    gaugeRef.current = interval;
-  }
-
-  const handleChargeEnd = () => {
-    if (!isCharging) return;
-    setIsCharging(false);
-    if (gaugeRef.current) {
-      clearInterval(gaugeRef.current);
-    }
-    setDicePower(gauge);
+    // 고정된 파워값(50)으로 즉시 주사위 굴리기
+    setDicePower(50);
     window.dispatchEvent(new Event('roll-dice'));
   }
 
@@ -659,22 +633,15 @@ export function GameUI() {
       })}
 
       <Box className={styles.bottomControls}>
-        {gamePhase === 'WAITING_FOR_ROLL' && (
-           <Box className={styles.gaugeContainer}>
-             <LinearProgress variant="determinate" value={gauge} color="secondary" className={styles.gauge} />
-           </Box>
-        )}
-        <Button 
+        <Button
           variant="contained"
           size="large"
-          onMouseDown={handleChargeStart}
-          onMouseUp={handleChargeEnd}
-          onMouseLeave={handleChargeEnd}
+          onClick={handleDiceClick}
           disabled={gamePhase !== 'WAITING_FOR_ROLL' || !isMyTurn}
           className={styles.mainButton}
           sx={{ fontFamily: 'Galmuri14' }}
         >
-          {currentPlayer?.isInJail ? '감옥...' : (isCharging ? '놓아서 굴리기!' : '눌러서 파워 조절')}
+          {currentPlayer?.isInJail ? '감옥...' : '주사위 굴리기'}
         </Button>
 
         {isMyTurn && gamePhase === 'TILE_ACTION' && modal.type === 'NONE' && (

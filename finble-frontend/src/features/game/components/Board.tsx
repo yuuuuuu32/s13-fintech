@@ -152,7 +152,7 @@ export function Board() {
         }
 
         return (
-          <BaseTile {...baseTileProps}>
+          <BaseTile key={index} {...baseTileProps}>
             {(tile.type === 'city' || tile.type === 'company') && 
               <NormalTile tile={tile} tileIndex={index} />}
             {tile.type === 'chance' && 
