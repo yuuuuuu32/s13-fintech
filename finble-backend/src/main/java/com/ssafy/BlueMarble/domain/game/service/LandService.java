@@ -182,7 +182,7 @@ public class LandService {
             throw new BusinessException(BusinessError.SPECIAL_CANNOT_BUILD);
         }
 
-        if(!targetCell.getType().equals(Tile.TileType.NORMAL)) {
+        if (targetCell.getType() != Tile.TileType.NORMAL && targetCell.getType() != Tile.TileType.SPECIAL) {
             throw new BusinessException(BusinessError.CANNOT_CONSTRUCT);
         }
 
