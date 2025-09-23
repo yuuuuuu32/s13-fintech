@@ -1,3 +1,4 @@
+import { useUserStore } from "../../../stores/useUserStore.ts";
 import type { GameState, GameInitialState, Player } from "../types/gameTypes.ts";
 import { sendMessage, subscribeToTopic } from "../../../utils/websocket.ts";
 import { CHARACTER_PREFABS } from "../constants/gameConstants.ts";

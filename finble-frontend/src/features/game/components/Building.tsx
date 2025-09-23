@@ -1,5 +1,4 @@
 import { Box } from '@react-three/drei';
-import styles from './Building.module.css';
 
 // CSS 변수 값을 가져오는 함수
 const getCSSVariable = (variableName: string) => {

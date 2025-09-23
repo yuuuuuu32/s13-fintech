@@ -4,17 +4,13 @@ import { BaseTile } from './tiles/BaseTile';
 import { NormalTile } from './tiles/NormalTile';
 import { ChanceTile } from './tiles/ChanceTile';
 import { SpecialTile } from './tiles/SpecialTile';
-import { Grid, useTexture } from '@react-three/drei';
-import styles from './Board.module.css';
+import { useTexture } from '@react-three/drei';
 
 // ===== 기존 상수 (호환성 유지) =====
 const TILES_PER_SIDE = 9;
 const TILE_WIDTH = 4; // 기본 타일 너비
 const TILE_DEPTH = 4; // 기본 타일 깊이 (✅ STEP 2: TILE_WIDTH와 동일하게 수정)
 const BOARD_SIZE = TILES_PER_SIDE * TILE_WIDTH;
-
-// ===== 옵션: 장식물 토글 =====
-const SHOW_DECOR = false; // 건물 장식 비활성화
 
 // ===== 가변 폭/깊이 계산을 위한 유틸리티 =====
 const prefix = (arr: number[]) => {
@@ -54,6 +50,7 @@ const getPosition = (index: number): [number, number, number] => {
 };
 
 // ===== 가변 크기 타일 위치 계산 =====
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const getPositionDynamic = (index: number, board: any[]): [number, number, number] => {
   const DEFAULT_W = TILE_WIDTH;
   const DEFAULT_D = TILE_WIDTH; // ✅ 보너스: depth도 width와 같게 수정
@@ -71,8 +68,6 @@ const getPositionDynamic = (index: number, board: any[]): [number, number, numbe
   // 각 변의 총 길이 계산
   const bottomWidth = widths.slice(B0, B1 + 1).reduce((a, b) => a + b, 0) - GAP;
   const leftDepth = depths.slice(L0, L1 + 1).reduce((a, b) => a + b, 0) - GAP;
-  const topWidth = widths.slice(T0, T1 + 1).reduce((a, b) => a + b, 0) - GAP;
-  const rightDepth = depths.slice(R0, R1 + 1).reduce((a, b) => a + b, 0) - GAP;
 
   const halfX = bottomWidth / 2;
   const halfZ = leftDepth / 2;
@@ -136,6 +131,7 @@ export function Board() {
         const d = tile?.size?.d ?? tile?.depth ?? TILE_DEPTH;
 
         // BaseTile props 안전하게 전달
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const baseTileProps: any = {
           tile,
           tileIndex: index,

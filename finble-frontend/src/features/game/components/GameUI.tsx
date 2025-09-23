@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useGameStore } from '../store/useGameStore.ts'
 import { useNavigate } from 'react-router-dom';
-import { BuildingType } from '../data/boardData.ts';
 import type { TileData } from '../data/boardData.ts';
 import { useUserStore } from '../../../stores/useUserStore';
-import { Modal, Box, Typography, Button, Card, CardContent, LinearProgress, List, ListItem, ListItemButton, ListItemText, Checkbox, FormControlLabel, FormGroup, Tooltip } from '@mui/material';
+import { Modal, Box, Typography, Button, Card, CardContent, List, ListItem, ListItemButton, ListItemText, Checkbox, FormControlLabel, FormGroup, Tooltip } from '@mui/material';
 import styles from './GameUI.module.css';
 
 const BAIL_AMOUNT = 500000; 
@@ -294,7 +293,7 @@ const ExpoModalContent = ({ modal, selectExpoProperty }) => (
 );
 
 // ManagePropertyModalContent
-const ManagePropertyModalContent = ({ modal, buildBuilding, endTurn, board, buyPropertyWithItems, currentPlayer }) => {
+const ManagePropertyModalContent = ({ modal, endTurn, buyPropertyWithItems, currentPlayer }) => {
   const [selectedItems, setSelectedItems] = useState({
     house: false,
     building: false,
@@ -303,7 +302,6 @@ const ManagePropertyModalContent = ({ modal, buildBuilding, endTurn, board, buyP
 
   const tile = modal.tile;
   const currentLevel = tile?.buildings?.level ?? 0;
-  const landPrice = tile?.landPrice || tile?.price || 0;
 
   // 각 건물 타입별 가격 (서버에서 오는 값 사용)
   const housePrice = tile?.housePrice || 0;
@@ -526,7 +524,6 @@ export function GameUI() {
   const payBail = useGameStore(state => state.payBail);
   const handleJail = useGameStore(state => state.handleJail);
   const selectExpoProperty = useGameStore(state => state.selectExpoProperty);
-  const buildBuilding = useGameStore(state => state.buildBuilding);
   const cancelWorldTravel = useGameStore(state => state.cancelWorldTravel);
   const buySpecialLand = useGameStore(state => state.buySpecialLand);
 
@@ -591,13 +588,6 @@ export function GameUI() {
     borderRadius: 2,
     textAlign: 'center' as const,
     fontFamily: 'Galmuri14, sans-serif',
-  };
-
-  const mainButtonSx = {
-    width: 250,
-    height: 60,
-    fontSize: '1.2rem',
-    fontFamily: 'Galmuri14'
   };
 
   // 경제역사 상태 디버깅
@@ -822,7 +812,7 @@ export function GameUI() {
             <ExpoModalContent modal={modal} selectExpoProperty={selectExpoProperty} />
           )}
            {modal.type === 'MANAGE_PROPERTY' && (
-            <ManagePropertyModalContent modal={modal} buildBuilding={buildBuilding} endTurn={endTurn} board={board} buyPropertyWithItems={buyPropertyWithItems} currentPlayer={currentPlayer} />
+            <ManagePropertyModalContent modal={modal} endTurn={endTurn} buyPropertyWithItems={buyPropertyWithItems} currentPlayer={currentPlayer} />
           )}
           {shouldShowGameOver && (
              <GameOverModalContent

@@ -142,7 +142,7 @@ export const createPlayerActions = (
   },
 
   payToll: () => {
-    const { gameId, send, players, currentPlayerIndex, modal, board } = get();
+    const { players, currentPlayerIndex, modal, board } = get();
     if (!modal.toll) {
       set({ modal: { type: "NONE" as const } });
       return;

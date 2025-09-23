@@ -1,6 +1,4 @@
-import type { TileData } from '../../data/boardData.ts';
 import { Text } from '@react-three/drei';
-import styles from './ChanceTile.module.css'; // CSS 모듈 import
 
 // CSS 변수 값을 읽어오는 헬퍼 함수
 const getCSSVariable = (variableName: string, fallback: string) => {
@@ -9,15 +7,9 @@ const getCSSVariable = (variableName: string, fallback: string) => {
   return value || fallback;
 };
 
-interface ChanceTileProps {
-  tile: TileData;
-  width?: number;
-  depth?: number;
-}
 
-export function ChanceTile({ tile, width, depth }: ChanceTileProps) {
-  const TILE_WIDTH = width ?? 4;
-  const TILE_DEPTH = depth ?? 6;
+
+export function ChanceTile() {
 
   return (
     <group>

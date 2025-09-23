@@ -219,6 +219,7 @@ export function Player({ player }: PlayerProps) {
   };
 
   return (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     <animated.mesh ref={meshRef} position={springs.position as any} castShadow>
       {player.character === 'cone' && <Cone args={[0.5, 1]}><meshStandardMaterial color={characterColors.cone} /></Cone>}
       {player.character === 'sphere' && <Sphere args={[0.5]}><meshStandardMaterial color={characterColors.sphere} /></Sphere>}

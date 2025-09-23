@@ -2,7 +2,6 @@ import { Text } from '@react-three/drei';
 import type { TileData } from '../../data/boardData.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
 import Building from '../Building';
-import styles from './NormalTile.module.css'; // CSS 모듈 import
 
 // CSS 변수 값을 읽어오는 헬퍼 함수
 const getCSSVariable = (variableName: string, fallback: string) => {
@@ -25,7 +24,6 @@ export function NormalTile({ tile, tileIndex }: NormalTileProps) {
   const owner = playersArray.find(p => p.properties?.includes(tileIndex));
 
   const TILE_WIDTH = 5; // 기본 너비 5로 변경
-  const TILE_DEPTH = 7; // 기본 깊이 7로 변경
   const TILE_HEIGHT = 0.2;
 
   let toll = tile.toll || 0;

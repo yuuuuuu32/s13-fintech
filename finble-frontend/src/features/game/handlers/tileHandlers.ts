@@ -166,9 +166,7 @@ export const handleSpecialTile = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
   get: () => GameState,
   currentTile: TileData,
-  currentPlayer: Player,
-  board: TileData[],
-  send?: (destination: string, body: Record<string, unknown>) => void
+  currentPlayer: Player
 ) => {
   const currentUserId = useUserStore.getState().userInfo?.userId;
   const isMyTurn = currentPlayer.id === currentUserId;
