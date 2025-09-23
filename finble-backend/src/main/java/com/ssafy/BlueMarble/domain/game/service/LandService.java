@@ -64,7 +64,7 @@ public class LandService {
         Tile targetCell = mapData.getCells().get(tradeLandRequest.getLandNum());
 
         // 4.1 경제역사 효과를 적용한 실제 가격 계산
-        Long basePrice = targetCell.getToll();
+        Long basePrice = targetCell.getLandPrice();
         Long actualPrice = economicHistoryService.calculatePropertyPriceWithEffect(basePrice, gameState.getGameTurn());
         log.info("[TRADE] 경제역사 효과 적용: 기본가격={}, 적용가격={}",
                 basePrice, actualPrice);
