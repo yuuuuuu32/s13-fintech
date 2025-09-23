@@ -75,6 +75,7 @@ public class EventService {
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         CreateMapPayload.PlayerState user = gameState.getPlayers().get(userId);
         log.info("TEST: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!user={}", user);
+
         if (user == null) {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
@@ -104,11 +105,12 @@ public class EventService {
             }
         }
 
-        // 4. 게임 상태 업데이트
-        if (gameState != null && gameState.getPlayers() != null) {
-            gameState.getPlayers().put(userId, user);
-            gameRedisService.saveGameMapState(roomId, gameState);
-        }
+//        // 4. 게임 상태 업데이트
+//        if (gameState.getPlayers() != null) {
+//            gameState.getPlayers().put(userId, user);
+//
+//        }
+        gameRedisService.saveGameMapState(roomId, gameState);
 
         // 6. 결과 메시지 전송
         JailPayload payload = JailPayload.builder()
