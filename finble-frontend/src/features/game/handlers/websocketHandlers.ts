@@ -656,8 +656,10 @@ export const createWebSocketHandlers = (
         return;
       }
 
-      if (!payload.nickname) {
-        console.error("❌ [JAIL_EVENT] 서버 응답에 nickname이 없습니다:", payload);
+      // 서버는 userName 또는 nickname을 보낼 수 있음 (호환성 처리)
+      const playerName = payload.nickname || payload.userName;
+      if (!playerName) {
+        console.error("❌ [JAIL_EVENT] 서버 응답에 플레이어 이름이 없습니다:", payload);
         set({
           modal: {
             type: "INFO" as const,
@@ -672,7 +674,7 @@ export const createWebSocketHandlers = (
 
       set((state) => {
         const updatedPlayers = state.players.map(player => {
-          if (player.name === payload.nickname) {
+          if (player.name === playerName) {
             console.log("🔓 [JAIL_EVENT] 플레이어 상태 업데이트:", {
               playerName: player.name,
               escapeResult: payload.result,
@@ -697,25 +699,32 @@ export const createWebSocketHandlers = (
         });
 
         const isMyJailEvent = updatedPlayers[state.currentPlayerIndex]?.id === currentUserId &&
-                              updatedPlayers[state.currentPlayerIndex]?.name === payload.nickname;
+                              updatedPlayers[state.currentPlayerIndex]?.name === playerName;
 
         let resultText: string;
+
+        // JAIL_EVENT는 보석금 지불 결과만 처리 (감옥 입소는 클라이언트에서 자동 처리)
         if (payload.result) {
-          resultText = `${payload.nickname}님이 보석금을 내고 감옥에서 탈출했습니다!`;
+          // 감옥 탈출 성공
+          resultText = `${playerName}님이 보석금을 내고 감옥에서 탈출했습니다!`;
+          console.log("🔓 [JAIL_EVENT] 보석금 지불 성공:", {
+            playerName: playerName,
+            isMyJailEvent
+          });
         } else {
-          // 실패 이유를 더 구체적으로 표시
+          // 감옥 탈출 실패
           if (payload.errorMessage) {
             resultText = `감옥 탈출 실패: ${payload.errorMessage}`;
           } else if (payload.turns !== undefined) {
-            resultText = `${payload.nickname}님의 감옥 탈출이 실패했습니다. 남은 감옥 턴: ${payload.turns}`;
+            resultText = `${playerName}님의 감옥 탈출이 실패했습니다. 남은 감옥 턴: ${payload.turns}`;
           } else {
-            resultText = `${payload.nickname}님의 감옥 탈출이 실패했습니다. 감옥 상태를 확인해주세요.`;
+            resultText = `${playerName}님의 감옥 탈출이 실패했습니다. 감옥 상태를 확인해주세요.`;
           }
 
           // 내 턴이고 실패한 경우 추가 디버깅 정보 로깅
           if (isMyJailEvent) {
             console.error("❌ [JAIL_EVENT] 내 보석금 지불 실패 상세 정보:", {
-              playerName: payload.nickname,
+              playerName: playerName,
               result: payload.result,
               turns: payload.turns,
               errorMessage: payload.errorMessage,
@@ -733,10 +742,11 @@ export const createWebSocketHandlers = (
             text: resultText,
             onConfirm: () => {
               set({ modal: { type: "NONE" as const } });
-              // 내가 보석금을 성공적으로 낸 경우에만 턴 종료
+
+              // 보석금 지불 성공 시 즉시 주사위 굴리기 가능 (턴 종료하지 않음)
               if (payload.result && isMyJailEvent) {
-                console.log("🔄 [JAIL_EVENT] 보석금 지불 성공 후 턴 종료");
-                setTimeout(() => get().endTurn(), 100);
+                console.log("🔄 [JAIL_EVENT] 보석금 지불 성공 - 즉시 주사위 굴리기 가능");
+                // endTurn() 호출 제거 - 플레이어가 같은 턴에 주사위를 굴릴 수 있도록 함
               }
             }
           }
@@ -746,12 +756,30 @@ export const createWebSocketHandlers = (
 
     // INVALID_JAIL_STATE 에러 처리
     unsubscribeFunctions.push(subscribeToTopic("INVALID_JAIL_STATE", (message) => {
-      console.log("❌ [WEBSOCKET] INVALID_JAIL_STATE received:", message);
+      console.error("❌ [WEBSOCKET] INVALID_JAIL_STATE received:", {
+        message: message.message,
+        payload: message.payload,
+        timestamp: new Date().toISOString(),
+        currentPlayerState: get().players[get().currentPlayerIndex]
+      });
+
+      // 사용자에게 더 구체적인 안내 제공
+      let errorText = "감옥 상태가 올바르지 않습니다.";
+
+      if (message.message) {
+        errorText = message.message;
+      } else if (message.payload?.errorCode === "JAIL_FIRST_TURN") {
+        errorText = "감옥에 들어간 첫 턴에는 보석금을 낼 수 없습니다. 다음 턴부터 보석금으로 탈출할 수 있습니다.";
+      } else if (message.payload?.errorCode === "NOT_IN_JAIL") {
+        errorText = "현재 감옥에 있지 않아 보석금을 낼 수 없습니다.";
+      } else if (message.payload?.errorCode === "INSUFFICIENT_FUNDS") {
+        errorText = "보석금이 부족합니다.";
+      }
 
       set({
         modal: {
           type: "INFO" as const,
-          text: message.message || "감옥 상태가 올바르지 않습니다.",
+          text: errorText,
           onConfirm: () => set({ modal: { type: "NONE" as const } })
         }
       });
