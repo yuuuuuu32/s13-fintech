@@ -272,7 +272,7 @@ public class CardService {
 
             if (isFinancialPolicyCard(drawnCard) && "LAND_VALUE".equals(drawnCard.getEffectType())) {
                 effectPercent = drawnCard.getEffectValue();
-                isAssetIncrease = drawnCard.getName().contains("호황");
+                isAssetIncrease = false; // 세무조사는 자산 하락
                 baseLandValue = 1000000L; // 기본 땅 가치 100만원
                 ownedLandCount = player.getOwnedProperties() != null ? player.getOwnedProperties().size() : 0;
 
@@ -599,7 +599,7 @@ public class CardService {
                 return;
             }
 
-            boolean isIncrease = card.getName().contains("인하") || card.getName().contains("호황");
+            boolean isIncrease = card.getName().contains("인하"); // 금리 인하만 증가
 
             for (CreateMapPayload.PlayerState player : gameMapState.getPlayers().values()) {
                 if (player.isActive()) {
@@ -660,7 +660,7 @@ public class CardService {
                 return;
             }
 
-            boolean isIncrease = card.getName().contains("호황");
+            boolean isIncrease = false; // 세무조사는 자산 하락
             String changeType = isIncrease ? "상승" : "하락";
             int baseLandValue = 1000000; // 기본 땅 가치 100만원
 
