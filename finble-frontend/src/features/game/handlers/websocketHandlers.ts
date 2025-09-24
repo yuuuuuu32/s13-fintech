@@ -515,10 +515,25 @@ export const createWebSocketHandlers = (
           console.log("🎲 [CHANCE_CARD] 다른 플레이어의 찬스카드 - 토스트 표시:", {
             userName,
             cardName,
-            effectDescription
+            effectDescription,
+            newPosition
           });
 
-          get().addToast("info", "🎲 찬스카드", `${userName}님: ${cardName} - ${effectDescription}`, 4000);
+          // 위치 변화가 있는 카드의 경우 더 명확한 메시지 표시
+          let toastMessage = `${userName}님: ${cardName} - ${effectDescription}`;
+          if (newPosition !== undefined && newPosition !== null) {
+            const currentBoard = get().board;
+            const targetTileName = currentBoard[newPosition]?.name || `위치 ${newPosition}`;
+            toastMessage = `🎲 ${userName}님이 찬스카드로 ${targetTileName}(${newPosition}번)으로 이동했습니다!`;
+            console.log("🎲 [POSITION_CHANGE] 위치 변화 토스트:", {
+              userName,
+              newPosition,
+              targetTileName,
+              message: toastMessage
+            });
+          }
+
+          get().addToast("info", "🎲 찬스카드", toastMessage, 4000);
           newModal = { type: "NONE" as const };
         }
 
