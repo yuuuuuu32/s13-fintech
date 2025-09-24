@@ -100,27 +100,14 @@ export const createPlayerActions = (
       return;
     }
 
-    // 낙관적 업데이트
-    set((state) => {
-      const updatedPlayers = [...state.players];
-      const ownerIndex = updatedPlayers.findIndex((p) => p.id === owner.id);
+    // 모달 닫기 (서버 응답을 기다림)
+    set({ modal: { type: "NONE" as const } });
 
-      updatedPlayers[state.currentPlayerIndex] = {
-        ...currentPlayer,
-        money: currentPlayer.money - modal.acquireCost,
-        properties: [...currentPlayer.properties, tileIndex],
-      };
-
-      updatedPlayers[ownerIndex] = {
-        ...owner,
-        money: owner.money + modal.acquireCost,
-        properties: owner.properties.filter((p) => p !== tileIndex),
-      };
-
-      return {
-        players: updatedPlayers,
-        modal: { type: "NONE" as const }
-      };
+    console.log("🏢 [ACQUIRE_PROPERTY] 인수 요청 전송:", {
+      buyer: currentPlayer.name,
+      seller: owner.name,
+      tileIndex,
+      modalAcquireCost: modal.acquireCost
     });
 
     // 서버에 동기화 메시지 전송
@@ -493,14 +480,32 @@ export const createPlayerActions = (
   },
 
   selectTravelDestination: (tileIndex: number) => {
-    const { send, players, currentPlayerIndex } = get();
+    const state = get();
+    const { send, players, currentPlayerIndex, gamePhase } = state;
     const currentPlayer = players[currentPlayerIndex];
 
+    // 이미 요청 진행 중이면 중복 요청 방지
+    if (gamePhase !== "WORLD_TRAVEL_MOVE") {
+      console.log("⚠️ [WORLD_TRAVEL] 세계여행 모드가 아니므로 요청 무시:", {
+        currentPhase: gamePhase,
+        expectedPhase: "WORLD_TRAVEL_MOVE"
+      });
+      return;
+    }
 
     // 백엔드에 세계여행 목적지 전송
     if (send) {
-      const gameId = get().gameId;
+      const gameId = state.gameId;
       if (gameId) {
+        console.log("✈️ [WORLD_TRAVEL] 목적지 선택 요청:", {
+          nickname: currentPlayer.name,
+          destination: tileIndex,
+          gamePhase: gamePhase
+        });
+
+        // 즉시 상태 변경으로 중복 요청 방지
+        set({ gamePhase: "TILE_ACTION" });
+
         send(`/app/game/${gameId}/world-travel`, {
           type: "WORLD_TRAVEL_EVENT",
           payload: {

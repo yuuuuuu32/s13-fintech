@@ -54,11 +54,14 @@ public class EventService {
      * 해당 위치가 찬스 칸인지 확인
      */
     private boolean isChancePosition(int position) {
+        log.debug("🎲 isChancePosition 확인: position={}, CHANCE_POSITIONS={}", position, java.util.Arrays.toString(CHANCE_POSITIONS));
         for (int chancePos : CHANCE_POSITIONS) {
             if (chancePos == position) {
+                log.debug("🎲 찬스 칸 매치됨: position={}", position);
                 return true;
             }
         }
+        log.debug("🎲 찬스 칸 아님: position={}", position);
         return false;
     }
 
@@ -370,11 +373,15 @@ public class EventService {
         }
 
         // 9. 찬스 칸 확인 및 자동 카드 뽑기 (턴 종료 전에 먼저 처리)
-        if (isChancePosition(newPosition)) {
-            log.info("플레이어가 찬스 칸에 도착: position={}, userName={}", newPosition, useDiceRequest.getUserName());
+        boolean isChance = isChancePosition(newPosition);
+        log.info("찬스 칸 확인: position={}, isChance={}, userName={}", newPosition, isChance, useDiceRequest.getUserName());
+
+        if (isChance) {
+            log.info("🎲 플레이어가 찬스 칸에 도착: position={}, userName={}", newPosition, useDiceRequest.getUserName());
             // 카드 뽑기 및 효과 적용 (gameState를 넘겨서 턴 상태 유지)
             cardService.drawCard(roomId, useDiceRequest.getUserName(), gameState);
         } else {
+            log.info("일반 칸 도착: position={}, userName={}", newPosition, useDiceRequest.getUserName());
             // 찬스 칸이 아니면, 주사위 이동 및 통행료 결과만 저장
             gameRedisService.saveGameMapState(roomId, gameState);
         }
