@@ -555,25 +555,8 @@ export const createWebSocketHandlers = (
       set({ economicHistory });
       console.log("📈 [ECONOMIC_HISTORY] 게임 상태 업데이트 완료");
 
-      // 맵 정보도 함께 업데이트
-      if (payload.currentMap) {
-        const updatedBoard = payload.currentMap.cells.map((cell) => ({
-          name: cell.name,
-          type: cell.type, // 백엔드에서 보내는 대문자 타입을 그대로 사용
-          price: cell.landPrice || cell.toll,
-          landPrice: cell.landPrice,
-          toll: cell.toll, // 통행료 정보 추가
-          housePrice: cell.housePrice,
-          buildingPrice: cell.buildingPrice,
-          hotelPrice: cell.hotelPrice,
-          buildings: cell.buildingType === 'FIELD' ? { level: 0 as const } :
-                     cell.buildingType === 'HOUSE' ? { level: 1 as const } :
-                     cell.buildingType === 'BUILDING' ? { level: 2 as const } :
-                     cell.buildingType === 'HOTEL' ? { level: 3 as const } : { level: 0 as const },
-          description: cell.description
-        }));
-        set({ board: updatedBoard });
-      }
+      // 맵 정보도 함께 업데이트 (REMOVED TO PREVENT STATE OVERWRITING)
+      /* if (payload.currentMap) { ... } */
 
       // 경제역사 변경 알림 모달 표시 (한 라운드당 한 번만)
       if (payload.economicPeriodName && payload.economicEffectName && payload.remainingTurns > 0) {
@@ -616,71 +599,45 @@ export const createWebSocketHandlers = (
       const { payload } = message;
 
       if (payload.result && payload.updatedAsset) {
-        set((state) => {
-          console.log("🏗️ [CONSTRUCT_BUILDING] 플레이어 상태 업데이트 (위치 제외):", {
-            targetPlayer: payload.nickname,
-            currentPlayers: state.players.map(p => ({ name: p.name, position: p.position }))
-          });
-
-          const updatedPlayers = state.players.map((player, index) => {
-            if (player.name === payload.nickname) {
-              console.log("🏗️ [CONSTRUCT_BUILDING] 타겟 플레이어 업데이트:", {
-                name: player.name,
-                playerId: player.id,
-                playerIndex: index,
-                currentPlayerIndex: state.currentPlayerIndex,
-                previousMoney: player.money,
-                newMoney: payload.updatedAsset.money,
-                previousProperties: player.properties,
-                newProperties: payload.updatedAsset.lands,
-                positionKept: player.position // 위치는 유지됨
-              });
-
-              // 안전성 검증: 다른 플레이어의 데이터를 실수로 덮어쓰지 않도록
-              if (player.position === undefined || player.position < 0) {
-                console.error("🚨 [CRITICAL] CONSTRUCT_BUILDING: 플레이어 위치 데이터 이상:", {
-                  playerName: player.name,
-                  position: player.position,
-                  fullPlayer: player
-                });
+        setTimeout(() => {
+          set((state) => {
+            const updatedPlayers = state.players.map((player) => {
+              if (player.name === payload.nickname) {
+                return {
+                  ...player,
+                  money: payload.updatedAsset.money,
+                  properties: payload.updatedAsset.lands || [],
+                };
               }
+              return player;
+            });
 
-              return {
-                ...player,
-                money: payload.updatedAsset.money,
-                properties: payload.updatedAsset.lands || []
-                // position은 의도적으로 업데이트하지 않음 - 클라이언트에서 관리
-              };
-            }
-            return player;
+            const updatedBoard = state.board.map((tile, index) => {
+              if (index === payload.landNum) {
+                return {
+                  ...tile,
+                  buildings: {
+                    ...tile.buildings,
+                    level: payload.buildingType === "FIELD" ? 0
+                         : payload.buildingType === "VILLA" ? 1
+                         : payload.buildingType === "BUILDING" ? 2
+                         : payload.buildingType === "HOTEL" ? 3
+                         : 0,
+                  },
+                };
+              }
+              return tile;
+            });
+
+            return {
+              players: updatedPlayers,
+              board: updatedBoard,
+              modal: { type: "NONE" },
+            };
           });
-
-          // 보드에서 해당 땅의 건물 레벨 업데이트
-          const updatedBoard = state.board.map((tile, index) => {
-            if (index === payload.landNum) {
-              return {
-                ...tile,
-                buildings: {
-                  ...tile.buildings,
-                  level: payload.buildingType === "FIELD" ? 0 :
-                         payload.buildingType === "VILLA" ? 1 :
-                         payload.buildingType === "BUILDING" ? 2 :
-                         payload.buildingType === "HOTEL" ? 3 : 0
-                }
-              };
-            }
-            return tile;
-          });
-
-          console.log("🏗️ [CONSTRUCT_BUILDING] 플레이어 위치는 절대 변경하지 않음 - 머니와 자산 정보만 업데이트");
-
-          return {
-            players: updatedPlayers,
-            board: updatedBoard,
-            modal: { type: "NONE" }
-          };
-        });
+        }, 100);
       } else {
+        console.error("❌ [CONSTRUCT_BUILDING] Failed. Payload result was not successful or updatedAsset was missing.", payload);
         set({
           modal: {
             type: "INFO" as const,

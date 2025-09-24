@@ -5,6 +5,7 @@ import { NormalTile } from "./tiles/NormalTile";
 import { ChanceTile } from "./tiles/ChanceTile";
 import { SpecialTile } from "./tiles/SpecialTile";
 import { useTexture } from "@react-three/drei";
+import floorTextureUrl from "../../../assets/game-floor.png";
 
 // ===== 기존 상수 (호환성 유지) =====
 const TILES_PER_SIDE = 9;
@@ -125,7 +126,7 @@ const getTextRotationY = (index: number): number => {
 
 export function Board() {
   const board = useGameStore((state) => state.board);
-  const floorTexture = useTexture("/src/assets/game-floor.png");
+  const floorTexture = useTexture(floorTextureUrl);
   const hasVariableSizes = board.some(
     (tile) => tile?.size || tile?.width || tile?.depth
   );
@@ -164,8 +165,9 @@ export function Board() {
         return (
           <BaseTile key={index} {...baseTileProps}>
             {(displayTile.type === "city" ||
-              displayTile.type === "company") && (
-              <NormalTile tile={displayTile} tileIndex={index} />
+              displayTile.type === "company" ||
+              displayTile.type === "NORMAL") && (
+              <NormalTile tileIndex={index} />
             )}
             {displayTile.type === "chance" && (
               <ChanceTile
