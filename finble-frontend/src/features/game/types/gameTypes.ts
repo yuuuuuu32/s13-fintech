@@ -108,6 +108,7 @@ export interface GameState {
   isDiceRolled: boolean;
   economicHistory: EconomicHistory | null;
   lastEconomicModalTurn: number | null; // 마지막으로 경제 효과 모달을 표시한 턴
+  lastSalaryBonus: number; // 마지막 주사위 굴리기에서 받은 월급 보너스
   toastMessages: ToastMessage[]; // 토스트 메시지 배열
   initializeGame: (initialState: GameInitialState) => void;
   setDicePower: (power: number) => void;

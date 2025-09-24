@@ -263,8 +263,6 @@ const InfoModalContent = ({ modal, endTurn }) => (
 
 // JailModalContent
 const JailModalContent = ({ payBail, handleJail, BAIL_AMOUNT, currentPlayer }) => {
-  // 감옥 첫 턴(jailTurns = 3)에는 보석금 지불 불가, 다음 턴(jailTurns = 2)부터 가능
-  const canPayBail = currentPlayer?.jailTurns <= 2;
   const remainingTurns = currentPlayer?.jailTurns || 0;
 
   return (
@@ -274,25 +272,17 @@ const JailModalContent = ({ payBail, handleJail, BAIL_AMOUNT, currentPlayer }) =
         {remainingTurns > 0 ? `${remainingTurns}턴 동안 갇혀있게 됩니다.` : '3턴 동안 갇혀있게 됩니다.'}
       </Typography>
 
-      {canPayBail ? (
-        <Typography sx={{ mt: 1 }}>보석금을 내고 즉시 탈출할 수 있습니다.</Typography>
-      ) : (
-        <Typography sx={{ mt: 1, color: 'warning.main' }}>
-          다음 턴부터 보석금으로 탈출할 수 있습니다.
-        </Typography>
-      )}
+      <Typography sx={{ mt: 1 }}>보석금을 내고 즉시 탈출할 수 있습니다.</Typography>
 
       <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
         <Button
           variant="contained"
           onClick={payBail}
-          disabled={!canPayBail}
-          sx={{ opacity: canPayBail ? 1 : 0.5 }}
         >
           보석금 ({ BAIL_AMOUNT.toLocaleString() }원)
         </Button>
         <Button variant="outlined" onClick={handleJail}>
-          {canPayBail ? '머물기' : '다음 턴까지 기다리기'}
+          머물기
         </Button>
       </Box>
     </>
@@ -322,6 +312,29 @@ const NtsModalContent = ({ modal }) => (
       onClick={modal.onConfirm}
     >
       세금 납부하고 턴 종료
+    </Button>
+  </>
+);
+
+// JailEscapeModalContent (감옥 탈출 완료)
+const JailEscapeModalContent = ({ modal }) => (
+  <>
+    <Typography variant="h5" component="h2" sx={{ color: '#22c55e', fontWeight: 'bold' }}>
+      🔓 감옥 탈출!
+    </Typography>
+    <Typography sx={{ mt: 2, fontSize: '1.2rem', textAlign: 'center' }}>
+      {modal.text}
+    </Typography>
+    <Typography sx={{ mt: 1, fontSize: '1rem', color: 'text.secondary', textAlign: 'center' }}>
+      이번 턴에 주사위를 굴릴 수 있습니다.
+    </Typography>
+    <Button
+      sx={{ mt: 3, width: '100%' }}
+      variant="contained"
+      color="success"
+      onClick={modal.onConfirm}
+    >
+      확인 - 주사위 굴리기
     </Button>
   </>
 );
@@ -860,6 +873,9 @@ export function GameUI() {
           )}
           {modal.type === 'JAIL' && (
             <JailModalContent payBail={payBail} handleJail={handleJail} BAIL_AMOUNT={BAIL_AMOUNT} currentPlayer={currentPlayer} />
+          )}
+          {modal.type === 'JAIL_ESCAPE' && (
+            <JailEscapeModalContent modal={modal} />
           )}
           {modal.type === 'EXPO' && (
             <ExpoModalContent modal={modal} selectExpoProperty={selectExpoProperty} />
