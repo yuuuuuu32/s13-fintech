@@ -10,7 +10,6 @@ import lombok.Data;
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class EconomicEffectUpdatePayload {
-    private GameMap currentMap;
     private String economicPeriodName;
     private String economicEffectName;
     private String economicDescription;
@@ -23,7 +22,6 @@ public class EconomicEffectUpdatePayload {
 
     public static EconomicEffectUpdatePayload fromGameState(CreateMapPayload gameState, EconomicEffect currentEffect) {
         return EconomicEffectUpdatePayload.builder()
-                .currentMap(gameState.getCurrentMap())
                 .economicPeriodName(currentEffect.getPeriod().getDisplayName())
                 .economicEffectName(currentEffect.getEffectName())
                 .economicDescription(currentEffect.getDescription())
