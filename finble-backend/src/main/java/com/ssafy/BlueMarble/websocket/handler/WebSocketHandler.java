@@ -2,12 +2,8 @@ package com.ssafy.BlueMarble.websocket.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.Timer.Service.TimerService;
+import com.ssafy.BlueMarble.domain.game.dto.request.*;
 import com.ssafy.BlueMarble.domain.game.service.MapService;
-import com.ssafy.BlueMarble.domain.game.dto.request.ConstructRequest;
-import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
-import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
-import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
-import com.ssafy.BlueMarble.domain.game.dto.request.NtsRequest;
 import com.ssafy.BlueMarble.domain.game.service.LandService;
 import com.ssafy.BlueMarble.domain.game.service.EventService;
 import com.ssafy.BlueMarble.websocket.service.WebSocketCardService;
@@ -16,7 +12,6 @@ import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
-import com.ssafy.BlueMarble.domain.game.dto.request.TradeLandRequest;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.UseCardPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.CreateRoomPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.EnterRoomPayload;
@@ -168,7 +163,8 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 break;
             case TURN_SKIP:
                 log.debug("사용자가 턴을 스킵하기로 요청보냈음.");
-                timerService.endTurnManually(roomId);
+                TurnSkipRequest turnSkipRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), TurnSkipRequest.class);
+                timerService.endTurnManually(session , turnSkipRequest);
                 break;
         }
 

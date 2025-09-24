@@ -301,11 +301,8 @@ public class EventService {
         }
 
         // 3. 주사위 던지기
-//        int diceNum1 = random.nextInt(6) + 1;
-//        int diceNum2 = random.nextInt(6) + 1;
-        //TODO : 테스트 이후 주석해제!!!
-        int diceNum1 = 4;
-        int diceNum2 = 4;
+        int diceNum1 = random.nextInt(6) + 1;
+        int diceNum2 = random.nextInt(6) + 1;
         int diceNumSum = diceNum1 + diceNum2;
         // 4. 위치 계산
         int currentPosition = player.getPosition();
