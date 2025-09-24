@@ -227,7 +227,7 @@ export const createPlayerActions = (
 
     console.log("🔒 [HANDLE_JAIL] 감옥 턴 처리 시작:", {
       currentPlayer: get().players[get().currentPlayerIndex],
-      note: "보석금 지불 기회 없이 턴만 소모"
+      note: "머물기 선택 또는 3턴 후 자동 탈출 처리"
     });
 
     set((state) => {
@@ -237,7 +237,7 @@ export const createPlayerActions = (
       const isMyTurn = currentPlayer.id === currentUserId;
 
       if (newJailTurns <= 0) {
-        // 감옥 탈출 (3턴 완료)
+        // 3턴 완료 - 자동 탈출
         updatedPlayers[state.currentPlayerIndex] = {
           ...currentPlayer,
           isInJail: false,
@@ -246,7 +246,8 @@ export const createPlayerActions = (
 
         console.log("🔓 [HANDLE_JAIL] 3턴 완료로 자동 탈출:", {
           playerName: currentPlayer.name,
-          isMyTurn
+          isMyTurn,
+          note: "감옥 기간 완료로 자동 탈출"
         });
 
         if (isMyTurn) {
@@ -255,7 +256,7 @@ export const createPlayerActions = (
             gamePhase: "WAITING_FOR_ROLL" as const,
             modal: {
               type: "INFO" as const,
-              text: "감옥에서 탈출했습니다! 이번 턴에 주사위를 굴릴 수 있습니다.",
+              text: "감옥 기간이 끝나 자동으로 탈출했습니다! 이번 턴에 주사위를 굴릴 수 있습니다.",
               onConfirm: () => {
                 set({ modal: { type: "NONE" as const } });
               },
@@ -263,11 +264,11 @@ export const createPlayerActions = (
           };
         } else {
           // 다른 플레이어의 턴: 토스트로 표시하고 자동 처리
-          console.log(`🔒 [JAIL_ESCAPE] ${currentPlayer.name}님이 감옥에서 탈출 (토스트 표시)`);
+          console.log(`🔓 [JAIL_ESCAPE] ${currentPlayer.name}님이 감옥에서 자동 탈출 (토스트 표시)`);
           get().addToast(
             "success",
             "🔓 감옥 탈출",
-            `${currentPlayer.name}님이 감옥에서 탈출했습니다!`,
+            `${currentPlayer.name}님이 감옥에서 자동 탈출했습니다!`,
             3000
           );
           setTimeout(() => get().endTurn(), 100);
@@ -285,9 +286,10 @@ export const createPlayerActions = (
 
         console.log("🔒 [HANDLE_JAIL] 감옥에서 턴 소모:", {
           playerName: currentPlayer.name,
-          remainingTurns: newJailTurns,
+          previousJailTurns: currentPlayer.jailTurns,
+          newJailTurns: newJailTurns,
           isMyTurn,
-          note: "보석금 지불 기회 없이 턴만 소모됨"
+          note: "머물기 선택으로 턴만 소모"
         });
 
         if (isMyTurn) {
@@ -373,22 +375,6 @@ export const createPlayerActions = (
       return;
     }
 
-    // API 명세: 감옥 첫 턴(jailTurns = 3)에는 보석금 지불 불가, 다음 턴(jailTurns = 2)부터 가능
-    if (currentPlayer.jailTurns > 2) {
-      console.warn("⏳ [PAY_BAIL] 감옥 첫 턴에는 보석금 지불 불가:", {
-        playerName: currentPlayer.name,
-        jailTurns: currentPlayer.jailTurns,
-        note: "API 명세에 따라 다음 턴(jailTurns=2)부터 보석금 지불 가능"
-      });
-      set({
-        modal: {
-          type: "INFO" as const,
-          text: "감옥에 들어간 첫 턴에는 보석금을 낼 수 없습니다. 다음 턴부터 보석금으로 탈출할 수 있습니다.",
-          onConfirm: () => set({ modal: { type: "NONE" as const } })
-        }
-      });
-      return;
-    }
 
     // 클라이언트 사이드 자금 체크
     if (currentPlayer.money < BAIL_AMOUNT) {

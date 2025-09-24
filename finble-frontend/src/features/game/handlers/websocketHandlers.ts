@@ -692,6 +692,7 @@ export const createWebSocketHandlers = (
               newProperties: payload.updatedAsset ? payload.updatedAsset.lands : player.properties,
               jailTurns: payload.turns,
               isInJail: payload.turns > 0,
+              escapeType: payload.result ? "보석금 지불 성공" : "보석금 지불 실패",
               serverResponse: payload
             });
 

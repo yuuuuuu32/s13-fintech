@@ -117,29 +117,50 @@ export const createGameLogicHandlers = (
       return;
     }
 
-    if (currentPlayer.isInJail && currentPlayer.jailTurns > 0) {
+    if (currentPlayer.isInJail) {
       console.log("🔒 [JAIL_CHECK] 감옥에 있는 플레이어 확인:", {
         playerName: currentPlayer.name,
         isInJail: currentPlayer.isInJail,
         jailTurns: currentPlayer.jailTurns
       });
 
-      // JAIL 모달은 현재 플레이어에게만 표시 (다른 플레이어에게는 표시하지 않음)
-      const currentUserId = useUserStore.getState().userInfo?.userId;
-      const isMyTurn = currentPlayer.id === currentUserId;
-
-      if (isMyTurn) {
-        console.log("🔒 [JAIL_CHECK] 내 턴 - JAIL 모달 표시");
-        set({
-          modal: { type: "JAIL" },
-          gamePhase: "TILE_ACTION" // 감옥 모달이 표시되는 동안 안정적인 상태 유지
+      // jailTurns가 0이면 자동으로 감옥에서 해제
+      if (currentPlayer.jailTurns <= 0) {
+        console.log("🔓 [JAIL_CHECK] jailTurns가 0 - 감옥에서 자동 해제:", {
+          playerName: currentPlayer.name,
+          previousJailTurns: currentPlayer.jailTurns
         });
-      } else {
-        // 다른 플레이어의 턴: 감옥 처리를 자동으로 수행
-        console.log("🔒 [JAIL_CHECK] 다른 플레이어의 감옥 턴 - 자동 처리");
-        get().handleJail();
+
+        set((state) => {
+          const updatedPlayers = [...state.players];
+          updatedPlayers[state.currentPlayerIndex] = {
+            ...updatedPlayers[state.currentPlayerIndex],
+            isInJail: false,
+            jailTurns: 0
+          };
+          return { players: updatedPlayers };
+        });
+
+        // 감옥에서 해제되었으므로 일반 주사위 굴리기 진행
+        console.log("🎲 [JAIL_CHECK] 감옥 해제 후 일반 주사위 굴리기 진행");
+      } else if (currentPlayer.jailTurns > 0) {
+        // JAIL 모달은 현재 플레이어에게만 표시 (다른 플레이어에게는 표시하지 않음)
+        const currentUserId = useUserStore.getState().userInfo?.userId;
+        const isMyTurn = currentPlayer.id === currentUserId;
+
+        if (isMyTurn) {
+          console.log("🔒 [JAIL_CHECK] 내 턴 - JAIL 모달 표시");
+          set({
+            modal: { type: "JAIL" },
+            gamePhase: "TILE_ACTION" // 감옥 모달이 표시되는 동안 안정적인 상태 유지
+          });
+        } else {
+          // 다른 플레이어의 턴: 감옥 처리를 자동으로 수행
+          console.log("🔒 [JAIL_CHECK] 다른 플레이어의 감옥 턴 - 자동 처리");
+          get().handleJail();
+        }
+        return;
       }
-      return;
     }
 
 
