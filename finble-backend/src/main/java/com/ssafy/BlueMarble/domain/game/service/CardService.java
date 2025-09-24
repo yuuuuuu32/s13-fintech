@@ -187,6 +187,8 @@ public class CardService {
      */
     public DrawCardPayload.DrawCardResult drawCard(String roomId, String userName, CreateMapPayload gameMapState) {
         try {
+            log.info("🎲 [DRAW_CARD] 찬스카드 뽑기 시작: roomId={}, userName={}", roomId, userName);
+
             // EventService에서 넘겨받은 gameMapState 사용 (Redis 재조회 안함)
             if (gameMapState == null) {
                 log.error("게임 맵 상태가 null: roomId={}", roomId);
@@ -309,9 +311,10 @@ public class CardService {
 
             var cardPayloadNode = objectMapper.valueToTree(cardPayload);
             MessageDto cardMessage = new MessageDto(MessageType.DRAW_CARD, cardPayloadNode);
-            sessionMessageService.sendMessageToRoom(roomId, cardMessage);
 
-            log.info("찬스 카드 결과 메시지 전송 완료: userName={}, cardName={}", userName, drawnCard.getName());
+            log.info("🎲 [DRAW_CARD] 메시지 전송 중: roomId={}, userName={}, cardName={}", roomId, userName, drawnCard.getName());
+            sessionMessageService.sendMessageToRoom(roomId, cardMessage);
+            log.info("🎲 [DRAW_CARD] 메시지 전송 완료: userName={}, cardName={}", userName, drawnCard.getName());
 
             // 찬스카드 사용 후 승리 조건 체크 (모든 승리 조건 통합 체크)
             victoryService.checkAllVictoryConditions(roomId, gameMapState);
