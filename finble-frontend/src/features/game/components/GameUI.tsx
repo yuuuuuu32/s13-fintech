@@ -299,6 +299,33 @@ const JailModalContent = ({ payBail, handleJail, BAIL_AMOUNT, currentPlayer }) =
   );
 };
 
+// NtsModalContent (국세청 세금 납부)
+const NtsModalContent = ({ modal }) => (
+  <>
+    <Typography variant="h5" component="h2" sx={{ color: '#e53e3e', fontWeight: 'bold' }}>
+      🏛️ 국세청
+    </Typography>
+    <Typography sx={{ mt: 2, fontSize: '1.1rem', whiteSpace: 'pre-line' }}>
+      {modal.text}
+    </Typography>
+    {modal.taxAmount && (
+      <Box sx={{ mt: 2, p: 2, bgcolor: '#fee2e2', borderRadius: 1, border: '1px solid #fca5a5' }}>
+        <Typography sx={{ fontSize: '1rem', color: '#dc2626', textAlign: 'center' }}>
+          세금: <strong>{modal.taxAmount.toLocaleString()}원</strong>
+        </Typography>
+      </Box>
+    )}
+    <Button
+      sx={{ mt: 3, width: '100%' }}
+      variant="contained"
+      color="error"
+      onClick={modal.onConfirm}
+    >
+      세금 납부하고 턴 종료
+    </Button>
+  </>
+);
+
 // ExpoModalContent
 const ExpoModalContent = ({ modal, selectExpoProperty }) => (
   <>
@@ -839,6 +866,9 @@ export function GameUI() {
           )}
            {modal.type === 'MANAGE_PROPERTY' && (
             <ManagePropertyModalContent modal={modal} endTurn={endTurn} buyPropertyWithItems={buyPropertyWithItems} currentPlayer={currentPlayer} />
+          )}
+          {modal.type === 'NTS' && (
+            <NtsModalContent modal={modal} />
           )}
           {shouldShowGameOver && (
              <GameOverModalContent
