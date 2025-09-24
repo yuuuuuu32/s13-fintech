@@ -888,8 +888,10 @@ export const createWebSocketHandlers = (
           console.log("✈️ [WORLD_TRAVEL] 타일 액션 실행 시작:", {
             gamePhase: currentState.gamePhase,
             currentPlayerIndex: currentState.currentPlayerIndex,
-            travelerName: payload.nickname
+            travelerName: payload.nickname,
+            destination: payload.endLand
           });
+
 
           // 세계여행한 플레이어가 현재 플레이어인지 확인
           const travelerPlayer = currentState.players.find(p => p.name === payload.nickname);
@@ -925,6 +927,68 @@ export const createWebSocketHandlers = (
       // 게임 중 새 유저 입장은 일반적으로 발생하지 않지만 로그 기록
     }));
 
+    // NTS_EVENT 메시지 처리 (국세청 세금 납부)
+    unsubscribeFunctions.push(subscribeToTopic("NTS_EVENT", (message) => {
+      console.log("📥 [WEBSOCKET] NTS_EVENT received:", message);
+      const { payload } = message;
+
+      if (!payload || !payload.nickname) {
+        console.error("❌ [NTS_EVENT] Invalid payload:", payload);
+        return;
+      }
+
+      const userStore = useUserStore.getState();
+      const currentUser = userStore.user;
+
+      if (!currentUser) {
+        console.error("❌ [NTS_EVENT] Current user not found");
+        return;
+      }
+
+      // 현재 플레이어가 국세청에 도착한 경우
+      if (payload.nickname === currentUser.nickname) {
+        console.log("🏛️ [NTS_EVENT] 당사자 플레이어 - 국세청 모달 표시");
+
+        // 플레이어 자산 업데이트
+        set((state) => ({
+          players: state.players.map(player =>
+            player.name === payload.nickname
+              ? { ...player, money: payload.updatedAsset.money, properties: payload.updatedAsset.lands }
+              : player
+          ),
+          modal: {
+            type: "NTS" as const,
+            text: `국세청에 도착했습니다.\n세금 ${payload.taxAmount.toLocaleString()}원을 납부합니다.`,
+            taxAmount: payload.taxAmount,
+            onConfirm: () => {
+              console.log("🏛️ [NTS_EVENT] 세금 납부 확인 - 턴 종료");
+              set({ modal: { type: "NONE" as const } });
+              get().endTurn();
+            }
+          }
+        }));
+      } else {
+        // 다른 플레이어가 세금을 납부한 경우 - 토스트 메시지 표시
+        console.log("🏛️ [NTS_EVENT] 다른 플레이어 세금 납부 - 토스트 표시");
+
+        // 플레이어 자산 업데이트
+        set((state) => ({
+          players: state.players.map(player =>
+            player.name === payload.nickname
+              ? { ...player, money: payload.updatedAsset.money, properties: payload.updatedAsset.lands }
+              : player
+          )
+        }));
+
+        // 토스트 메시지 표시
+        get().addToast(
+          "warning",
+          "국세청 세금 납부",
+          `${payload.nickname}님이 국세청에서 ${payload.taxAmount.toLocaleString()}원의 세금을 납부했습니다.`,
+          4000
+        );
+      }
+    }));
 
     // INTERNAL_SERVER_ERROR 메시지 처리
     unsubscribeFunctions.push(subscribeToTopic("INTERNAL_SERVER_ERROR", (message) => {

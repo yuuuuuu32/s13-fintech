@@ -168,7 +168,9 @@ export const handleSpecialTile = (
   set: (partial: Partial<GameState> | ((state: GameState) => Partial<GameState>)) => void,
   get: () => GameState,
   currentTile: TileData,
-  currentPlayer: Player
+  currentPlayer: Player,
+  board?: TileData[],
+  send?: (destination: string, body: Record<string, unknown>) => void
 ) => {
   const currentUserId = useUserStore.getState().userInfo?.userId;
   const isMyTurn = currentPlayer.id === currentUserId;
@@ -332,6 +334,34 @@ export const handleSpecialTile = (
           };
         });
         // setTimeout(() => get().endTurn(), 100); // BUG: 다른 클라이언트가 턴을 종료시키면 안됨
+      }
+      break;
+
+    case "NTS":
+      // 국세청: 서버에 NTS 이벤트 요청 전송
+      console.log("🏛️ [NTS] 국세청 도착 - 서버에 이벤트 요청");
+
+      if (isMyTurn) {
+        const { gameId } = get();
+        const sendFunction = send || get().send;
+
+        if (gameId && sendFunction) {
+          // 서버에 국세청 이벤트 처리 요청 전송 (WebSocket 메시지로)
+          sendFunction(`/app/game/${gameId}`, {
+            type: "NTS_EVENT",
+            payload: {
+              nickname: currentPlayer.name,
+              payTax: true
+            },
+          });
+          console.log("🏛️ [NTS] 서버에 NTS 이벤트 요청 전송 완료");
+        } else {
+          console.error("❌ [NTS] gameId 또는 send 함수가 설정되지 않음");
+          get().endTurn();
+        }
+      } else {
+        // 다른 플레이어의 턴은 서버에서 자동 처리됨
+        console.log("🏛️ [NTS] 다른 플레이어 턴 - 서버 처리 대기");
       }
       break;
 

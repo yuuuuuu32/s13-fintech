@@ -22,7 +22,8 @@ export type ModalType =
   | "JAIL"
   | "EXPO"
   | "MANAGE_PROPERTY"
-  | "INSUFFICIENT_FUNDS";
+  | "INSUFFICIENT_FUNDS"
+  | "NTS";
 
 export interface Player {
   id: string;
@@ -96,6 +97,7 @@ export interface GameState {
     isPaidToll?: boolean;
     properties?: { name: string; index: number }[];
     requiredAmount?: number;
+    taxAmount?: number; // 국세청 세금 금액
     onConfirm?: () => void;
   };
   totalTurns: number;

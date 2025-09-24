@@ -223,13 +223,14 @@ public class EventService {
     /**
      * 국세청 이벤트 처리 (현금의 15% 세금 부과)
      */
-    public void handleNtsEvent(String roomId, String nickname) {
+    public void handleNtsEvent(WebSocketSession session, NtsRequest ntsRequest) {
+        String roomId = roomService.getRoom(session.getId());
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         if (gameState == null) {
             throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
         }
 
-        String userId = userRedisService.getUserIdByNickname(nickname);
+        String userId = userRedisService.getUserIdByNickname(ntsRequest.getNickname());
         if (userId == null) {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
@@ -252,7 +253,7 @@ public class EventService {
 
         // 결과 메시지 전송
         NtsPayload payload = NtsPayload.builder()
-                .nickname(nickname)
+                .nickname(ntsRequest.getNickname())
                 .taxAmount(taxAmount)
                 .updatedAsset(
                         ConstructPayload.Asset.builder()
@@ -267,7 +268,7 @@ public class EventService {
         sessionMessageService.sendMessageToRoom(roomId, message);
 
         log.info("국세청 세금 처리: player={}, taxAmount={}, remainingMoney={}",
-                nickname, taxAmount, player.getMoney());
+                ntsRequest.getNickname(), taxAmount, player.getMoney());
     }
 
     /**
@@ -339,7 +340,8 @@ public class EventService {
 
             // 국세청 칸 처리
             if (targetCell.getType() == Tile.TileType.NTS) {
-                handleNtsEvent(roomId, useDiceRequest.getUserName());
+                NtsRequest ntsRequest = new NtsRequest(useDiceRequest.getUserName(), true);
+                handleNtsEvent(session, ntsRequest);
             }
             // 일반땅인 경우에만 통행료 처리
             else if (targetCell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NORMAL) {
