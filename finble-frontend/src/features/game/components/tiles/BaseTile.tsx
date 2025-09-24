@@ -1,6 +1,7 @@
 import { Text, Line } from '@react-three/drei';
 import type { TileData } from '../../data/boardData.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
+import { PixelPlayer } from '../PixelPlayer';
 import React from 'react';
 
 // CSS 변수 값을 읽어오는 헬퍼 함수
@@ -36,10 +37,31 @@ export function BaseTile({ tile, tileIndex, position, children, width, depth, ro
   const players = useGameStore(state => state.players);
   const gamePhase = useGameStore(state => state.gamePhase);
   const selectTravelDestination = useGameStore(state => state.selectTravelDestination);
-  
+
   // 플레이어 배열 안전하게 변환
   const playersArray = Array.isArray(players) ? players : Object.values(players || {});
   const owner = playersArray.find(p => p.properties?.includes(tileIndex));
+
+  // 해당 타일에 위치한 플레이어들 찾기
+  const playersOnThisTile = playersArray.filter(player => player.position === tileIndex);
+
+  // 다중 플레이어 배치를 위한 위치 계산
+  const getPlayerPosition = (playerIndex: number, totalPlayers: number): [number, number, number] => {
+    if (totalPlayers === 1) {
+      return [0, 0.5, 0]; // 혼자 있을 때는 타일 중앙
+    }
+
+    // 타일 크기에 비례한 배치 반지름 (작은 타일에서는 더 가깝게)
+    const maxRadius = Math.min(TILE_WIDTH, TILE_DEPTH) * 0.3;
+    const radius = Math.min(maxRadius, totalPlayers > 2 ? maxRadius : maxRadius * 0.7);
+
+    // 원형으로 배치
+    const angle = (playerIndex * 2 * Math.PI) / totalPlayers;
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+
+    return [x, 0.5, z]; // Y는 타일 위 0.5 높이로 고정
+  };
   
   // 기존 상수 대체
   const TILE_WIDTH = width ?? 5;   // 기본 너비 5로 변경
@@ -104,6 +126,18 @@ export function BaseTile({ tile, tileIndex, position, children, width, depth, ro
       {/* 자식 컴포넌트 렌더링 영역 */}
       <group position={[0, TOTAL_HEIGHT, 0]}>
         {children}
+      </group>
+
+      {/* 해당 타일에 위치한 플레이어들 렌더링 */}
+      <group position={[0, TOTAL_HEIGHT, 0]}>
+        {playersOnThisTile.map((player, index) => {
+          const playerPos = getPlayerPosition(index, playersOnThisTile.length);
+          return (
+            <group key={player.id} position={playerPos}>
+              <PixelPlayer character={player.character} />
+            </group>
+          );
+        })}
       </group>
 
       {/* 특수 타일 인덱스 표시 제거 */}

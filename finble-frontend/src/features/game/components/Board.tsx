@@ -55,7 +55,7 @@ const getPosition = (index: number): [number, number, number] => {
 // ===== 가변 크기 타일 위치 계산 (180도 회전된 보드 기준) =====
 const getPositionDynamic = (
   index: number,
-  board: any[]
+  board: { size?: { w?: number; d?: number }; width?: number; depth?: number }[]
 ): [number, number, number] => {
   const DEFAULT_W = TILE_WIDTH;
   const DEFAULT_D = TILE_WIDTH;
