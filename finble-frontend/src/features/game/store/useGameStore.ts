@@ -39,6 +39,7 @@ export const useGameStore = create<GameState>()((set, get) => {
     lastEconomicModalTurn: null,
     lastSalaryBonus: 0,
     toastMessages: [],
+    isProcessingChanceCard: false, // 찬스카드 처리 중복 방지
 
     // 웹소켓 관련 메서드
     connect: websocketHandlers.connect,

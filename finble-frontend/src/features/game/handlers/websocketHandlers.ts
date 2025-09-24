@@ -99,6 +99,7 @@ export const createWebSocketHandlers = (
                 });
 
                 return {
+                    ...state, // 기존 상태 보존 (players 포함)
                     currentPlayerIndex: nextPlayerIndex,
                     currentTurn: payload.gameTurn ?? state.currentTurn,
                     gamePhase: isMyTurn ? "WORLD_TRAVEL_MOVE" : "WAITING_FOR_ROLL", // 본인만 WORLD_TRAVEL_MOVE 모드
@@ -108,6 +109,7 @@ export const createWebSocketHandlers = (
             }
 
             const newState = {
+              ...state, // 기존 상태 보존 (players 포함)
               currentPlayerIndex: nextPlayerIndex,
               currentTurn: payload.gameTurn ?? state.currentTurn,
               gamePhase: "WAITING_FOR_ROLL",
@@ -307,21 +309,20 @@ export const createWebSocketHandlers = (
             playerName: userName,
             currentPlayerIndex: currentState.currentPlayerIndex,
             dice: [diceNum1, diceNum2],
-            note: "movePlayer 대신 직접 애니메이션 처리"
+            note: "현재 턴 플레이어만 애니메이션과 타일 액션 처리"
           });
 
           // 위치는 이미 업데이트되었으므로 애니메이션과 타일 액션만 처리
           set({ gamePhase: "PLAYER_MOVING" });
 
-          setTimeout(() => {
-            get().handleTileAction();
-          }, 2000); // 이동 애니메이션 후 타일 액션
+          // MOVE_PLAYER를 호출하여 이동 애니메이션 처리
+          get().movePlayer([diceNum1, diceNum2]);
         } else {
-          console.log("👀 [USE_DICE] 다른 플레이어의 주사위 - 위치는 이미 동기화됨:", {
+          console.log("👀 [USE_DICE] 다른 플레이어의 주사위 - 위치만 동기화, 게임 상태는 변경 안함:", {
             dicePlayerName: userName,
             currentPlayerName: currentPlayer?.name,
             currentPlayerIndex: currentState.currentPlayerIndex,
-            note: "모든 클라이언트에서 위치가 동기화되었음"
+            note: "다른 플레이어의 이동이므로 내 gamePhase나 애니메이션 처리 안함"
           });
         }
       }, 2000); // 주사위 애니메이션 시간과 동일
@@ -349,6 +350,17 @@ export const createWebSocketHandlers = (
               console.log(`🔍 [BACKEND_DATA] TRADE_LAND updating player (EXCLUDING position): ${clientPlayer.name} (ID: ${clientPlayer.id})`);
               console.log(`  Client Position: ${clientPlayer.position} -> Server Position: ${serverPlayerState.position} (BLOCKED)`);
               console.log(`  Money: ${clientPlayer.money} -> ${serverPlayerState.money}`);
+
+              // 금액 변동을 토스트로 알림
+              const moneyChange = serverPlayerState.money - clientPlayer.money;
+              if (moneyChange !== 0) {
+                get().addToast(
+                  moneyChange > 0 ? "success" : "info",
+                  moneyChange > 0 ? "💰 수입" : "💸 지출",
+                  `${clientPlayer.name}: ${moneyChange > 0 ? '+' : ''}${moneyChange.toLocaleString()}원\n현재 보유금: ${serverPlayerState.money.toLocaleString()}원`,
+                  3500
+                );
+              }
 
               return {
                 ...clientPlayer,
@@ -454,25 +466,61 @@ export const createWebSocketHandlers = (
           return player;
         });
 
-        // 찬스카드는 모든 플레이어가 봐야 함
-        console.log("🎲 Modal display check - showing to all players:", {
-          userName,
-          cardName,
-          effectDescription
-        });
+        // 찬스카드를 뽑은 당사자만 모달 표시, 다른 플레이어는 토스트
+        const currentState = get();
+        const currentPlayer = currentState.players[currentState.currentPlayerIndex];
+        const currentUserInfo = useUserStore.getState().userInfo;
+        const isMyCard = currentUserInfo && currentUserInfo.nickname === userName;
 
-        const newModal = {
-          type: "CHANCE_CARD" as const,
-          text: `${cardName}: ${effectDescription}`,
-          onConfirm: () => {
-            console.log("🎲 [CHANCE_CARD] 찬스카드 모달 확인 버튼 클릭 - 모달만 닫기");
-            set({ modal: { type: "NONE" as const } });
+        let newModal;
 
-            // 찬스카드 확인 모달은 단순히 정보만 표시하는 용도
-            // 실제 타일 액션 처리는 백엔드에서 찬스카드 효과 적용 후 자동으로 처리됨
-            console.log("🎲 [CHANCE_CARD] 모달 닫기 완료 - 턴 진행은 타일 액션에서 처리됨");
-          }
-        };
+        if (isMyCard) {
+          // 내가 뽑은 카드: 모달 표시
+          console.log("🎲 [CHANCE_CARD] 내가 뽑은 찬스카드 - 모달 표시:", {
+            userName,
+            cardName,
+            effectDescription
+          });
+
+          newModal = {
+            type: "CHANCE_CARD" as const,
+            text: `${cardName}: ${effectDescription}`,
+            onConfirm: () => {
+              console.log("🎲 [CHANCE_CARD] 찬스카드 모달 확인 - 카드 유형별 처리");
+              set({ modal: { type: "NONE" as const } });
+
+              if (newPosition !== undefined && newPosition !== null) {
+                // 이동 효과 카드: 도착한 타일에서 상호작용 처리 필요
+                console.log("🎲 [CHANCE_CARD] 이동 효과 카드 - 타일 액션 처리:", {
+                  userName,
+                  newPosition,
+                  cardName
+                });
+                // 찬스카드로 타일 액션을 처리했음을 표시
+                set({ isProcessingChanceCard: true });
+                get().handleTileAction();
+              } else {
+                // 즉시 효과 카드: 바로 턴 종료
+                console.log("🎲 [CHANCE_CARD] 즉시 효과 카드 - 바로 턴 종료:", {
+                  userName,
+                  cardName,
+                  effect: "돈 변동, 감옥 등 즉시 처리 완료"
+                });
+                get().endTurn();
+              }
+            }
+          };
+        } else {
+          // 다른 플레이어가 뽑은 카드: 토스트 메시지만 표시
+          console.log("🎲 [CHANCE_CARD] 다른 플레이어의 찬스카드 - 토스트 표시:", {
+            userName,
+            cardName,
+            effectDescription
+          });
+
+          get().addToast("info", "🎲 찬스카드", `${userName}님: ${cardName} - ${effectDescription}`, 4000);
+          newModal = { type: "NONE" as const };
+        }
 
         console.log("🎲 [MODAL] 새 모달 상태 설정:", newModal);
         console.log("🎲 [MODAL] 모달 타입 확인:", newModal.type);
@@ -491,26 +539,6 @@ export const createWebSocketHandlers = (
 
         return newState;
       });
-
-      // 위치 변경이 있었고 현재 턴 플레이어의 카드인 경우 타일 액션을 자동으로 처리
-      const currentState = get();
-      const currentPlayer = currentState.players[currentState.currentPlayerIndex];
-      const currentUserInfo = useUserStore.getState().userInfo;
-      const isMyCard = currentUserInfo && currentUserInfo.nickname === userName;
-
-      if (newPosition !== undefined && newPosition !== null && isMyCard) {
-        console.log("🎲 [DRAW_CARD] 위치 변경됨 - 2초 후 자동으로 타일 액션 처리:", {
-          userName,
-          newPosition,
-          cardName
-        });
-
-        // 모달이 표시된 후 잠시 후에 타일 액션 처리
-        setTimeout(() => {
-          console.log("🎲 [DRAW_CARD] 자동 타일 액션 처리 시작");
-          get().handleTileAction();
-        }, 2000);
-      }
     };
 
     unsubscribeFunctions.push(subscribeToTopic("DRAW_CARD", handleChanceCard));
@@ -672,8 +700,8 @@ export const createWebSocketHandlers = (
 
           return {
             players: updatedPlayers,
-            board: updatedBoard,
-            modal: { type: "NONE" }
+            board: updatedBoard
+            // modal은 건드리지 않음 - 현재 진행 중인 모달을 보존
           };
         });
       } else {
@@ -935,30 +963,28 @@ export const createWebSocketHandlers = (
         });
 
         // 세계여행 완료 후 도착한 타일의 액션 실행
-        console.log("✈️ [WORLD_TRAVEL] 세계여행 완료, 도착 타일 액션 실행:", {
+        console.log("✈️ [WORLD_TRAVEL] 세계여행 완료, 즉시 타일 액션 실행:", {
           travelerNickname: payload.nickname,
           destination: payload.endLand
         });
 
-        setTimeout(() => {
-          const currentState = get();
-          console.log("✈️ [WORLD_TRAVEL] 타일 액션 실행 시작:", {
-            gamePhase: currentState.gamePhase,
-            currentPlayerIndex: currentState.currentPlayerIndex,
-            travelerName: payload.nickname,
-            destination: payload.endLand
-          });
+        // 지연 제거 - 즉시 타일 액션 실행
+        const currentState = get();
+        console.log("✈️ [WORLD_TRAVEL] 즉시 타일 액션 실행 시작:", {
+          gamePhase: currentState.gamePhase,
+          currentPlayerIndex: currentState.currentPlayerIndex,
+          travelerName: payload.nickname,
+          destination: payload.endLand
+        });
 
-
-          // 세계여행한 플레이어가 현재 플레이어인지 확인
-          const travelerPlayer = currentState.players.find(p => p.name === payload.nickname);
-          if (travelerPlayer && currentState.players[currentState.currentPlayerIndex].id === travelerPlayer.id) {
-            console.log("✈️ [WORLD_TRAVEL] 현재 플레이어의 세계여행, 타일 액션 처리");
-            get().handleTileAction("세계여행 후");
-          } else {
-            console.log("✈️ [WORLD_TRAVEL] 다른 플레이어의 세계여행, 타일 액션 건너뛰기");
-          }
-        }, 100); // 상태 업데이트 완료 후 실행
+        // 세계여행한 플레이어가 현재 플레이어인지 확인
+        const travelerPlayer = currentState.players.find(p => p.name === payload.nickname);
+        if (travelerPlayer && currentState.players[currentState.currentPlayerIndex].id === travelerPlayer.id) {
+          console.log("✈️ [WORLD_TRAVEL] 현재 플레이어의 세계여행, 즉시 타일 액션 처리");
+          get().handleTileAction("세계여행 후");
+        } else {
+          console.log("✈️ [WORLD_TRAVEL] 다른 플레이어의 세계여행, 타일 액션 건너뛰기");
+        }
       } else {
         console.error("❌ [WORLD_TRAVEL] 세계여행 실패:", payload);
 
@@ -997,7 +1023,9 @@ export const createWebSocketHandlers = (
       console.log("🏛️ [NTS_EVENT] Processing tax payment:", {
         nickname: payload.nickname,
         taxAmount: payload.taxAmount,
-        updatedMoney: payload.updatedAsset?.money
+        updatedAsset: payload.updatedAsset,
+        updatedMoney: payload.updatedAsset?.money,
+        hasUpdatedAsset: !!payload.updatedAsset
       });
 
       const userStore = useUserStore.getState();
@@ -1016,21 +1044,42 @@ export const createWebSocketHandlers = (
 
       // 플레이어 자산 업데이트 (모든 경우에 적용)
       set((state) => {
+        console.log("🏛️ [NTS_EVENT] 현재 state.players:", state.players.map(p => ({name: p.name, money: p.money})));
+
         const updatedPlayers = state.players.map(player => {
           if (player.name === payload.nickname) {
-            console.log("🏛️ [NTS_EVENT] Updating player asset:", {
+            if (!payload.updatedAsset) {
+              console.error("❌ [NTS_EVENT] updatedAsset이 없습니다!");
+              return player;
+            }
+
+            console.log("🏛️ [NTS_EVENT] 플레이어 자산 업데이트:", {
               playerName: player.name,
+              payloadNickname: payload.nickname,
               oldMoney: player.money,
-              newMoney: payload.updatedAsset.money
+              newMoney: payload.updatedAsset.money,
+              moneyDifference: payload.updatedAsset.money - player.money,
+              taxAmount: payload.taxAmount
             });
-            return {
+
+            const updatedPlayer = {
               ...player,
               money: payload.updatedAsset.money,
-              properties: payload.updatedAsset.lands || []
+              properties: payload.updatedAsset.lands || player.properties
             };
+
+            console.log("🏛️ [NTS_EVENT] 플레이어 업데이트 완료:", {
+              before: { name: player.name, money: player.money },
+              after: { name: updatedPlayer.name, money: updatedPlayer.money },
+              actualChange: updatedPlayer.money - player.money
+            });
+
+            return updatedPlayer;
           }
           return player;
         });
+
+        console.log("🏛️ [NTS_EVENT] 업데이트 후 players:", updatedPlayers.map(p => ({name: p.name, money: p.money})));
 
         // 내 턴이고 내가 세금을 낸 경우에만 모달 표시
         if (isMyTurn && payload.nickname === currentPlayer.name) {
@@ -1043,6 +1092,18 @@ export const createWebSocketHandlers = (
               taxAmount: payload.taxAmount,
               onConfirm: () => {
                 console.log("🏛️ [NTS_EVENT] Tax payment confirmed - ending turn");
+
+                // 세금 납부 완료 토스트 표시
+                const updatedPlayer = updatedPlayers.find(p => p.name === payload.nickname);
+                if (updatedPlayer) {
+                  get().addToast(
+                    "success",
+                    "💰 세금 납부 완료",
+                    `${payload.taxAmount.toLocaleString()}원 납부\n현재 보유금: ${updatedPlayer.money.toLocaleString()}원`,
+                    4000
+                  );
+                }
+
                 set({ modal: { type: "NONE" as const } });
                 get().endTurn();
               }
@@ -1132,6 +1193,34 @@ export const createWebSocketHandlers = (
             }
           });
         }
+      }
+    }));
+
+    // INVALID_BEHAVIOR 메시지 처리
+    unsubscribeFunctions.push(subscribeToTopic("INVALID_BEHAVIOR", (message) => {
+      console.error("❌ [WEBSOCKET] INVALID_BEHAVIOR received:", message);
+      console.error("❌ [INVALID_BEHAVIOR] Error details:", {
+        message: message.message,
+        timestamp: new Date().toISOString(),
+        currentGamePhase: get().gamePhase,
+        currentPlayer: get().players[get().currentPlayerIndex]?.name
+      });
+
+      // 사용자에게 경고 메시지 표시
+      get().addToast(
+        "error",
+        "⚠️ 비정상적 동작",
+        message.message || "비정상적인 동작이 감지되었습니다.",
+        5000
+      );
+
+      // 게임 상태를 안전한 상태로 복원
+      const currentState = get();
+      if (currentState.gamePhase === "DICE_ROLLING" || currentState.gamePhase === "PLAYER_MOVING") {
+        set({
+          gamePhase: "WAITING_FOR_ROLL",
+          modal: { type: "NONE" as const }
+        });
       }
     }));
   },
