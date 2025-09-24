@@ -388,8 +388,8 @@ export const createGameLogicHandlers = (
 
   endTurn: () => {
     const state = get();
-    const { gameId, send, players } = state;
-    // const currentPlayer = players[currentPlayerIndex];
+    const { gameId, send, players, currentPlayerIndex } = state;
+    const currentPlayer = players[currentPlayerIndex];
 
 
     // Log all player positions before turn end with detailed info
@@ -401,7 +401,9 @@ export const createGameLogicHandlers = (
     if (gameId) {
       send(`/app/game/${gameId}/end-turn`, {
         type: "TURN_SKIP",
-        payload: {},
+        payload: {
+          username: currentPlayer.name,
+        },
       });
     }
 

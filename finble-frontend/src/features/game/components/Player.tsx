@@ -1,7 +1,5 @@
 import React, { useEffect, useRef } from "react";
 import { useSpring, animated } from "@react-spring/three";
-import { useFrame } from "@react-three/fiber";
-import { Cone, Sphere, Box, Torus } from "@react-three/drei";
 import * as THREE from "three";
 
 // --- 타입 및 스토어 import ---
@@ -164,183 +162,85 @@ export function Player({ player }: PlayerProps) {
     handleTileAction,
     isModalOpen,
   } = useGameStore();
-  const { userInfo } = useUserStore(); // --- Ref 참조 ---
+  const { userInfo } = useUserStore();
 
-  const prevPositionRef = useRef(player.position);
+  // --- 이동 애니메이션을 위한 Ref ---
   const meshRef = useRef<THREE.Mesh>(null!);
   const isAnimatingRef = useRef(false);
-  const lastKnownPositionRef = useRef(player.position); // --- 플레이어 정보 계산 ---
+  const prevPositionRef = useRef(player.position);
 
+  // --- 플레이어 정보 계산 ---
   const playerIndex = players.findIndex((p) => p.id === player.id);
   const isMyPlayer = userInfo?.userId === player.id;
-  const isThisPlayersTurn = currentPlayerId === player.id; // --- 애니메이션 설정 ---
+  const isThisPlayersTurn = currentPlayerId === player.id;
 
-  const initialPosition = getTilePosition(
-    player.position,
-    board,
-    playerIndex,
-    players.length
-  );
+  // --- 이동 애니메이션 스프링 (타일 간 이동시에만 사용) ---
   const [springs, api] = useSpring(() => ({
-    position: initialPosition,
+    position: [0, 0, 0] as [number, number, number],
     config: { duration: 200 },
-  })); // --- 이펙트 훅 ---
+  }));
 
+  // --- 이동 애니메이션 이펙트 (MOVING_PLAYER 상태에서만 실행) ---
   useEffect(() => {
-    if (isModalOpen || isAnimatingRef.current) return;
-    if (!board || board.length === 0) return;
-    const safePosition = Math.max(
-      0,
-      Math.min(player.position, board.length - 1)
-    );
-    if (safePosition !== lastKnownPositionRef.current) {
-      const correctPosition = getTilePosition(
-        safePosition,
-        board,
-        playerIndex,
-        players.length
-      );
-      if (correctPosition.every((coord) => isFinite(coord))) {
-        api.set({ position: correctPosition });
-        lastKnownPositionRef.current = safePosition;
-        prevPositionRef.current = safePosition;
-      }
-    }
-  }, [api, player.position, board, playerIndex, players.length, isModalOpen]);
+    if (isModalOpen || isAnimatingRef.current || !board || board.length === 0) return;
+    if (!isThisPlayersTurn || gamePhase !== "MOVING_PLAYER") return;
 
-  useEffect(() => {
-    if (isModalOpen || !board || board.length === 0 || isAnimatingRef.current)
-      return;
-    const safeCurrentPosition = Math.max(
-      0,
-      Math.min(player.position, board.length - 1)
-    );
-    const safePrevPosition = Math.max(
-      0,
-      Math.min(prevPositionRef.current, board.length - 1)
-    );
-    if (safeCurrentPosition === safePrevPosition || !isThisPlayersTurn) return;
+    const safeCurrentPosition = Math.max(0, Math.min(player.position, board.length - 1));
+    const safePrevPosition = Math.max(0, Math.min(prevPositionRef.current, board.length - 1));
 
-    if (gamePhase === "MOVING_PLAYER") {
-      const diceSum = dice[0] + dice[1];
-      const path = calculatePath(
-        safePrevPosition,
-        diceSum,
-        board,
-        playerIndex,
-        players.length
-      );
-      const validPath = path.filter((pos) =>
-        pos.every((coord) => isFinite(coord))
-      );
-      if (validPath.length === 0) return;
-      isAnimatingRef.current = true;
-      api.start({
-        to: async (next) => {
-          for (const pos of validPath) {
-            if (isModalOpen) {
-              isAnimatingRef.current = false;
-              return;
-            }
-            await next({ position: pos });
+    if (safeCurrentPosition === safePrevPosition) return;
+
+    const diceSum = dice[0] + dice[1];
+    const path = calculatePath(
+      safePrevPosition,
+      diceSum,
+      board,
+      playerIndex,
+      players.length
+    );
+
+    const validPath = path.filter((pos) => pos.every((coord) => isFinite(coord)));
+    if (validPath.length === 0) return;
+
+    // 애니메이션 시작 - 시작 위치 설정
+    const startPosition = getTilePosition(safePrevPosition, board, playerIndex, players.length);
+    api.set({ position: startPosition });
+    isAnimatingRef.current = true;
+
+    api.start({
+      to: async (next) => {
+        for (const pos of validPath) {
+          if (isModalOpen) {
+            isAnimatingRef.current = false;
+            return;
           }
-        },
-        config: { duration: validPath.length > 1 ? 200 : 400 },
-        onRest: () => {
-          isAnimatingRef.current = false;
-          lastKnownPositionRef.current = safeCurrentPosition;
-          if (isMyPlayer && !isModalOpen) {
-            handleTileAction();
-          }
-        },
-      });
-    } else if (gamePhase === "TILE_EVENT") {
-      const targetPosition = getTilePosition(
-        safeCurrentPosition,
-        board,
-        playerIndex,
-        players.length
-      );
-      if (!targetPosition.every((coord) => isFinite(coord))) return;
-      isAnimatingRef.current = true;
-      api.start({
-        to: { position: targetPosition },
-        config: { duration: 800 },
-        onRest: () => {
-          isAnimatingRef.current = false;
-          lastKnownPositionRef.current = safeCurrentPosition;
-        },
-      });
-    }
+          await next({ position: pos });
+        }
+      },
+      config: { duration: validPath.length > 1 ? 200 : 400 },
+      onRest: () => {
+        isAnimatingRef.current = false;
+        prevPositionRef.current = safeCurrentPosition;
+        if (isMyPlayer && !isModalOpen) {
+          handleTileAction();
+        }
+      },
+    });
+  }, [player.position, gamePhase, isThisPlayersTurn, isMyPlayer, api, board, dice, playerIndex, players.length, isModalOpen, handleTileAction]);
 
-    prevPositionRef.current = safeCurrentPosition;
-  }, [
-    player.position,
-    gamePhase,
-    isThisPlayersTurn,
-    isMyPlayer,
-    handleTileAction,
-    api,
-    board,
-    dice,
-    playerIndex,
-    players.length,
-    isModalOpen,
-  ]);
-  useFrame(() => {
-    if (
-      meshRef.current &&
-      !isAnimatingRef.current &&
-      !isModalOpen &&
-      board &&
-      board.length > 0
-    ) {
-      const safePosition = Math.max(
-        0,
-        Math.min(player.position, board.length - 1)
-      );
-      const expectedPosition = getTilePosition(
-        safePosition,
-        board,
-        playerIndex,
-        players.length
-      );
-      const actualPosition = meshRef.current.position;
-
-      if (
-        actualPosition.distanceTo(new THREE.Vector3(...expectedPosition)) > 0.1
-      ) {
-        api.set({ position: expectedPosition });
-        lastKnownPositionRef.current = safePosition;
-      }
-    }
-  });
-
+  // --- 이동 완료 후 위치 업데이트 ---
   useEffect(() => {
-    if (!isModalOpen && !isAnimatingRef.current) {
-      const safePosition = Math.max(
-        0,
-        Math.min(player.position, board.length - 1)
-      );
-      const correctPosition = getTilePosition(
-        safePosition,
-        board,
-        playerIndex,
-        players.length
-      );
-      api.set({ position: correctPosition });
-      lastKnownPositionRef.current = safePosition;
-      prevPositionRef.current = safePosition;
+    if (!isAnimatingRef.current) {
+      prevPositionRef.current = player.position;
     }
-  }, [isModalOpen, api, player.position, board, playerIndex, players.length]);
+  }, [player.position]);
 
-  // --- 렌더링 ---
-  if (!player) return null;
+  // --- 렌더링: 이동 애니메이션 중일 때만 렌더링 ---
+  if (!player || !isAnimatingRef.current) return null;
 
   return (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     <animated.mesh ref={meshRef} position={springs.position as any} castShadow>
-      {/* 3D 도형 대신 PixelPlayer 컴포넌트를 사용합니다. */}
       <PixelPlayer character={player.character} />
     </animated.mesh>
   );
