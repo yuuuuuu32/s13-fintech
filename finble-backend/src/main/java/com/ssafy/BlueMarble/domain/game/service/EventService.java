@@ -338,13 +338,8 @@ public class EventService {
         if (!isChancePosition(newPosition)) {
             var targetCell = gameState.getCurrentMap().getCells().get(newPosition);
 
-            // 국세청 칸 처리
-            if (targetCell.getType() == Tile.TileType.NTS) {
-                NtsRequest ntsRequest = new NtsRequest(useDiceRequest.getUserName(), true);
-                handleNtsEvent(session, ntsRequest);
-            }
             // 일반땅인 경우에만 통행료 처리
-            else if (targetCell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NORMAL) {
+            if (targetCell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NORMAL) {
                 if (targetCell.getOwnerName() != null && !targetCell.getOwnerName().equals(useDiceRequest.getUserName())) {
                     // 다른 플레이어의 땅 - 통행료 지불 (기본 통행료 사용)
                     landOwner = targetCell.getOwnerName();
