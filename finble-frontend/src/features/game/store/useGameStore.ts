@@ -37,6 +37,7 @@ export const useGameStore = create<GameState>()((set, get) => {
     isDiceRolled: false,
     economicHistory: null,
     lastEconomicModalTurn: null,
+    lastSalaryBonus: 0,
     toastMessages: [],
 
     // 웹소켓 관련 메서드
