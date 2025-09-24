@@ -340,7 +340,8 @@ public class EventService {
 
             // 국세청 칸 처리
             if (targetCell.getType() == Tile.TileType.NTS) {
-                handleNtsEvent(roomId, useDiceRequest.getUserName());
+                NtsRequest ntsRequest = new NtsRequest(useDiceRequest.getUserName(), true);
+                handleNtsEvent(session, ntsRequest);
             }
             // 일반땅인 경우에만 통행료 처리
             else if (targetCell.getType() == com.ssafy.BlueMarble.domain.game.entity.Tile.TileType.NORMAL) {

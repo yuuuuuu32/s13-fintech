@@ -7,6 +7,7 @@ import com.ssafy.BlueMarble.domain.game.dto.request.ConstructRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.JailRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
+import com.ssafy.BlueMarble.domain.game.dto.request.NtsRequest;
 import com.ssafy.BlueMarble.domain.game.service.LandService;
 import com.ssafy.BlueMarble.domain.game.service.EventService;
 import com.ssafy.BlueMarble.websocket.service.WebSocketCardService;
