@@ -3,7 +3,10 @@ package com.ssafy.BlueMarble.domain.Timer.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.BlueMarble.domain.Timer.dto.TurnInfoDto;
+import com.ssafy.BlueMarble.domain.game.dto.request.TurnSkipRequest;
+import com.ssafy.BlueMarble.domain.game.entity.GameState;
 import com.ssafy.BlueMarble.domain.game.service.GameRedisService;
+import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 import com.ssafy.BlueMarble.domain.game.service.EconomicHistoryService;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
@@ -15,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.socket.WebSocketSession;
 
 import java.util.Set;
 
@@ -30,7 +34,7 @@ public class TimerService {
     private final ObjectMapper objectMapper;
     private final UserRedisService userRedisService;
     private final EconomicHistoryService economicHistoryService;
-
+    private final RoomService  roomService;
     // 턴 타이머 키 패턴
     private static final String TURN_TIMER_PREFIX = "turn_timer:";
 
@@ -51,10 +55,23 @@ public class TimerService {
     /**
      * 턴 타이머 취소 (플레이어가 턴을 수동으로 종료한 경우)
      */
-    public void cancelTurnTimer(String roomId) {
+    public void cancelTurnTimer(String roomId, String username) {
+        CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
+        
+        // 현재 플레이 상태인 유저 이름 가져오기
+        String currentPlayerNickname = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
+        
+        // 현재 플레이어와 요청한 플레이어가 일치하는지 확인
+        if (!currentPlayerNickname.equals(username)) {
+            log.warn("턴 취소 권한이 없음: roomId={}, currentPlayer={}, requestedPlayer={}", 
+                    roomId, currentPlayerNickname, username);
+            return;
+        }
+        
         String timerKey = TURN_TIMER_PREFIX + roomId;
         redisTemplate.delete(timerKey);
-
+        
+        log.info("턴 타이머 취소됨: roomId={}, player={}", roomId, username);
         endTurnByTimer(roomId);
     }
 
@@ -80,8 +97,10 @@ public class TimerService {
         }
     }
 
-    public void endTurnManually(String roomId) {
-        cancelTurnTimer(roomId);
+    public void endTurnManually(WebSocketSession session, TurnSkipRequest turnSkipRequest) {
+        String roomId = roomService.getRoom(session.getId());
+        String username =  turnSkipRequest.getUsername();
+        cancelTurnTimer(roomId, username);
     }
 
     /**
