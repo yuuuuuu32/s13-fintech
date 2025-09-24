@@ -30,8 +30,8 @@ INSERT
 IGNORE INTO cards (name, card_type, description, effect_type, effect_value, is_immediate)
 VALUES
 -- 이슈 카드들 (즉발)
-('복권 당첨', 'ISSUE', '50만원 획득', 'MONEY', 5000000, true),
-('사기 피해', 'ISSUE', '50만원 손실', 'MONEY', -5000000, true),
+('복권 당첨', 'ISSUE', '500만원 획득', 'MONEY', 5000000, true),
+('사기 피해', 'ISSUE', '500만원 손실', 'MONEY', -5000000, true),
 ('세금 납부', 'ISSUE', '보유 현금의 15% 납부', 'MONEY_PERCENT', 15, true),
 ('감옥행', 'ISSUE', '즉시 감옥으로 이동', 'JAIL', 0, true),
 -- 게임 카드들 (즉발)
