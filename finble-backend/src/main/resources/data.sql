@@ -41,8 +41,7 @@ VALUES
 -- 금융정책 카드들
 ('금리 인상', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 10% 감소', 'ALL_MONEY_PERCENT', 10, true),
 ('금리 인하', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 10% 증가', 'ALL_MONEY_PERCENT', 10, true),
-('부동산 호황', 'FINANCIAL_POLICY', '모든 땅값이 20% 상승', 'LAND_VALUE', 20, true),
-('부동산 불황', 'FINANCIAL_POLICY', '모든 땅값이 20% 하락', 'LAND_VALUE', 20, true),
+('세무조사', 'FINANCIAL_POLICY', '세무조사로 인해 자산 10% 하락', 'LAND_VALUE', 10, true),
 ('경기 침체', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 15% 감소', 'ALL_MONEY_PERCENT', 15, true),
 ('경기 호황', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 15% 증가', 'ALL_MONEY_PERCENT', 15, true);
 
