@@ -143,13 +143,13 @@ export const createGameLogicHandlers = (
 
         // 감옥에서 해제되었으므로 일반 주사위 굴리기 진행
         console.log("🎲 [JAIL_CHECK] 감옥 해제 후 일반 주사위 굴리기 진행");
-      } else if (currentPlayer.jailTurns > 0) {
-        // JAIL 모달은 현재 플레이어에게만 표시 (다른 플레이어에게는 표시하지 않음)
+      } else if (currentPlayer.jailTurns > 1) {
+        // 2턴 이상 남음: 선택 모달 표시 (보석금/머물기)
         const currentUserId = useUserStore.getState().userInfo?.userId;
         const isMyTurn = currentPlayer.id === currentUserId;
 
         if (isMyTurn) {
-          console.log("🔒 [JAIL_CHECK] 내 턴 - JAIL 모달 표시");
+          console.log("🔒 [JAIL_CHECK] 내 턴 - JAIL 선택 모달 표시 (남은 턴: " + currentPlayer.jailTurns + ")");
           set({
             modal: { type: "JAIL" },
             gamePhase: "TILE_ACTION" // 감옥 모달이 표시되는 동안 안정적인 상태 유지
@@ -157,6 +157,25 @@ export const createGameLogicHandlers = (
         } else {
           // 다른 플레이어의 턴: 감옥 처리를 자동으로 수행
           console.log("🔒 [JAIL_CHECK] 다른 플레이어의 감옥 턴 - 자동 처리");
+          get().handleJail();
+        }
+        return;
+      } else if (currentPlayer.jailTurns === 1) {
+        // 마지막 턴: 자동 탈출 처리
+        const currentUserId = useUserStore.getState().userInfo?.userId;
+        const isMyTurn = currentPlayer.id === currentUserId;
+
+        console.log("🔓 [JAIL_CHECK] 마지막 감옥 턴 - 자동 탈출 처리:", {
+          playerName: currentPlayer.name,
+          jailTurns: currentPlayer.jailTurns,
+          isMyTurn
+        });
+
+        if (isMyTurn) {
+          // 내 턴: handleJail 호출하여 자동 탈출 + 모달 표시
+          get().handleJail();
+        } else {
+          // 다른 플레이어: handleJail 호출하여 자동 탈출 + 토스트
           get().handleJail();
         }
         return;

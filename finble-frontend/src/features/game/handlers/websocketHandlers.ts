@@ -116,7 +116,27 @@ export const createWebSocketHandlers = (
                                   if (serverPlayer) {
                                     // eslint-disable-next-line @typescript-eslint/no-unused-vars
                                     const { position, ...serverData } = serverPlayer;
-                                    return { ...clientPlayer, ...serverData, position: clientPlayer.position, isTraveling: clientPlayer.isTraveling };
+
+                                    // 감옥 상태 보호: 클라이언트에서 이미 탈출한 플레이어는 서버 감옥 상태를 무시
+                                    const protectedJailState = {};
+                                    if (!clientPlayer.isInJail && clientPlayer.jailTurns === 0 && serverPlayer.isInJail) {
+                                      console.log("🛡️ [JAIL_PROTECTION] 클라이언트 탈출 상태 보호:", {
+                                        playerName: clientPlayer.name,
+                                        clientJailState: { isInJail: clientPlayer.isInJail, jailTurns: clientPlayer.jailTurns },
+                                        serverJailState: { isInJail: serverPlayer.isInJail, jailTurns: serverPlayer.jailTurns },
+                                        action: "서버 감옥 상태 무시"
+                                      });
+                                      protectedJailState.isInJail = false;
+                                      protectedJailState.jailTurns = 0;
+                                    }
+
+                                    return {
+                                      ...clientPlayer,
+                                      ...serverData,
+                                      ...protectedJailState,
+                                      position: clientPlayer.position,
+                                      isTraveling: clientPlayer.isTraveling
+                                    };
                                   }
                                   return clientPlayer;
                                 });
@@ -683,6 +703,9 @@ export const createWebSocketHandlers = (
       set((state) => {
         const updatedPlayers = state.players.map(player => {
           if (player.name === playerName) {
+            // 감옥 상태 보호: 클라이언트에서 이미 탈출한 경우 서버 응답 무시
+            const shouldProtectJailState = !player.isInJail && player.jailTurns === 0 && payload.turns > 0;
+
             console.log("🔓 [JAIL_EVENT] 플레이어 상태 업데이트:", {
               playerName: player.name,
               escapeResult: payload.result,
@@ -690,18 +713,28 @@ export const createWebSocketHandlers = (
               newMoney: payload.updatedAsset ? payload.updatedAsset.money : player.money,
               previousProperties: player.properties,
               newProperties: payload.updatedAsset ? payload.updatedAsset.lands : player.properties,
-              jailTurns: payload.turns,
-              isInJail: payload.turns > 0,
+              serverJailTurns: payload.turns,
+              serverIsInJail: payload.turns > 0,
+              clientJailState: { isInJail: player.isInJail, jailTurns: player.jailTurns },
+              shouldProtectJailState,
               escapeType: payload.result ? "보석금 지불 성공" : "보석금 지불 실패",
               serverResponse: payload
             });
+
+            if (shouldProtectJailState) {
+              console.log("🛡️ [JAIL_EVENT_PROTECTION] 클라이언트 탈출 상태 보호:", {
+                playerName: player.name,
+                action: "서버 JAIL_EVENT 감옥 상태 무시",
+                clientState: "이미 탈출 완료"
+              });
+            }
 
             return {
               ...player,
               money: payload.updatedAsset ? payload.updatedAsset.money : player.money,
               properties: payload.updatedAsset ? payload.updatedAsset.lands || [] : player.properties,
-              isInJail: payload.turns > 0,
-              jailTurns: payload.turns || 0
+              isInJail: shouldProtectJailState ? false : (payload.turns > 0),
+              jailTurns: shouldProtectJailState ? 0 : (payload.turns || 0)
             };
           }
           return player;

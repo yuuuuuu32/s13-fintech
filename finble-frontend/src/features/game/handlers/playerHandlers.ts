@@ -255,9 +255,10 @@ export const createPlayerActions = (
             players: updatedPlayers,
             gamePhase: "WAITING_FOR_ROLL" as const,
             modal: {
-              type: "INFO" as const,
-              text: "감옥 기간이 끝나 자동으로 탈출했습니다! 이번 턴에 주사위를 굴릴 수 있습니다.",
+              type: "JAIL_ESCAPE" as const,
+              text: "감옥 기간이 끝나 자동으로 탈출했습니다!",
               onConfirm: () => {
+                console.log("🔓 [JAIL_ESCAPE] 탈출 모달 확인 - 주사위 굴리기 가능");
                 set({ modal: { type: "NONE" as const } });
               },
             },

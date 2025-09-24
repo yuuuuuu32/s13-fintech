@@ -316,6 +316,29 @@ const NtsModalContent = ({ modal }) => (
   </>
 );
 
+// JailEscapeModalContent (감옥 탈출 완료)
+const JailEscapeModalContent = ({ modal }) => (
+  <>
+    <Typography variant="h5" component="h2" sx={{ color: '#22c55e', fontWeight: 'bold' }}>
+      🔓 감옥 탈출!
+    </Typography>
+    <Typography sx={{ mt: 2, fontSize: '1.2rem', textAlign: 'center' }}>
+      {modal.text}
+    </Typography>
+    <Typography sx={{ mt: 1, fontSize: '1rem', color: 'text.secondary', textAlign: 'center' }}>
+      이번 턴에 주사위를 굴릴 수 있습니다.
+    </Typography>
+    <Button
+      sx={{ mt: 3, width: '100%' }}
+      variant="contained"
+      color="success"
+      onClick={modal.onConfirm}
+    >
+      확인 - 주사위 굴리기
+    </Button>
+  </>
+);
+
 // ExpoModalContent
 const ExpoModalContent = ({ modal, selectExpoProperty }) => (
   <>
@@ -850,6 +873,9 @@ export function GameUI() {
           )}
           {modal.type === 'JAIL' && (
             <JailModalContent payBail={payBail} handleJail={handleJail} BAIL_AMOUNT={BAIL_AMOUNT} currentPlayer={currentPlayer} />
+          )}
+          {modal.type === 'JAIL_ESCAPE' && (
+            <JailEscapeModalContent modal={modal} />
           )}
           {modal.type === 'EXPO' && (
             <ExpoModalContent modal={modal} selectExpoProperty={selectExpoProperty} />
