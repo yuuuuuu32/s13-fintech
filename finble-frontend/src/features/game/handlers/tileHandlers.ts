@@ -266,8 +266,23 @@ export const handleSpecialTile = (
     // }
     case "START":
       if (isMyTurn) {
-        console.log("🏠 [START] 내 턴 - 토스트 표시");
-        get().addToast("success", "🏠 시작점 도착!", "월급을 받았습니다.", 2000);
+        const gameState = get();
+        const salaryReceived = gameState.lastSalaryBonus > 0;
+
+        console.log("🏠 [START] 내 턴 - 월급 확인:", {
+          lastSalaryBonus: gameState.lastSalaryBonus,
+          salaryReceived: salaryReceived
+        });
+
+        if (salaryReceived) {
+          // 실제로 월급을 받았을 때만 토스트 표시
+          get().addToast("success", "🏠 시작점 도착!", `월급 ${gameState.lastSalaryBonus.toLocaleString()}원을 받았습니다!`, 3000);
+        } else {
+          // 월급을 받지 않았을 때 (단순 도착)
+          console.log("🏠 [START] 시작점 도착했지만 월급 없음 - 일반 타일처럼 처리");
+        }
+
+        // 월급 받았든 안 받았든 턴은 종료 (시작점은 특별한 액션이 없음)
         get().endTurn();
       } else {
         console.log("🏠 [START] 다른 플레이어 턴 - endTurn 호출");
@@ -279,6 +294,14 @@ export const handleSpecialTile = (
       // AIRPLANE 타일: 플레이어를 세계여행 모드로 설정만 함 (실제 여행은 다음 턴에 목적지 선택 시)
 
       if (isMyTurn) {
+        // 감옥에 있는 플레이어는 세계여행 불가
+        if (currentPlayer.isInJail && currentPlayer.jailTurns > 0) {
+          console.log("✈️ [AIRPLANE] 감옥에 있는 플레이어는 세계여행 불가");
+          get().addToast("warning", "✈️ 세계여행 불가", "감옥에 있는 동안은 세계여행을 할 수 없습니다.", 3000);
+          get().endTurn();
+          return;
+        }
+
         console.log("✈️ [AIRPLANE] 내 턴 - 모달 표시");
         console.log("✈️ [AIRPLANE] 현재 상태:", {
           gamePhase: get().gamePhase,

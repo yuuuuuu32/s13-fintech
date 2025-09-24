@@ -56,7 +56,21 @@ export const createWebSocketHandlers = (
 
         set((state) => {
           const nextPlayerIndex = state.players.findIndex(p => p.name === payload.curPlayer);
-          if (nextPlayerIndex !== -1 && nextPlayerIndex !== state.currentPlayerIndex) {
+
+          // 중복 턴 변경 무시 (같은 턴 번호 + 같은 플레이어)
+          if (state.currentTurn === payload.gameTurn && state.currentPlayerIndex === nextPlayerIndex) {
+            console.log("🔄 [TURN_DEBUG] 중복 턴 변경 무시:", {
+              currentTurn: state.currentTurn,
+              payloadTurn: payload.gameTurn,
+              currentPlayerIndex: state.currentPlayerIndex,
+              nextPlayerIndex: nextPlayerIndex,
+              currentPlayerName: state.players[state.currentPlayerIndex]?.name,
+              payloadPlayerName: payload.curPlayer
+            });
+            return {};
+          }
+
+          if (nextPlayerIndex !== -1) {
             console.log("🔄 [TURN_DEBUG] 플레이어 인덱스 변경:", {
               previousIndex: state.currentPlayerIndex,
               nextIndex: nextPlayerIndex,
@@ -70,11 +84,24 @@ export const createWebSocketHandlers = (
 
             // Check if the new player is supposed to be traveling
             if (newCurrentPlayer?.isTraveling) {
-                console.log("✈️ [TURN_START] 세계여행 중인 플레이어의 턴 - 바로 WORLD_TRAVEL_MOVE 모드로 진입");
+                console.log("✈️ [TURN_START] 세계여행 중인 플레이어의 턴 - 모드 설정");
+
+                // 세계여행 중인 플레이어가 본인인지 확인
+                const userStore = useUserStore.getState();
+                const currentUser = userStore.userInfo;
+                const isMyTurn = currentUser && newCurrentPlayer.id === currentUser.userId;
+
+                console.log("✈️ [TURN_START] 세계여행 플레이어 확인:", {
+                  travelingPlayerName: newCurrentPlayer.name,
+                  travelingPlayerId: newCurrentPlayer.id,
+                  currentUserId: currentUser?.userId,
+                  isMyTurn: isMyTurn
+                });
+
                 return {
                     currentPlayerIndex: nextPlayerIndex,
                     currentTurn: payload.gameTurn ?? state.currentTurn,
-                    gamePhase: "WORLD_TRAVEL_MOVE", // Set the correct phase
+                    gamePhase: isMyTurn ? "WORLD_TRAVEL_MOVE" : "WAITING_FOR_ROLL", // 본인만 WORLD_TRAVEL_MOVE 모드
                     isDiceRolled: false,
                     modal: { type: "NONE" },
                 };
@@ -185,7 +212,7 @@ export const createWebSocketHandlers = (
       console.log("📥 [WEBSOCKET] USE_DICE received:", message);
       const { payload } = message;
 
-      const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn, userName, updatedAsset } = payload;
+      const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn, userName, updatedAsset, salaryBonus } = payload;
 
       // 🎲 현재 플레이어의 주사위만 게임 상태 변경
       const currentState = get();
@@ -236,6 +263,7 @@ export const createWebSocketHandlers = (
           serverDiceNum: diceNumSum,
           serverCurrentPosition: currentPosition,
           currentTurn: curTurn,
+          lastSalaryBonus: salaryBonus || 0, // 마지막으로 받은 월급 보너스 저장
           // USE_DICE 응답을 받았으므로 주사위 굴리기 완료
         };
       });
@@ -928,7 +956,7 @@ export const createWebSocketHandlers = (
 
     // NTS_EVENT 메시지 처리 (국세청 세금 납부)
     unsubscribeFunctions.push(subscribeToTopic("NTS_EVENT", (message) => {
-      console.log("📥 [WEBSOCKET] NTS_EVENT received:", message);
+      console.log("🏛️ [WEBSOCKET] NTS_EVENT received:", message);
       const { payload } = message;
 
       if (!payload || !payload.nickname) {
@@ -936,57 +964,72 @@ export const createWebSocketHandlers = (
         return;
       }
 
+      console.log("🏛️ [NTS_EVENT] Processing tax payment:", {
+        nickname: payload.nickname,
+        taxAmount: payload.taxAmount,
+        updatedMoney: payload.updatedAsset?.money
+      });
+
       const userStore = useUserStore.getState();
-      const currentUser = userStore.user;
+      const currentUser = userStore.userInfo;
 
-      if (!currentUser) {
-        console.error("❌ [NTS_EVENT] Current user not found");
-        return;
-      }
+      // 게임 상태에서 현재 플레이어 찾기
+      const gameState = get();
+      const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+      const isMyTurn = currentPlayer && currentUser && currentPlayer.id === currentUser.userId;
 
-      // 현재 플레이어가 국세청에 도착한 경우
-      if (payload.nickname === currentUser.nickname) {
-        console.log("🏛️ [NTS_EVENT] 당사자 플레이어 - 국세청 모달 표시");
+      console.log("🏛️ [NTS_EVENT] Player comparison:", {
+        payloadNickname: payload.nickname,
+        currentPlayerName: currentPlayer?.name,
+        isMyTurn: isMyTurn
+      });
 
-        // 플레이어 자산 업데이트
-        set((state) => ({
-          players: state.players.map(player =>
-            player.name === payload.nickname
-              ? { ...player, money: payload.updatedAsset.money, properties: payload.updatedAsset.lands }
-              : player
-          ),
-          modal: {
-            type: "NTS" as const,
-            text: `국세청에 도착했습니다.\n세금 ${payload.taxAmount.toLocaleString()}원을 납부합니다.`,
-            taxAmount: payload.taxAmount,
-            onConfirm: () => {
-              console.log("🏛️ [NTS_EVENT] 세금 납부 확인 - 턴 종료");
-              set({ modal: { type: "NONE" as const } });
-              get().endTurn();
-            }
+      // 플레이어 자산 업데이트 (모든 경우에 적용)
+      set((state) => {
+        const updatedPlayers = state.players.map(player => {
+          if (player.name === payload.nickname) {
+            console.log("🏛️ [NTS_EVENT] Updating player asset:", {
+              playerName: player.name,
+              oldMoney: player.money,
+              newMoney: payload.updatedAsset.money
+            });
+            return {
+              ...player,
+              money: payload.updatedAsset.money,
+              properties: payload.updatedAsset.lands || []
+            };
           }
-        }));
-      } else {
-        // 다른 플레이어가 세금을 납부한 경우 - 토스트 메시지 표시
-        console.log("🏛️ [NTS_EVENT] 다른 플레이어 세금 납부 - 토스트 표시");
+          return player;
+        });
 
-        // 플레이어 자산 업데이트
-        set((state) => ({
-          players: state.players.map(player =>
-            player.name === payload.nickname
-              ? { ...player, money: payload.updatedAsset.money, properties: payload.updatedAsset.lands }
-              : player
-          )
-        }));
-
-        // 토스트 메시지 표시
-        get().addToast(
-          "warning",
-          "국세청 세금 납부",
-          `${payload.nickname}님이 국세청에서 ${payload.taxAmount.toLocaleString()}원의 세금을 납부했습니다.`,
-          4000
-        );
-      }
+        // 내 턴이고 내가 세금을 낸 경우에만 모달 표시
+        if (isMyTurn && payload.nickname === currentPlayer.name) {
+          console.log("🏛️ [NTS_EVENT] My turn - showing NTS modal");
+          return {
+            players: updatedPlayers,
+            modal: {
+              type: "NTS" as const,
+              text: `국세청에 도착했습니다!\n세금 ${payload.taxAmount.toLocaleString()}원을 납부했습니다.`,
+              taxAmount: payload.taxAmount,
+              onConfirm: () => {
+                console.log("🏛️ [NTS_EVENT] Tax payment confirmed - ending turn");
+                set({ modal: { type: "NONE" as const } });
+                get().endTurn();
+              }
+            }
+          };
+        } else {
+          // 다른 플레이어의 세금 납부는 토스트로 표시
+          console.log("🏛️ [NTS_EVENT] Other player's tax payment - showing toast");
+          get().addToast(
+            "info",
+            "🏛️ 국세청 세금 납부",
+            `${payload.nickname}님이 세금 ${payload.taxAmount.toLocaleString()}원을 납부했습니다.`,
+            3000
+          );
+          return { players: updatedPlayers };
+        }
+      });
     }));
 
     // INTERNAL_SERVER_ERROR 메시지 처리
