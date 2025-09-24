@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useGameStore } from '../store/useGameStore.ts'
 import { useNavigate } from 'react-router-dom';
-import { BuildingType } from '../data/boardData.ts';
 import type { TileData } from '../data/boardData.ts';
 import { useUserStore } from '../../../stores/useUserStore';
-import { Modal, Box, Typography, Button, Card, CardContent, LinearProgress, List, ListItem, ListItemButton, ListItemText, Checkbox, FormControlLabel, FormGroup, Tooltip } from '@mui/material';
+import { Modal, Box, Typography, Button, Card, CardContent, List, ListItem, ListItemButton, ListItemText, Checkbox, FormControlLabel, FormGroup, Tooltip } from '@mui/material';
 import styles from './GameUI.module.css';
 import ToastContainer from './ToastContainer.tsx';
 
@@ -263,17 +262,42 @@ const InfoModalContent = ({ modal, endTurn }) => (
 );
 
 // JailModalContent
-const JailModalContent = ({ payBail, handleJail, BAIL_AMOUNT }) => (
-  <>
-    <Typography variant="h5" component="h2">감옥</Typography>
-    <Typography sx={{ mt: 2 }}>3턴 동안 갖혀있게 됩니다.</Typography>
-    <Typography sx={{ mt: 1 }}>보석금을 내고 즉시 탈출할 수 있습니다.</Typography>
-    <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-      <Button variant="contained" onClick={payBail}>보석금 ({ BAIL_AMOUNT.toLocaleString() }원)</Button>
-      <Button variant="outlined" onClick={handleJail}>머물기</Button>
-    </Box>
-  </>
-);
+const JailModalContent = ({ payBail, handleJail, BAIL_AMOUNT, currentPlayer }) => {
+  // 감옥 첫 턴(jailTurns = 3)에는 보석금 지불 불가, 다음 턴(jailTurns = 2)부터 가능
+  const canPayBail = currentPlayer?.jailTurns <= 2;
+  const remainingTurns = currentPlayer?.jailTurns || 0;
+
+  return (
+    <>
+      <Typography variant="h5" component="h2">감옥</Typography>
+      <Typography sx={{ mt: 2 }}>
+        {remainingTurns > 0 ? `${remainingTurns}턴 동안 갇혀있게 됩니다.` : '3턴 동안 갇혀있게 됩니다.'}
+      </Typography>
+
+      {canPayBail ? (
+        <Typography sx={{ mt: 1 }}>보석금을 내고 즉시 탈출할 수 있습니다.</Typography>
+      ) : (
+        <Typography sx={{ mt: 1, color: 'warning.main' }}>
+          다음 턴부터 보석금으로 탈출할 수 있습니다.
+        </Typography>
+      )}
+
+      <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+        <Button
+          variant="contained"
+          onClick={payBail}
+          disabled={!canPayBail}
+          sx={{ opacity: canPayBail ? 1 : 0.5 }}
+        >
+          보석금 ({ BAIL_AMOUNT.toLocaleString() }원)
+        </Button>
+        <Button variant="outlined" onClick={handleJail}>
+          {canPayBail ? '머물기' : '다음 턴까지 기다리기'}
+        </Button>
+      </Box>
+    </>
+  );
+};
 
 // ExpoModalContent
 const ExpoModalContent = ({ modal, selectExpoProperty }) => (
@@ -295,7 +319,7 @@ const ExpoModalContent = ({ modal, selectExpoProperty }) => (
 );
 
 // ManagePropertyModalContent
-const ManagePropertyModalContent = ({ modal, buildBuilding, endTurn, board, buyPropertyWithItems, currentPlayer }) => {
+const ManagePropertyModalContent = ({ modal, endTurn, buyPropertyWithItems, currentPlayer }) => {
   const [selectedItems, setSelectedItems] = useState({
     house: false,
     building: false,
@@ -304,7 +328,6 @@ const ManagePropertyModalContent = ({ modal, buildBuilding, endTurn, board, buyP
 
   const tile = modal.tile;
   const currentLevel = tile?.buildings?.level ?? 0;
-  const landPrice = tile?.landPrice || tile?.price || 0;
 
   // 각 건물 타입별 가격 (서버에서 오는 값 사용)
   const housePrice = tile?.housePrice || 0;
@@ -527,7 +550,6 @@ export function GameUI() {
   const payBail = useGameStore(state => state.payBail);
   const handleJail = useGameStore(state => state.handleJail);
   const selectExpoProperty = useGameStore(state => state.selectExpoProperty);
-  const buildBuilding = useGameStore(state => state.buildBuilding);
   const cancelWorldTravel = useGameStore(state => state.cancelWorldTravel);
   const buySpecialLand = useGameStore(state => state.buySpecialLand);
 
@@ -592,13 +614,6 @@ export function GameUI() {
     borderRadius: 2,
     textAlign: 'center' as const,
     fontFamily: 'Galmuri14, sans-serif',
-  };
-
-  const mainButtonSx = {
-    width: 250,
-    height: 60,
-    fontSize: '1.2rem',
-    fontFamily: 'Galmuri14'
   };
 
   // 경제역사 상태 디버깅
@@ -817,13 +832,13 @@ export function GameUI() {
             <InfoModalContent modal={modal} endTurn={endTurn} />
           )}
           {modal.type === 'JAIL' && (
-            <JailModalContent payBail={payBail} handleJail={handleJail} BAIL_AMOUNT={BAIL_AMOUNT} />
+            <JailModalContent payBail={payBail} handleJail={handleJail} BAIL_AMOUNT={BAIL_AMOUNT} currentPlayer={currentPlayer} />
           )}
           {modal.type === 'EXPO' && (
             <ExpoModalContent modal={modal} selectExpoProperty={selectExpoProperty} />
           )}
            {modal.type === 'MANAGE_PROPERTY' && (
-            <ManagePropertyModalContent modal={modal} buildBuilding={buildBuilding} endTurn={endTurn} board={board} buyPropertyWithItems={buyPropertyWithItems} currentPlayer={currentPlayer} />
+            <ManagePropertyModalContent modal={modal} endTurn={endTurn} buyPropertyWithItems={buyPropertyWithItems} currentPlayer={currentPlayer} />
           )}
           {shouldShowGameOver && (
              <GameOverModalContent

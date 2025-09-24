@@ -1,4 +1,11 @@
-import { Box, useTexture } from "@react-three/drei";
+import { Box } from '@react-three/drei';
+
+// CSS 변수 값을 가져오는 함수
+const getCSSVariable = (variableName: string) => {
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(variableName)
+    .trim();
+};
 
 interface BuildingProps {
   level: 1 | 2 | 3;

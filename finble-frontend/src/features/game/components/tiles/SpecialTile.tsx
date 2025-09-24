@@ -1,6 +1,4 @@
 import type { TileData } from '../../data/boardData.ts';
-import { Text } from '@react-three/drei';
-import styles from './SpecialTile.module.css'; // CSS 모듈 import
 
 // CSS 변수 값을 읽어오는 헬퍼 함수
 const getCSSVariable = (variableName: string, fallback: string) => {
@@ -15,7 +13,7 @@ interface SpecialTileProps {
   depth?: number;
 }
 
-export function SpecialTile({ tile, width, depth }: SpecialTileProps) {
+export function SpecialTile({ width, depth }: SpecialTileProps) {
   const TILE_WIDTH = width ?? 4;
   const TILE_DEPTH = depth ?? 6;
 

@@ -149,6 +149,8 @@ export function Board() {
         const w = tile?.size?.w ?? tile?.width ?? TILE_WIDTH;
         const d = tile?.size?.d ?? tile?.depth ?? TILE_DEPTH;
 
+        // BaseTile props 안전하게 전달
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const baseTileProps: any = {
           tile: displayTile,
           tileIndex: index,

@@ -74,6 +74,8 @@ public class EventService {
 
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         CreateMapPayload.PlayerState user = gameState.getPlayers().get(userId);
+        log.info("TEST: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!user={}", user);
+
         if (user == null) {
             throw new BusinessException(BusinessError.USER_NOT_FOUND);
         }
@@ -103,11 +105,12 @@ public class EventService {
             }
         }
 
-        // 4. 게임 상태 업데이트
-        if (gameState != null && gameState.getPlayers() != null) {
-            gameState.getPlayers().put(userId, user);
-            gameRedisService.saveGameMapState(roomId, gameState);
-        }
+//        // 4. 게임 상태 업데이트
+//        if (gameState.getPlayers() != null) {
+//            gameState.getPlayers().put(userId, user);
+//
+//        }
+        gameRedisService.saveGameMapState(roomId, gameState);
 
         // 6. 결과 메시지 전송
         JailPayload payload = JailPayload.builder()
@@ -314,9 +317,13 @@ public class EventService {
             salaryBonus = economicHistoryService.calculateSalaryWithEffect(baseSalary, gameState.getGameTurn());
             player.setMoney(player.getMoney() + salaryBonus);
         }
+
         //5.1 감옥 자리라면 사용자 상태 업데이트 해야함
         if (gameState.getCurrentMap().getCells().get(newPosition).getType().equals(Tile.TileType.JAIL)) {
             player.setInJail(true);
+            player.setJailTurns(3);
+            gameRedisService.saveGameMapState(roomId, gameState);
+            log.info("현재 플레이어가 감옥에 갔나요? : {}", player.isInJail());
         }
         // 6. 새로운 위치로 이동
         player.setPosition(newPosition);
@@ -379,13 +386,11 @@ public class EventService {
         }
 
         // 10. 결과 메시지 전송 (찬스카드로 이동했을 수 있으므로 실제 플레이어 위치 사용)
-        String nextTurnUserName = gameState.getPlayerOrder().get(gameState.getCurrentPlayerIndex());
         UseDicePayload payload = UseDicePayload.builder()
                 .userName(useDiceRequest.getUserName())
                 .diceNum1(diceNum1)
                 .diceNum2(diceNum2)
                 .curTurn(gameState.getGameTurn())
-                .nextTurnUserName(nextTurnUserName)
                 .diceNumSum(diceNumSum)
                 .currentPosition(player.getPosition()) // 실제 플레이어 위치 사용 (찬스카드 이동 반영)
                 .salaryBonus(salaryBonus)

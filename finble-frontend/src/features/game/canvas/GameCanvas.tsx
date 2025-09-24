@@ -146,7 +146,7 @@ export default function GameCanvas() {
       console.log("🔌 [CANVAS] Disconnecting from game");
       disconnect();
     };
-  }, [gameId, isWebSocketReady]); // connect, disconnect 제거하여 불필요한 재실행 방지
+  }, [gameId, isWebSocketReady, connect, disconnect]);
 
   // --- Loading State ---
   // More robust loading condition

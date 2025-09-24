@@ -2,7 +2,6 @@ import { Text, Line } from '@react-three/drei';
 import type { TileData } from '../../data/boardData.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
 import React from 'react';
-import styles from './BaseTile.module.css'; // CSS 모듈 import
 
 // CSS 변수 값을 읽어오는 헬퍼 함수
 const getCSSVariable = (variableName: string, fallback: string) => {
@@ -20,14 +19,6 @@ const getPlayerColor = (character: string) => {
     'p4': getCSSVariable('--player-torus-color', '#9B59B6')
   };
   return characterColors[character] || getCSSVariable('--player-default-color', '#FFFFFF');
-};
-
-// 특수 타일 체크 함수
-const isSpecialTile = (tileIndex: number, tileType: string) => {
-  // 코너 타일들 (0, 8, 16, 24)과 특수 타일들
-  return tileIndex === 0 || tileIndex === 8 || tileIndex === 16 || tileIndex === 24 || 
-         tileType === 'special' || tileType === 'SPECIAL' || 
-         tileType === 'START' || tileType === 'JAIL' || tileType === 'AIRPLANE';
 };
 
 interface BaseTileProps {

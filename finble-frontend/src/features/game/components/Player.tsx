@@ -338,6 +338,7 @@ export function Player({ player }: PlayerProps) {
   if (!player) return null;
 
   return (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     <animated.mesh ref={meshRef} position={springs.position as any} castShadow>
       {/* 3D 도형 대신 PixelPlayer 컴포넌트를 사용합니다. */}
       <PixelPlayer character={player.character} />
