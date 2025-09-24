@@ -149,8 +149,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 break;
             case NTS_EVENT:
                 NtsRequest ntsRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), NtsRequest.class);
-                String roomId = roomService.getRoom(session.getId());
-                eventService.handleNtsEvent(roomId, ntsRequest.getNickname());
+                eventService.handleNtsEvent(session, ntsRequest);
                 break;
             case USE_DICE:
                 UseDiceRequest useDiceRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), UseDiceRequest.class);
