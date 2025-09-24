@@ -352,8 +352,20 @@ export const createGameLogicHandlers = (
       tileType: currentTile?.type,
       isMyTurn,
       gamePhase: "TILE_ACTION",
-      calledFrom: "찬스카드 이동 후 또는 일반 이동 후"
+      calledFrom: "찬스카드 이동 후 또는 일반 이동 후",
+      boardLength: board.length,
+      tileExists: !!currentTile
     });
+
+    if (!currentTile) {
+      console.error("❌ [TILE_ACTION] 타일 정보를 찾을 수 없습니다:", {
+        position: currentPlayer.position,
+        boardLength: board.length,
+        playerName: currentPlayer.name
+      });
+      get().endTurn();
+      return;
+    }
 
     if (currentPlayer.money < 0) {
       console.log("💸 [BANKRUPTCY] Player went bankrupt:", currentPlayer.name);

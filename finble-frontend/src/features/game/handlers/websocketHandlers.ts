@@ -257,28 +257,32 @@ export const createWebSocketHandlers = (
       });
 
       set((state) => {
-        // 서버에서 업데이트된 자산 정보를 플레이어에게 적용
+        // 서버에서 업데이트된 자산 정보와 위치 정보를 플레이어에게 적용
         const updatedPlayers = state.players.map(player => {
-          if (player.name === userName && updatedAsset) {
-            console.log("💰 [USE_DICE] 플레이어 자산 업데이트:", {
+          if (player.name === userName) {
+            console.log("💰🏃 [USE_DICE] 플레이어 자산 및 위치 동시 업데이트:", {
               playerName: player.name,
               previousMoney: player.money,
-              newMoney: updatedAsset.money,
-              moneyChange: updatedAsset.money - player.money,
-              properties: updatedAsset.lands
+              newMoney: updatedAsset?.money || player.money,
+              moneyChange: (updatedAsset?.money || player.money) - player.money,
+              previousPosition: player.position,
+              newPosition: currentPosition,
+              positionChange: currentPosition - player.position,
+              properties: updatedAsset?.lands
             });
 
             return {
               ...player,
-              money: updatedAsset.money, // 서버에서 경제역사 효과가 적용된 머니
-              properties: updatedAsset.lands || player.properties
+              position: currentPosition, // 서버에서 받은 정확한 위치로 동기화
+              money: updatedAsset?.money || player.money, // 서버에서 경제역사 효과가 적용된 머니
+              properties: updatedAsset?.lands || player.properties
             };
           }
           return player;
         });
 
         return {
-          players: updatedPlayers, // 위치는 여기서 업데이트하지 않음 - movePlayer에서 처리
+          players: updatedPlayers, // 위치와 자산 모두 여기서 동기화됨
           dice: [diceNum1, diceNum2],
           serverDiceNum: diceNumSum,
           serverCurrentPosition: currentPosition,
@@ -299,17 +303,25 @@ export const createWebSocketHandlers = (
         const currentPlayer = currentState.players[currentState.currentPlayerIndex];
 
         if (currentPlayer && currentPlayer.name === userName) {
-          console.log("🏃 [USE_DICE] 현재 플레이어 이동 처리:", {
+          console.log("🏃 [USE_DICE] 현재 플레이어 이동 처리 (위치는 이미 동기화됨):", {
             playerName: userName,
             currentPlayerIndex: currentState.currentPlayerIndex,
-            dice: [diceNum1, diceNum2]
+            dice: [diceNum1, diceNum2],
+            note: "movePlayer 대신 직접 애니메이션 처리"
           });
-          get().movePlayer([diceNum1, diceNum2]);
+
+          // 위치는 이미 업데이트되었으므로 애니메이션과 타일 액션만 처리
+          set({ gamePhase: "PLAYER_MOVING" });
+
+          setTimeout(() => {
+            get().handleTileAction();
+          }, 2000); // 이동 애니메이션 후 타일 액션
         } else {
-          console.log("👀 [USE_DICE] 다른 플레이어의 주사위 - 이동 처리 건너뛰기:", {
+          console.log("👀 [USE_DICE] 다른 플레이어의 주사위 - 위치는 이미 동기화됨:", {
             dicePlayerName: userName,
             currentPlayerName: currentPlayer?.name,
-            currentPlayerIndex: currentState.currentPlayerIndex
+            currentPlayerIndex: currentState.currentPlayerIndex,
+            note: "모든 클라이언트에서 위치가 동기화되었음"
           });
         }
       }, 2000); // 주사위 애니메이션 시간과 동일
@@ -365,6 +377,7 @@ export const createWebSocketHandlers = (
       console.log("🎲 [DRAW_CARD] 메시지 수신:", message);
       console.log("🎲 [DRAW_CARD] 메시지 타입:", message?.type);
       console.log("🎲 [DRAW_CARD] 페이로드:", message?.payload);
+      console.log("🎲 [DRAW_CARD] 현재 시간:", new Date().toISOString());
 
       const { payload } = message;
       if (!payload) {
@@ -452,49 +465,12 @@ export const createWebSocketHandlers = (
           type: "CHANCE_CARD" as const,
           text: `${cardName}: ${effectDescription}`,
           onConfirm: () => {
-            console.log("🎲 [CHANCE_CARD] 찬스카드 모달 확인 버튼 클릭");
+            console.log("🎲 [CHANCE_CARD] 찬스카드 모달 확인 버튼 클릭 - 모달만 닫기");
             set({ modal: { type: "NONE" as const } });
 
-            // 현재 플레이어만 게임 로직 실행
-            const currentState = get();
-            const currentPlayer = currentState.players[currentState.currentPlayerIndex];
-            const currentUserId = useUserStore.getState().userInfo?.userId;
-            const isMyTurn = currentPlayer.id === currentUserId;
-
-            if (!isMyTurn) {
-              console.log("🎲 [CHANCE_CARD] 내 턴이 아니므로 확인만 처리:", {
-                currentPlayer: currentPlayer.name,
-                myUserId: currentUserId,
-                isMyTurn
-              });
-              return;
-            }
-
-            console.log("🎲 [CHANCE_CARD] 현재 플레이어 - 게임 로직 실행:", {
-              currentPlayer: currentPlayer.name,
-              myUserId: currentUserId
-            });
-
-
-
-            // 위치가 변경되었다면 다시 타일 액션 처리
-            if (newPosition !== undefined && newPosition !== null) {
-              console.log("🎲 [CHANCE_CARD] 위치 변경됨 - 새 위치에서 타일 액션 처리:", {
-                userName,
-                previousPosition: "unknown",
-                newPosition,
-                willTriggerTileAction: true
-              });
-              get().handleTileAction();
-            } else {
-              // 위치 변경이 없으면 턴 종료
-              console.log("🎲 [CHANCE_CARD] 위치 변경 없음 - 바로 턴 종료:", {
-                userName,
-                moneyChange,
-                turnEnding: true
-              });
-              get().endTurn();
-            }
+            // 찬스카드 확인 모달은 단순히 정보만 표시하는 용도
+            // 실제 타일 액션 처리는 백엔드에서 찬스카드 효과 적용 후 자동으로 처리됨
+            console.log("🎲 [CHANCE_CARD] 모달 닫기 완료 - 턴 진행은 타일 액션에서 처리됨");
           }
         };
 
@@ -515,6 +491,26 @@ export const createWebSocketHandlers = (
 
         return newState;
       });
+
+      // 위치 변경이 있었고 현재 턴 플레이어의 카드인 경우 타일 액션을 자동으로 처리
+      const currentState = get();
+      const currentPlayer = currentState.players[currentState.currentPlayerIndex];
+      const currentUserInfo = useUserStore.getState().userInfo;
+      const isMyCard = currentUserInfo && currentUserInfo.nickname === userName;
+
+      if (newPosition !== undefined && newPosition !== null && isMyCard) {
+        console.log("🎲 [DRAW_CARD] 위치 변경됨 - 2초 후 자동으로 타일 액션 처리:", {
+          userName,
+          newPosition,
+          cardName
+        });
+
+        // 모달이 표시된 후 잠시 후에 타일 액션 처리
+        setTimeout(() => {
+          console.log("🎲 [DRAW_CARD] 자동 타일 액션 처리 시작");
+          get().handleTileAction();
+        }, 2000);
+      }
     };
 
     unsubscribeFunctions.push(subscribeToTopic("DRAW_CARD", handleChanceCard));
