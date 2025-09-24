@@ -192,7 +192,7 @@ export function Dice() {
           ref={ref}
           position={initialDicePositions[i]}
           colliders="cuboid"
-          scale={4}
+          scale={2.5}
         >
           <Die />
         </RigidBody>
