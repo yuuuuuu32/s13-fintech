@@ -1,32 +1,41 @@
-import React, { useEffect, useMemo, Suspense } from 'react';
-import { useParams } from 'react-router-dom';
-import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, SoftShadows, OrthographicCamera } from '@react-three/drei';
-import { Physics } from '@react-three/rapier';
-import * as THREE from 'three';
+import React, { useEffect, useMemo, Suspense } from "react";
+import { useParams } from "react-router-dom";
+import { Canvas, useThree } from "@react-three/fiber";
+import {
+  OrbitControls,
+  SoftShadows,
+  OrthographicCamera,
+  useTexture,
+} from "@react-three/drei";
+import { Physics } from "@react-three/rapier";
+import * as THREE from "three";
 
 // --- Store Imports ---
 // FIX: Added file extensions (.ts) to resolve compilation errors.
-import { useGameStore } from '../store/useGameStore.ts';
-import { useWebSocketStore } from '../../../stores/useWebSocketStore.ts';
+import { useGameStore } from "../store/useGameStore.ts";
+import { useWebSocketStore } from "../../../stores/useWebSocketStore.ts";
 
 // --- Component Imports ---
 // FIX: Added file extensions (.tsx) to resolve compilation errors.
-import { Board } from '../components/Board.tsx';
-import { Player } from '../components/Player.tsx';
-import { GameUI } from '../components/GameUI.tsx';
-import { Dice } from '../components/Dice.tsx';
-import TurnOrderSelection from '../components/TurnOrderSelection.tsx';
-import CanvasStage from '../components/CanvasStage.tsx';
-import BoardFrame from '../components/BoardFrame.tsx';
-import GameGuard from '../components/GameGuard.tsx';
+import { Board } from "../components/Board.tsx";
+import { Player } from "../components/Player.tsx";
+import { GameUI } from "../components/GameUI.tsx";
+import { Dice } from "../components/Dice.tsx";
+import TurnOrderSelection from "../components/TurnOrderSelection.tsx";
+import CanvasStage from "../components/CanvasStage.tsx";
+import BoardFrame from "../components/BoardFrame.tsx";
+import GameGuard from "../components/GameGuard.tsx";
 
 // --- Asset & Style Imports ---
 // FIX: Added file extensions (.png, .css) to resolve compilation errors.
-import bgImage from '../../../assets/game_background.png';
-import styles from './GameCanvas.module.css';
-import '../styles/game-layout.css';
+import bgImage from "../../../assets/game_background.png";
+import styles from "./GameCanvas.module.css";
+import "../styles/game-layout.css";
 
+// ✅ 3개의 건물 PNG 이미지 파일을 모두 import 합니다.
+import houseTextureUrl from "../../../assets/building_house.png";
+import buildingTextureUrl from "../../../assets/building_building.png";
+import hotelTextureUrl from "../../../assets/building_hotel.png";
 
 // ==== Board Dimensions ====
 const TILES_PER_SIDE = 9;
@@ -70,16 +79,20 @@ function AutoOrthoCamera({ boardSize }: { boardSize: number }) {
 // These are defined here because they are specific to this canvas setup.
 
 function GameScene() {
-    const playersArray = useGameStore(state => Array.isArray(state.players) ? state.players : Object.values(state.players || {}));
-    return (
-        <group scale={0.8} position={[0, -0.5, 1]}>
-            <Board />
-            {playersArray.map((player) => (
-                <Player key={player.id} player={player} />
-            ))}
-            <Dice />
-        </group>
-    );
+  const playersArray = useGameStore((state) =>
+    Array.isArray(state.players)
+      ? state.players
+      : Object.values(state.players || {})
+  );
+  return (
+    <group scale={0.8} position={[0, -0.5, 1]}>
+      <Board />
+      {playersArray.map((player) => (
+        <Player key={player.id} player={player} />
+      ))}
+      <Dice />
+    </group>
+  );
 }
 
 function BoardWithPhysics() {
@@ -90,17 +103,17 @@ function BoardWithPhysics() {
   );
 }
 
-
 // ==== Main GameCanvas Component ====
 export default function GameCanvas() {
   // --- State from Stores ---
-  const { players, gamePhase, connect, disconnect, initializeGame } = useGameStore();
+  const { players, gamePhase, connect, disconnect, initializeGame } =
+    useGameStore();
   const {
     isWebSocketReady,
     initialGameState,
     setInitialGameState,
     gameInitialized,
-    setGameInitialized
+    setGameInitialized,
   } = useWebSocketStore();
 
   // --- Router Params ---
@@ -112,12 +125,21 @@ export default function GameCanvas() {
   );
 
   // --- Logic Hooks (useEffect) ---
+    useEffect(() => {
+    useTexture.preload(houseTextureUrl);
+    useTexture.preload(buildingTextureUrl);
+    useTexture.preload(hotelTextureUrl);
+  }, []); // 빈 배열[]은 이 effect가 한 번만 실행되도록 보장합니다.
+
 
   // Effect to apply the initial game state when entering a room
   useEffect(() => {
     if (initialGameState && isWebSocketReady) {
-      const hasPlayersWithPosition = playersArray.some(p => p.position > 0);
-      const isGameInProgress = gamePhase !== "SELECTING_ORDER" && gamePhase !== "WAITING_FOR_ROLL" && playersArray.length > 0;
+      const hasPlayersWithPosition = playersArray.some((p) => p.position > 0);
+      const isGameInProgress =
+        gamePhase !== "SELECTING_ORDER" &&
+        gamePhase !== "WAITING_FOR_ROLL" &&
+        playersArray.length > 0;
 
       // Avoid re-initializing if the game is already in progress
       if (gameInitialized || hasPlayersWithPosition || isGameInProgress) {
@@ -129,8 +151,14 @@ export default function GameCanvas() {
       }
     }
   }, [
-    initialGameState, isWebSocketReady, initializeGame, setInitialGameState,
-    gameInitialized, setGameInitialized, playersArray, gamePhase
+    initialGameState,
+    isWebSocketReady,
+    initializeGame,
+    setInitialGameState,
+    gameInitialized,
+    setGameInitialized,
+    playersArray,
+    gamePhase,
   ]);
 
   // Effect to connect and disconnect WebSocket
@@ -138,7 +166,7 @@ export default function GameCanvas() {
     if (gameId && isWebSocketReady) {
       // CRITICAL FIX: Set gameId in the global store BEFORE connecting.
       // This ensures other parts of the app can access it for API calls.
-      useGameStore.setState({ gameId: gameId }); 
+      useGameStore.setState({ gameId: gameId });
       connect(gameId);
     }
     // Cleanup on component unmount
@@ -161,11 +189,9 @@ export default function GameCanvas() {
 
       {/* Loading Overlay */}
       {isLoading && (
-        <div className={styles.loadingOverlay}>
-          Loading game...
-        </div>
+        <div className={styles.loadingOverlay}>Loading game...</div>
       )}
-      
+
       {/* 2D UI Layer */}
       <GameGuard>
         <TurnOrderSelection />
@@ -184,9 +210,13 @@ export default function GameCanvas() {
 
           {/* Lighting & Environment */}
           <SoftShadows size={25} samples={10} focus={0.5} />
-          <fog attach="fog" args={['#050508', 60, 120]} />
+          <fog attach="fog" args={["#050508", 60, 120]} />
           <ambientLight intensity={0.6} />
-          <hemisphereLight skyColor="#2a3441" groundColor="#0f0f1a" intensity={0.4} />
+          <hemisphereLight
+            skyColor="#2a3441"
+            groundColor="#0f0f1a"
+            intensity={0.4}
+          />
           <directionalLight
             position={[15, 25, 12]}
             intensity={1.0}
@@ -199,23 +229,41 @@ export default function GameCanvas() {
             shadow-camera-top={60}
             shadow-camera-bottom={-60}
           />
-          <pointLight position={[-25, 8, -20]} color="#47d8ff" intensity={30} distance={80} />
-          <pointLight position={[25, 8, 15]} color="#d24bff" intensity={25} distance={80} />
+          <pointLight
+            position={[-25, 8, -20]}
+            color="#47d8ff"
+            intensity={30}
+            distance={80}
+          />
+          <pointLight
+            position={[25, 8, 15]}
+            color="#d24bff"
+            intensity={25}
+            distance={80}
+          />
 
           {/* Game Board and Pieces */}
-          <Suspense fallback={
-            <group scale={1.2} position={[0, 1.5, 0]}>
-              <mesh>
-                <boxGeometry args={[1, 0.1, 1]} />
-                <meshBasicMaterial color="#444" />
-              </mesh>
-            </group>
-          }>
+          <Suspense
+            fallback={
+              <group scale={1.2} position={[0, 1.5, 0]}>
+                <mesh>
+                  <boxGeometry args={[1, 0.1, 1]} />
+                  <meshBasicMaterial color="#444" />
+                </mesh>
+              </group>
+            }
+          >
             <BoardWithPhysics />
           </Suspense>
 
           {/* Controls (disabled for gameplay, useful for debugging) */}
-          <OrbitControls target={[0, 0, 0]} makeDefault enableRotate={false} enablePan={false} enableZoom={false} />
+          <OrbitControls
+            target={[0, 0, 0]}
+            makeDefault
+            enableRotate={false}
+            enablePan={false}
+            enableZoom={false}
+          />
         </Canvas>
       </CanvasStage>
 
