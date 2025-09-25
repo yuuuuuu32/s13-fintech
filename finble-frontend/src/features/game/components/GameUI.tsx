@@ -840,7 +840,7 @@ export function GameUI() {
   const currentPlayer = players[currentPlayerIndex];
   const isMyTurn = currentPlayer?.id === userInfo?.userId;
 
-  // 게임 종료 조건 fallback 체크 (20턴 초과 시)
+  // 게임 종료 조건 fallback 체크! (20턴 초과 시)
   const shouldShowGameOverByTurns = currentTurn >= totalTurns;
   const shouldShowGameOver = isGameOver || shouldShowGameOverByTurns;
 
