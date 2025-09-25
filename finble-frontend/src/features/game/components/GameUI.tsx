@@ -724,11 +724,11 @@ const GameOverModalContent = ({
   players,
   board,
   shouldShowGameOverByTurns,
+  currentUserId,
 }) => {
   // 승자가 없고 턴 제한으로 게임이 끝난 경우 fallback 승자 결정
   let finalWinner = winner;
   let gameEndReason = "";
-  const { userInfo } = useUserStore();
 
   if (!winner && shouldShowGameOverByTurns) {
     const alivePlayers = players.filter((p) => p.money >= 0);
@@ -744,43 +744,68 @@ const GameOverModalContent = ({
     gameEndReason = "게임 진행 중 승리";
   }
 
-  const isLoser = finalWinner && finalWinner.id !== userInfo?.userId;
+  // 현재 사용자가 승리자인지 확인 (디버깅 로그 추가)
+  console.log("🏆 [GameOverModal] 승리자 판단 디버깅:", {
+    finalWinner: finalWinner,
+    finalWinnerId: finalWinner?.id,
+    finalWinnerIdType: typeof finalWinner?.id,
+    currentUserId: currentUserId,
+    currentUserIdType: typeof currentUserId,
+    directComparison: finalWinner?.id === currentUserId,
+    stringComparison: String(finalWinner?.id) === String(currentUserId)
+  });
 
+  const isWinner = finalWinner && String(finalWinner.id) === String(currentUserId);
+  const isLoser = !isWinner && finalWinner !== null;
+
+  
   return (
-    <Box className={styles.gameOverModal}>
+    <Box sx={styles.gameOverModal}>
       <Typography variant="h4" component="h2" className={styles.gameOverTitle}>
-        🎉 게임 종료!
+        {isWinner ? "🎉 게임 종료!" : isLoser ? "😢 게임 종료" : "🏁 게임 종료"}
       </Typography>
       <Typography className={styles.gameOverMessage}>
-        {finalWinner
-          ? `${finalWinner.name}님이 최종 승리했습니다!`
+        {isWinner
+          ? "축하합니다! 승리했습니다!"
           : isLoser
             ? "아쉽게도 패배했습니다..."
             : "승자 없이 게임이 종료되었습니다."}
       </Typography>
 
+      {/* 승리자 정보는 패배자에게도 표시 */}
+      {finalWinner && !isWinner && (
+        <Typography className={styles.gameOverMessage}>
+          🏆 {finalWinner.name}님이 최종 승리했습니다!
+        </Typography>
+      )}
+
       {gameEndReason && (
-        <Typography className={styles.gameOverReason}>
+        <Typography className={styles.gameOverAssets}>
           {gameEndReason}
         </Typography>
       )}
-      {finalWinner && (
+
+      {/* 총 자산은 승리자에게만 표시 */}
+      {finalWinner && isWinner && (
         <Typography className={styles.gameOverAssets}>
           🏆 총 자산:{" "}
           {calculateTotalAssets(finalWinner, board).toLocaleString()}원
         </Typography>
       )}
+
       <Button
+        sx={{ mt: 3 }}
         variant="contained"
         size="large"
         onClick={handleGoToLobby}
-        className={styles.gameOverButton}
+        color={isWinner ? "primary" : isLoser ? "secondary" : "primary"}
       >
         로비로 돌아가기
       </Button>
     </Box>
   );
 };
+
 
 export function GameUI() {
   const { userInfo } = useUserStore();
