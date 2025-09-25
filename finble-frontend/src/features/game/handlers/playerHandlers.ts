@@ -631,7 +631,7 @@ export const createPlayerActions = (
       send(`/app/game/${gameId}/construct-building`, {
         type: "CONSTRUCT_BUILDING",
         payload: {
-          username: currentPlayer.name,
+          userName: currentPlayer.name,
           landNum: tileIndex,
           targetBuildingType: targetBuildingType,
         },
