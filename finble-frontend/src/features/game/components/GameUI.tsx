@@ -758,54 +758,56 @@ const GameOverModalContent = ({
   const isWinner = finalWinner && String(finalWinner.id) === String(currentUserId);
   const isLoser = !isWinner && finalWinner !== null;
 
-  
+
   return (
-    <Box sx={styles.gameOverModal}>
-      <Typography variant="h4" component="h2" className={styles.gameOverTitle}>
-        {isWinner ? "🎉 게임 종료!" : isLoser ? "😢 게임 종료" : "🏁 게임 종료"}
-      </Typography>
+  // Box에 `gameOverModal` 스타일 적용 (통일)
+  <Box className={styles.gameOverModal}>
+    {/* 제목과 메시지 */}
+    <Typography variant="h4" component="h2" className={styles.gameOverTitle}>
+      {isWinner ? "🎉 게임 종료!" : isLoser ? "😢 게임 종료" : "🏁 게임 종료"}
+    </Typography>
+    <Typography className={styles.gameOverMessage}>
+      {isWinner
+        ? "축하합니다! 승리했습니다!"
+        : isLoser
+          ? "아쉽게도 패배했습니다..."
+          : "승자 없이 게임이 종료되었습니다."}
+    </Typography>
+
+    {/* 승리자 정보는 패배자에게도 표시 */}
+    {/* isLoser 변수를 사용해 로직 간결화 */}
+    {isLoser && (
       <Typography className={styles.gameOverMessage}>
-        {isWinner
-          ? "축하합니다! 승리했습니다!"
-          : isLoser
-            ? "아쉽게도 패배했습니다..."
-            : "승자 없이 게임이 종료되었습니다."}
+        🏆 {finalWinner.name}님이 최종 승리했습니다!
       </Typography>
+    )}
 
-      {/* 승리자 정보는 패배자에게도 표시 */}
-      {finalWinner && !isWinner && (
-        <Typography className={styles.gameOverMessage}>
-          🏆 {finalWinner.name}님이 최종 승리했습니다!
-        </Typography>
-      )}
+    {/* 게임 종료 이유 추가 */}
+    {gameEndReason && (
+      <Typography className={styles.gameOverReason}>
+        {gameEndReason}
+      </Typography>
+    )}
 
-      {gameEndReason && (
-        <Typography className={styles.gameOverAssets}>
-          {gameEndReason}
-        </Typography>
-      )}
+    {/* 총 자산은 승리자에게만 표시 */}
+    {finalWinner && isWinner && (
+      <Typography className={styles.gameOverAssets}>
+        🏆 총 자산: {calculateTotalAssets(finalWinner, board).toLocaleString()}원
+      </Typography>
+    )}
 
-      {/* 총 자산은 승리자에게만 표시 */}
-      {finalWinner && isWinner && (
-        <Typography className={styles.gameOverAssets}>
-          🏆 총 자산:{" "}
-          {calculateTotalAssets(finalWinner, board).toLocaleString()}원
-        </Typography>
-      )}
-
-      <Button
-        sx={{ mt: 3 }}
-        variant="contained"
-        size="large"
-        onClick={handleGoToLobby}
-        color={isWinner ? "primary" : isLoser ? "secondary" : "primary"}
-      >
-        로비로 돌아가기
-      </Button>
-    </Box>
-  );
-};
-
+    <Button
+      sx={{ mt: 3 }} // 이 부분은 MUI 인라인 스타일로 유지
+      variant="contained"
+      size="large"
+      onClick={handleGoToLobby}
+      className={styles.gameOverButton} // className으로 통일
+      color={isWinner ? "primary" : isLoser ? "secondary" : "primary"}
+    >
+      로비로 돌아가기
+    </Button>
+  </Box>
+);
 
 export function GameUI() {
   const { userInfo } = useUserStore();
