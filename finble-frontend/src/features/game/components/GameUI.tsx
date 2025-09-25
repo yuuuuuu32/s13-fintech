@@ -864,7 +864,7 @@ export function GameUI() {
     navigate("/lobby");
   };
 
-  // 경제역사 상태 디버깅
+  // 경제역사 상태 디버깅!
   useEffect(() => {
     console.log("🏦 [GameUI] economicHistory 상태 체크:", economicHistory);
   }, [economicHistory]);
