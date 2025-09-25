@@ -660,7 +660,7 @@ const ManagePropertyModalContent = ({
   );
 };
 
-// BuySpecialLandModalContent
+// BuySpecialLandModalContent!
 const BuySpecialLandModalContent = ({
   modal,
   buySpecialLand,
