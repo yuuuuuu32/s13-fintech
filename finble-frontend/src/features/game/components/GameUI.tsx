@@ -745,8 +745,24 @@ const GameOverModalContent = ({
     gameEndReason = "게임 진행 중 승리";
   }
 
+  console.log("🏆 [GameOverModal] 승리자 판단 디버깅:", {
+    finalWinner: finalWinner,
+    finalWinnerId: finalWinner?.id,
+    finalWinnerIdType: typeof finalWinner?.id,
+    currentUserId: currentUserId,
+    currentUserIdType: typeof currentUserId,
+    directComparison: finalWinner?.id === currentUserId,
+    stringComparison: String(finalWinner?.id) === String(currentUserId)
+  });
+
   const isWinner = finalWinner && String(finalWinner.id) === String(currentUserId);
-  const isLoser = !!finalWinner && !isWinner;
+  const isLoser = !isWinner && finalWinner !== null;
+
+  console.log("🏆 [GameOverModal] 최종 판단 결과:", {
+    isWinner: isWinner,
+    isLoser: isLoser,
+    finalWinnerExists: !!finalWinner
+  });
 
   return (
     <Box sx={modalStyle}>
