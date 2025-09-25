@@ -190,17 +190,15 @@ const BuyPropertyModalContent = ({
           label={
             <Box>
               <Typography
-                className={`${styles.formGroupLabel} ${
-                  !selectedItems.land ? styles.formGroupLabelDisabled : ""
-                }`}
+                className={`${styles.formGroupLabel} ${!selectedItems.land ? styles.formGroupLabelDisabled : ""
+                  }`}
               >
                 주택 {!selectedItems.land && "(땅 구매 필요)"}
               </Typography>
 
               <Typography
-                className={`${styles.formGroupLabel} ${
-                  !selectedItems.land ? styles.formGroupLabelDisabled : ""
-                }`}
+                className={`${styles.formGroupLabel} ${!selectedItems.land ? styles.formGroupLabelDisabled : ""
+                  }`}
               >
                 {housePrice.toLocaleString()}원
               </Typography>
@@ -214,22 +212,20 @@ const BuyPropertyModalContent = ({
               checked={selectedItems.building}
               onChange={handleItemChange("building")}
               disabled={!selectedItems.house}
-              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF"  } }}
+              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF" } }}
             />
           }
           label={
             <Box>
               <Typography
-                className={`${styles.formGroupLabel} ${
-                  !selectedItems.house ? styles.formGroupLabelDisabled : ""
-                }`}
+                className={`${styles.formGroupLabel} ${!selectedItems.house ? styles.formGroupLabelDisabled : ""
+                  }`}
               >
                 빌딩 {!selectedItems.house && "(주택 구매 필요)"}
               </Typography>
               <Typography
-                className={`${styles.formGroupLabel} ${
-                  !selectedItems.house ? styles.formGroupLabelDisabled : ""
-                }`}
+                className={`${styles.formGroupLabel} ${!selectedItems.house ? styles.formGroupLabelDisabled : ""
+                  }`}
                 variant="body2"
               >
                 {buildingPrice.toLocaleString()}원
@@ -244,22 +240,20 @@ const BuyPropertyModalContent = ({
               checked={selectedItems.hotel}
               onChange={handleItemChange("hotel")}
               disabled={!selectedItems.building}
-              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF"  } }}
+              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF" } }}
             />
           }
           label={
             <Box>
               <Typography
-                className={`${styles.formGroupLabel} ${
-                  !selectedItems.building ? styles.formGroupLabelDisabled : ""
-                }`}
+                className={`${styles.formGroupLabel} ${!selectedItems.building ? styles.formGroupLabelDisabled : ""
+                  }`}
               >
                 호텔 {!selectedItems.building && "(빌딩 구매 필요)"}
               </Typography>
               <Typography
-                className={`${styles.formGroupLabel} ${
-                  !selectedItems.building ? styles.formGroupLabelDisabled : ""
-                }`}
+                className={`${styles.formGroupLabel} ${!selectedItems.building ? styles.formGroupLabelDisabled : ""
+                  }`}
               >
                 {hotelPrice.toLocaleString()}원
               </Typography>
@@ -275,13 +269,12 @@ const BuyPropertyModalContent = ({
             : "선택된 항목이 없습니다"}
         </Typography>
         <Typography
-          className={`${styles.cashText} ${
-            hasSelectedItems
-              ? canAfford
-                ? styles.cashTextSuccess
-                : styles.cashTextError
-              : ""
-          }`}
+          className={`${styles.cashText} ${hasSelectedItems
+            ? canAfford
+              ? styles.cashTextSuccess
+              : styles.cashTextError
+            : ""
+            }`}
         >
           보유 현금: {currentPlayer?.money.toLocaleString()}원
           {hasSelectedItems && !canAfford && " (현금 부족)"}
@@ -612,9 +605,8 @@ const ManagePropertyModalContent = ({
               disabled={hasHouse}
             />
           }
-          label={`주택 (${housePrice.toLocaleString()}원) ${
-            hasHouse ? "✓ 보유중" : ""
-          }`}
+          label={`주택 (${housePrice.toLocaleString()}원) ${hasHouse ? "✓ 보유중" : ""
+            }`}
         />
 
         <FormControlLabel
@@ -625,9 +617,8 @@ const ManagePropertyModalContent = ({
               disabled={hasBuilding}
             />
           }
-          label={`빌딩 (${buildingPrice.toLocaleString()}원) ${
-            hasBuilding ? "✓ 보유중" : ""
-          }`}
+          label={`빌딩 (${buildingPrice.toLocaleString()}원) ${hasBuilding ? "✓ 보유중" : ""
+            }`}
         />
 
         <FormControlLabel
@@ -638,9 +629,8 @@ const ManagePropertyModalContent = ({
               disabled={hasHotel}
             />
           }
-          label={`호텔 (${hotelPrice.toLocaleString()}원) ${
-            hasHotel ? "✓ 보유중" : ""
-          }`}
+          label={`호텔 (${hotelPrice.toLocaleString()}원) ${hasHotel ? "✓ 보유중" : ""
+            }`}
         />
       </Box>
 
@@ -767,8 +757,7 @@ const GameOverModalContent = ({
       )}
       {finalWinner && (
         <Typography className={styles.gameOverAssets}>
-          🏆 총 자산:{" "}
-          {calculateTotalAssets(finalWinner, board).toLocaleString()}원
+          🏆 총 자산: {calculateTotalAssets(finalWinner, board).toLocaleString()}원
         </Typography>
       )}
       <Button
@@ -944,55 +933,55 @@ export function GameUI() {
                 {(economicHistory.salaryMultiplier ||
                   economicHistory.propertyPriceMultiplier ||
                   economicHistory.buildingCostMultiplier) && (
-                  <Box sx={{ mt: 1, pt: 1, borderTop: "1px solid #ddd" }}>
-                    <Typography
-                      variant="caption"
-                      sx={{ fontWeight: "bold", display: "block", mb: 0.5 }}
-                    >
-                      경제 효과:
-                    </Typography>
-                    {economicHistory.salaryMultiplier && (
-                      <Typography variant="caption" sx={{ display: "block" }}>
-                        월급:{" "}
-                        {((economicHistory.salaryMultiplier - 1) * 100 > 0
-                          ? "+"
-                          : "") +
-                          (
-                            (economicHistory.salaryMultiplier - 1) *
-                            100
-                          ).toFixed(0)}
-                        %
+                    <Box sx={{ mt: 1, pt: 1, borderTop: "1px solid #ddd" }}>
+                      <Typography
+                        variant="caption"
+                        sx={{ fontWeight: "bold", display: "block", mb: 0.5 }}
+                      >
+                        경제 효과:
                       </Typography>
-                    )}
-                    {economicHistory.propertyPriceMultiplier && (
-                      <Typography variant="caption" sx={{ display: "block" }}>
-                        부동산:{" "}
-                        {((economicHistory.propertyPriceMultiplier - 1) * 100 >
-                        0
-                          ? "+"
-                          : "") +
-                          (
-                            (economicHistory.propertyPriceMultiplier - 1) *
-                            100
-                          ).toFixed(0)}
-                        %
-                      </Typography>
-                    )}
-                    {economicHistory.buildingCostMultiplier && (
-                      <Typography variant="caption" sx={{ display: "block" }}>
-                        건설비용:{" "}
-                        {((economicHistory.buildingCostMultiplier - 1) * 100 > 0
-                          ? "+"
-                          : "") +
-                          (
-                            (economicHistory.buildingCostMultiplier - 1) *
-                            100
-                          ).toFixed(0)}
-                        %
-                      </Typography>
-                    )}
-                  </Box>
-                )}
+                      {economicHistory.salaryMultiplier && (
+                        <Typography variant="caption" sx={{ display: "block" }}>
+                          월급:{" "}
+                          {((economicHistory.salaryMultiplier - 1) * 100 > 0
+                            ? "+"
+                            : "") +
+                            (
+                              (economicHistory.salaryMultiplier - 1) *
+                              100
+                            ).toFixed(0)}
+                          %
+                        </Typography>
+                      )}
+                      {economicHistory.propertyPriceMultiplier && (
+                        <Typography variant="caption" sx={{ display: "block" }}>
+                          부동산:{" "}
+                          {((economicHistory.propertyPriceMultiplier - 1) * 100 >
+                            0
+                            ? "+"
+                            : "") +
+                            (
+                              (economicHistory.propertyPriceMultiplier - 1) *
+                              100
+                            ).toFixed(0)}
+                          %
+                        </Typography>
+                      )}
+                      {economicHistory.buildingCostMultiplier && (
+                        <Typography variant="caption" sx={{ display: "block" }}>
+                          건설비용:{" "}
+                          {((economicHistory.buildingCostMultiplier - 1) * 100 > 0
+                            ? "+"
+                            : "") +
+                            (
+                              (economicHistory.buildingCostMultiplier - 1) *
+                              100
+                            ).toFixed(0)}
+                          %
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
               </Box>
             }
             placement="bottom"
@@ -1006,9 +995,8 @@ export function GameUI() {
           >
             <Typography
               variant="body2"
-              className={`${styles.economicText} ${
-                economicHistory.isBoom ? styles.boomText : styles.bustText
-              }`}
+              className={`${styles.economicText} ${economicHistory.isBoom ? styles.boomText : styles.bustText
+                }`}
               sx={{ fontFamily: "Galmuri14" }}
             >
               📈 {economicHistory.fullName}
@@ -1048,9 +1036,8 @@ export function GameUI() {
               position: "absolute",
               ...position,
               bgcolor: `rgba(0,0,0,${player.money < 0 ? 0.4 : 0.8})`,
-              border: `3px solid ${
-                characterColors[player.character] || "white"
-              }`,
+              border: `3px solid ${characterColors[player.character] || "white"
+                }`,
               boxShadow:
                 index === currentPlayerIndex && !isGameOver
                   ? "0 0 15px rgba(255, 215, 0, 0.6)"
@@ -1204,6 +1191,7 @@ export function GameUI() {
             />
           ) : (
             <Box className={styles.modalStyle} sx={{ fontFamily: "Galmuri14" }}>
+              {/* 기존 분기 그대로 */}
               {modal.type === "BUY_PROPERTY" && (
                 <BuyPropertyModalContent
                   modal={modal}
@@ -1266,7 +1254,6 @@ export function GameUI() {
           )}
         </>
       </Modal>
-
       {/* 토스트 메시지 컨테이너! */}
       <ToastContainer />
     </Box>
