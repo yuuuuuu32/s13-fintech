@@ -30,8 +30,8 @@ INSERT
 IGNORE INTO cards (name, card_type, description, effect_type, effect_value, is_immediate)
 VALUES
 -- 이슈 카드들 (즉발)
-('복권 당첨', 'ISSUE', '50만원 획득', 'MONEY', 5000000, true),
-('사기 피해', 'ISSUE', '50만원 손실', 'MONEY', -5000000, true),
+('복권 당첨', 'ISSUE', '500만원 획득', 'MONEY', 5000000, true),
+('사기 피해', 'ISSUE', '500만원 손실', 'MONEY', -5000000, true),
 ('세금 납부', 'ISSUE', '보유 현금의 15% 납부', 'MONEY_PERCENT', 15, true),
 ('감옥행', 'ISSUE', '즉시 감옥으로 이동', 'JAIL', 0, true),
 -- 게임 카드들 (즉발)
@@ -41,8 +41,7 @@ VALUES
 -- 금융정책 카드들
 ('금리 인상', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 10% 감소', 'ALL_MONEY_PERCENT', 10, true),
 ('금리 인하', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 10% 증가', 'ALL_MONEY_PERCENT', 10, true),
-('부동산 호황', 'FINANCIAL_POLICY', '모든 땅값이 20% 상승', 'LAND_VALUE', 20, true),
-('부동산 불황', 'FINANCIAL_POLICY', '모든 땅값이 20% 하락', 'LAND_VALUE', 20, true),
+('세무조사', 'FINANCIAL_POLICY', '세무조사로 인해 자산 10% 하락', 'LAND_VALUE', 10, true),
 ('경기 침체', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 15% 감소', 'ALL_MONEY_PERCENT', 15, true),
 ('경기 호황', 'FINANCIAL_POLICY', '모든 플레이어의 현금이 15% 증가', 'ALL_MONEY_PERCENT', 15, true);
 

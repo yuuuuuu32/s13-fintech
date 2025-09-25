@@ -48,8 +48,6 @@ export const createPlayerActions = (
     const { gameId, send, players, currentPlayerIndex, board } = get();
     const currentPlayer = players[currentPlayerIndex];
 
-
-    // 1. Check for funds (client-side check)
     if (currentPlayer.money < purchaseData.totalCost) {
       set({ modal: { type: "INFO" as const, text: "자산이 부족하여 구매할 수 없습니다." } });
       return;
@@ -61,16 +59,17 @@ export const createPlayerActions = (
       return;
     }
 
-    let targetBuildingType = "FIELD"; // 백엔드 enum에 맞게 FIELD 사용
+    let targetBuildingType = "FIELD";
     if (purchaseData.selectedItems.hotel) {
       targetBuildingType = "HOTEL";
     } else if (purchaseData.selectedItems.building) {
       targetBuildingType = "BUILDING";
     } else if (purchaseData.selectedItems.house) {
       targetBuildingType = "VILLA";
+    } else if (purchaseData.selectedItems.land) {
+      targetBuildingType = "FIELD";
     }
 
-    // 3. Send message to the server to make the change permanent
     if (gameId) {
       send(`/app/game/${gameId}/construct-building`, {
         type: "CONSTRUCT_BUILDING",
@@ -85,6 +84,9 @@ export const createPlayerActions = (
     }
 
     set({ modal: { type: "NONE" as const } });
+
+    // 건물 구매 후 턴 종료는 서버 응답(CONSTRUCT_BUILDING)에서 처리
+    console.log("🏗️ [buyPropertyWithItems] 건물 구매 요청 전송 - 서버 응답 대기 중");
   },
 
   acquireProperty: () => {
@@ -101,27 +103,14 @@ export const createPlayerActions = (
       return;
     }
 
-    // 낙관적 업데이트
-    set((state) => {
-      const updatedPlayers = [...state.players];
-      const ownerIndex = updatedPlayers.findIndex((p) => p.id === owner.id);
+    // 모달 닫기 (서버 응답을 기다림)
+    set({ modal: { type: "NONE" as const } });
 
-      updatedPlayers[state.currentPlayerIndex] = {
-        ...currentPlayer,
-        money: currentPlayer.money - modal.acquireCost,
-        properties: [...currentPlayer.properties, tileIndex],
-      };
-
-      updatedPlayers[ownerIndex] = {
-        ...owner,
-        money: owner.money + modal.acquireCost,
-        properties: owner.properties.filter((p) => p !== tileIndex),
-      };
-
-      return {
-        players: updatedPlayers,
-        modal: { type: "NONE" as const }
-      };
+    console.log("🏢 [ACQUIRE_PROPERTY] 인수 요청 전송:", {
+      buyer: currentPlayer.name,
+      seller: owner.name,
+      tileIndex,
+      modalAcquireCost: modal.acquireCost
     });
 
     // 서버에 동기화 메시지 전송
@@ -494,14 +483,32 @@ export const createPlayerActions = (
   },
 
   selectTravelDestination: (tileIndex: number) => {
-    const { send, players, currentPlayerIndex } = get();
+    const state = get();
+    const { send, players, currentPlayerIndex, gamePhase } = state;
     const currentPlayer = players[currentPlayerIndex];
 
+    // 이미 요청 진행 중이면 중복 요청 방지
+    if (gamePhase !== "WORLD_TRAVEL_MOVE") {
+      console.log("⚠️ [WORLD_TRAVEL] 세계여행 모드가 아니므로 요청 무시:", {
+        currentPhase: gamePhase,
+        expectedPhase: "WORLD_TRAVEL_MOVE"
+      });
+      return;
+    }
 
     // 백엔드에 세계여행 목적지 전송
     if (send) {
-      const gameId = get().gameId;
+      const gameId = state.gameId;
       if (gameId) {
+        console.log("✈️ [WORLD_TRAVEL] 목적지 선택 요청:", {
+          nickname: currentPlayer.name,
+          destination: tileIndex,
+          gamePhase: gamePhase
+        });
+
+        // 즉시 상태 변경으로 중복 요청 방지
+        set({ gamePhase: "TILE_ACTION" });
+
         send(`/app/game/${gameId}/world-travel`, {
           type: "WORLD_TRAVEL_EVENT",
           payload: {
@@ -610,14 +617,26 @@ export const createPlayerActions = (
     });
 
     // Send message to server to confirm the action
-    const { gameId, send, players, currentPlayerIndex } = get();
+    const { gameId, send, players, currentPlayerIndex, board } = get();
     const currentPlayer = players[currentPlayerIndex];
+    const tile = board[tileIndex];
+    const newLevel = (tile.buildings?.level || 0) + 1;
+    let targetBuildingType = "FIELD";
+    if (newLevel === 1) {
+      targetBuildingType = "VILLA";
+    } else if (newLevel === 2) {
+      targetBuildingType = "BUILDING";
+    } else if (newLevel === 3) {
+      targetBuildingType = "HOTEL";
+    }
+
     if (gameId) {
       send(`/app/game/${gameId}/construct-building`, {
         type: "CONSTRUCT_BUILDING",
         payload: {
           userName: currentPlayer.name,
           landNum: tileIndex,
+          targetBuildingType: targetBuildingType,
         },
       });
     }

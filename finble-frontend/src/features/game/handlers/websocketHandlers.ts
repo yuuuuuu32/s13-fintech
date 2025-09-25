@@ -2,6 +2,7 @@ import { useUserStore } from "../../../stores/useUserStore.ts";
 import type { GameState, GameInitialState, Player } from "../types/gameTypes.ts";
 import { sendMessage, subscribeToTopic } from "../../../utils/websocket.ts";
 import { CHARACTER_PREFABS } from "../constants/gameConstants.ts";
+import { logger } from "../../../utils/logger.ts";
 
 
 
@@ -99,6 +100,7 @@ export const createWebSocketHandlers = (
                 });
 
                 return {
+                    ...state, // 기존 상태 보존 (players 포함)
                     currentPlayerIndex: nextPlayerIndex,
                     currentTurn: payload.gameTurn ?? state.currentTurn,
                     gamePhase: isMyTurn ? "WORLD_TRAVEL_MOVE" : "WAITING_FOR_ROLL", // 본인만 WORLD_TRAVEL_MOVE 모드
@@ -108,6 +110,7 @@ export const createWebSocketHandlers = (
             }
 
             const newState = {
+              ...state, // 기존 상태 보존 (players 포함)
               currentPlayerIndex: nextPlayerIndex,
               currentTurn: payload.gameTurn ?? state.currentTurn,
               gamePhase: "WAITING_FOR_ROLL",
@@ -131,46 +134,83 @@ export const createWebSocketHandlers = (
           return {};
         });
               } else {
-                // GAME_STATE_CHANGE는 위치 업데이트하지 않음 - 게임 상태만
-                console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE without curPlayer - merging players state:", JSON.stringify(payload, null, 2));
-                
+                // GAME_STATE_CHANGE는 선택적으로 위치 업데이트
+                console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE without curPlayer - analyzing payload:", JSON.stringify(payload, null, 2));
+
                 if (payload.players) {
                   const newPlayers = Array.isArray(payload.players) ? payload.players : Object.values(payload.players);
                   const currentPlayers = get().players;
-      
+                  const currentState = get();
+
+                  // isUpdatingPosition이 true일 때만 위치 업데이트 차단
+                  if (currentState.isUpdatingPosition) {
+                    console.warn("🚫 [POSITION_UPDATE_BLOCKED] 위치 업데이트 진행 중 - 플레이어 데이터 무시:", {
+                      reason: "movePlayer 실행 중",
+                      isUpdatingPosition: currentState.isUpdatingPosition
+                    });
+
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { players, ...safePayload } = payload;
+                    set(safePayload);
+                    return;
+                  }
+
                   const updatedPlayers = currentPlayers.map(clientPlayer => {
                     const serverPlayer = newPlayers.find(p => p.id === clientPlayer.id);
-                                  if (serverPlayer) {
-                                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                                    const { position, ...serverData } = serverPlayer;
+                    if (serverPlayer) {
+                      // 서버 위치 정보를 우선적으로 적용 (찬스카드 후 동기화)
+                      const finalPosition = serverPlayer.position !== undefined && serverPlayer.position !== null
+                        ? serverPlayer.position
+                        : clientPlayer.position;
 
-                                    // 감옥 상태 보호: 클라이언트에서 이미 탈출한 플레이어는 서버 감옥 상태를 무시
-                                    const protectedJailState = {};
-                                    if (!clientPlayer.isInJail && clientPlayer.jailTurns === 0 && serverPlayer.isInJail) {
-                                      console.log("🛡️ [JAIL_PROTECTION] 클라이언트 탈출 상태 보호:", {
-                                        playerName: clientPlayer.name,
-                                        clientJailState: { isInJail: clientPlayer.isInJail, jailTurns: clientPlayer.jailTurns },
-                                        serverJailState: { isInJail: serverPlayer.isInJail, jailTurns: serverPlayer.jailTurns },
-                                        action: "서버 감옥 상태 무시"
-                                      });
-                                      protectedJailState.isInJail = false;
-                                      protectedJailState.jailTurns = 0;
-                                    }
+                      const positionDifference = Math.abs(finalPosition - clientPlayer.position);
 
-                                    return {
-                                      ...clientPlayer,
-                                      ...serverData,
-                                      ...protectedJailState,
-                                      position: clientPlayer.position,
-                                      isTraveling: clientPlayer.isTraveling
-                                    };
-                                  }
-                                  return clientPlayer;
-                                });
-                                
-                                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                                const { players, ...safePayload } = payload;
-                                set({ ...safePayload, players: updatedPlayers });      
+                      // 위치 차이가 있을 때 동기화 로그
+                      if (positionDifference > 0) {
+                        console.log("🔧 [POSITION_SYNC] 서버 위치로 동기화:", {
+                          playerName: clientPlayer.name,
+                          clientPosition: clientPlayer.position,
+                          serverPosition: finalPosition,
+                          difference: positionDifference,
+                          reason: "서버 우선 동기화"
+                        });
+                      }
+
+                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                      const { position, ...serverData } = serverPlayer;
+
+                      // 감옥 상태 보호: 클라이언트에서 이미 탈출한 플레이어는 서버 감옥 상태를 무시
+                      const protectedJailState = {};
+                      if (!clientPlayer.isInJail && clientPlayer.jailTurns === 0 && serverPlayer.isInJail) {
+                        console.log("🛡️ [JAIL_PROTECTION] 클라이언트 탈출 상태 보호:", {
+                          playerName: clientPlayer.name,
+                          clientJailState: { isInJail: clientPlayer.isInJail, jailTurns: clientPlayer.jailTurns },
+                          serverJailState: { isInJail: serverPlayer.isInJail, jailTurns: serverPlayer.jailTurns },
+                          action: "서버 감옥 상태 무시"
+                        });
+                        protectedJailState.isInJail = false;
+                        protectedJailState.jailTurns = 0;
+                      }
+
+                      return {
+                        ...clientPlayer,
+                        ...serverData,
+                        ...protectedJailState,
+                        position: finalPosition,
+                        isTraveling: clientPlayer.isTraveling
+                      };
+                    }
+                    return clientPlayer;
+                  });
+
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  const { players, ...safePayload } = payload;
+                  set({ ...safePayload, players: updatedPlayers });
+
+                  // 위치 업데이트 후 동기화 상태 확인
+                  setTimeout(() => {
+                    get().checkSyncStatus();
+                  }, 1000);
                 } else {
                   get().updateGameState(payload);
                 }
@@ -234,8 +274,15 @@ export const createWebSocketHandlers = (
 
       const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn, userName, updatedAsset, salaryBonus } = payload;
 
-      // 🎲 현재 플레이어의 주사위만 게임 상태 변경
+      // 중복 메시지 방지: 같은 턴의 같은 플레이어 주사위 메시지는 한 번만 처리
       const currentState = get();
+      const messageKey = `${userName}-${curTurn}-${diceNum1}-${diceNum2}`;
+      if (currentState.lastProcessedDiceMessage === messageKey) {
+        console.log("🚫 [USE_DICE] 중복 메시지 무시:", { userName, curTurn, dice: [diceNum1, diceNum2] });
+        return;
+      }
+
+      // 🎲 현재 플레이어의 주사위만 게임 상태 변경
       const currentPlayer = currentState.players[currentState.currentPlayerIndex];
       const isCurrentPlayerDice = currentPlayer && currentPlayer.name === userName;
 
@@ -257,62 +304,86 @@ export const createWebSocketHandlers = (
       });
 
       set((state) => {
-        // 서버에서 업데이트된 자산 정보를 플레이어에게 적용
+        // 서버에서 업데이트된 자산 정보와 위치 정보를 플레이어에게 적용
         const updatedPlayers = state.players.map(player => {
-          if (player.name === userName && updatedAsset) {
-            console.log("💰 [USE_DICE] 플레이어 자산 업데이트:", {
+          if (player.name === userName) {
+            console.log("💰🏃 [USE_DICE] 플레이어 자산 및 위치 동시 업데이트:", {
               playerName: player.name,
               previousMoney: player.money,
-              newMoney: updatedAsset.money,
-              moneyChange: updatedAsset.money - player.money,
-              properties: updatedAsset.lands
+              newMoney: updatedAsset?.money || player.money,
+              moneyChange: (updatedAsset?.money || player.money) - player.money,
+              previousPosition: player.position,
+              newPosition: currentPosition,
+              positionChange: currentPosition - player.position,
+              properties: updatedAsset?.lands
             });
 
             return {
               ...player,
-              money: updatedAsset.money, // 서버에서 경제역사 효과가 적용된 머니
-              properties: updatedAsset.lands || player.properties
+              position: currentPosition, // 서버에서 받은 정확한 위치로 동기화
+              money: updatedAsset?.money || player.money, // 서버에서 경제역사 효과가 적용된 머니
+              properties: updatedAsset?.lands || player.properties
             };
           }
           return player;
         });
 
         return {
-          players: updatedPlayers, // 위치는 여기서 업데이트하지 않음 - movePlayer에서 처리
+          players: updatedPlayers, // 위치와 자산 모두 여기서 동기화됨
           dice: [diceNum1, diceNum2],
           serverDiceNum: diceNumSum,
           serverCurrentPosition: currentPosition,
           currentTurn: curTurn,
           lastSalaryBonus: salaryBonus || 0, // 마지막으로 받은 월급 보너스 저장
+          lastProcessedDiceMessage: messageKey, // 처리된 메시지 키 저장
           // USE_DICE 응답을 받았으므로 주사위 굴리기 완료
         };
       });
 
       console.log("🎲 [USE_DICE] 백엔드에서 주사위 처리 완료 - 주사위 애니메이션 대기 중");
 
-      // 주사위 애니메이션이 끝난 후 (2초) 기물 이동 시작
-      setTimeout(() => {
-        console.log("🎬 [USE_DICE] 주사위 애니메이션 완료 - 기물 이동 시작");
+      // Promise 기반 주사위 애니메이션 처리
+      const handleDiceAnimation = async () => {
+        try {
+          // 주사위 애니메이션 대기 (2초)
+          await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // 현재 턴의 플레이어만 이동 처리
-        const currentState = get();
-        const currentPlayer = currentState.players[currentState.currentPlayerIndex];
+          console.log("🎬 [USE_DICE] 주사위 애니메이션 완료 - 기물 이동 시작");
 
         if (currentPlayer && currentPlayer.name === userName) {
-          console.log("🏃 [USE_DICE] 현재 플레이어 이동 처리:", {
+          console.log("🏃 [USE_DICE] 현재 플레이어 이동 처리 (위치는 이미 동기화됨):", {
             playerName: userName,
             currentPlayerIndex: currentState.currentPlayerIndex,
-            dice: [diceNum1, diceNum2]
+            dice: [diceNum1, diceNum2],
+            note: "현재 턴 플레이어만 애니메이션과 타일 액션 처리"
           });
+
+          // 위치는 이미 업데이트되었으므로 애니메이션과 타일 액션만 처리
+          set({ gamePhase: "PLAYER_MOVING", isUpdatingPosition: false });
+
+          // MOVE_PLAYER를 호출하여 이동 애니메이션 처리
           get().movePlayer([diceNum1, diceNum2]);
         } else {
-          console.log("👀 [USE_DICE] 다른 플레이어의 주사위 - 이동 처리 건너뛰기:", {
+          console.log("👀 [USE_DICE] 다른 플레이어의 주사위 - 위치만 동기화, 게임 상태는 변경 안함:", {
             dicePlayerName: userName,
             currentPlayerName: currentPlayer?.name,
-            currentPlayerIndex: currentState.currentPlayerIndex
+            currentPlayerIndex: currentState.currentPlayerIndex,
+            note: "다른 플레이어의 이동이므로 내 gamePhase나 애니메이션 처리 안함"
           });
         }
-      }, 2000); // 주사위 애니메이션 시간과 동일
+        } catch (error) {
+          console.error("❌ [USE_DICE] 주사위 애니메이션 처리 중 오류:", error);
+        }
+      };
+
+      // 비동기 처리 시작
+      handleDiceAnimation();
+
+      // 주사위 처리 후 동기화 상태 확인 및 메모리 정리
+      setTimeout(() => {
+        get().checkSyncStatus();
+        get().cleanupMemory();
+      }, 3000);
     }));
 
     unsubscribeFunctions.push(subscribeToTopic("TRADE_LAND", (message) => {
@@ -337,6 +408,17 @@ export const createWebSocketHandlers = (
               console.log(`🔍 [BACKEND_DATA] TRADE_LAND updating player (EXCLUDING position): ${clientPlayer.name} (ID: ${clientPlayer.id})`);
               console.log(`  Client Position: ${clientPlayer.position} -> Server Position: ${serverPlayerState.position} (BLOCKED)`);
               console.log(`  Money: ${clientPlayer.money} -> ${serverPlayerState.money}`);
+
+              // 금액 변동을 토스트로 알림
+              const moneyChange = serverPlayerState.money - clientPlayer.money;
+              if (moneyChange !== 0) {
+                get().addToast(
+                  moneyChange > 0 ? "success" : "info",
+                  moneyChange > 0 ? "💰 수입" : "💸 지출",
+                  `${clientPlayer.name}: ${moneyChange > 0 ? '+' : ''}${moneyChange.toLocaleString()}원\n현재 보유금: ${serverPlayerState.money.toLocaleString()}원`,
+                  3500
+                );
+              }
 
               return {
                 ...clientPlayer,
@@ -365,6 +447,7 @@ export const createWebSocketHandlers = (
       console.log("🎲 [DRAW_CARD] 메시지 수신:", message);
       console.log("🎲 [DRAW_CARD] 메시지 타입:", message?.type);
       console.log("🎲 [DRAW_CARD] 페이로드:", message?.payload);
+      console.log("🎲 [DRAW_CARD] 현재 시간:", new Date().toISOString());
 
       const { payload } = message;
       if (!payload) {
@@ -396,21 +479,23 @@ export const createWebSocketHandlers = (
           modalText: `${cardName}: ${effectDescription}`
         });
 
-        // 플레이어 정보 업데이트
+        // 플레이어 정보 업데이트 (위치 업데이트 제거)
         const updatedPlayers = state.players.map(player => {
           // 카드를 뽑은 플레이어 처리
           if (player.name === userName) {
             const updatedPlayer = { ...player };
 
-            // 돈 변화 적용
+            // 돈 변화만 적용 (위치는 서버 GAME_STATE_CHANGE로 동기화)
             if (moneyChange !== undefined && moneyChange !== null) {
               updatedPlayer.money += moneyChange;
             }
 
-            // 위치 변화 적용
-            if (newPosition !== undefined && newPosition !== null) {
-              updatedPlayer.position = newPosition;
-            }
+            console.log("🎲 [CHANCE_CARD] 플레이어 상태 업데이트 (위치 제외):", {
+              playerName: player.name,
+              moneyChange: moneyChange || 0,
+              newPosition: newPosition || "변경 없음",
+              note: "위치는 서버 동기화로 처리됨"
+            });
 
             return updatedPlayer;
           }
@@ -441,62 +526,95 @@ export const createWebSocketHandlers = (
           return player;
         });
 
-        // 찬스카드는 모든 플레이어가 봐야 함
-        console.log("🎲 Modal display check - showing to all players:", {
-          userName,
-          cardName,
-          effectDescription
-        });
+        // 찬스카드를 뽑은 당사자만 모달 표시, 다른 플레이어는 토스트
+        const currentUserInfo = useUserStore.getState().userInfo;
+        const isMyCard = currentUserInfo && currentUserInfo.nickname === userName;
 
-        const newModal = {
-          type: "CHANCE_CARD" as const,
-          text: `${cardName}: ${effectDescription}`,
-          onConfirm: () => {
-            console.log("🎲 [CHANCE_CARD] 찬스카드 모달 확인 버튼 클릭");
-            set({ modal: { type: "NONE" as const } });
+        let newModal;
 
-            // 현재 플레이어만 게임 로직 실행
-            const currentState = get();
-            const currentPlayer = currentState.players[currentState.currentPlayerIndex];
-            const currentUserId = useUserStore.getState().userInfo?.userId;
-            const isMyTurn = currentPlayer.id === currentUserId;
+        if (isMyCard) {
+          // 내가 뽑은 카드: 모달 표시
+          console.log("🎲 [CHANCE_CARD] 내가 뽑은 찬스카드 - 모달 표시:", {
+            userName,
+            cardName,
+            effectDescription
+          });
 
-            if (!isMyTurn) {
-              console.log("🎲 [CHANCE_CARD] 내 턴이 아니므로 확인만 처리:", {
-                currentPlayer: currentPlayer.name,
-                myUserId: currentUserId,
-                isMyTurn
-              });
-              return;
+          newModal = {
+            type: "CHANCE_CARD" as const,
+            text: `${cardName}: ${effectDescription}`,
+            onConfirm: () => {
+              console.log("🎲 [CHANCE_CARD] 찬스카드 모달 확인 - 카드 유형별 처리");
+              set({ modal: { type: "NONE" as const } });
+
+              if (newPosition !== undefined && newPosition !== null) {
+                // 이동 효과 카드: 서버 동기화 완료 대기 후 타일 액션 처리
+                console.log("🎲 [CHANCE_CARD] 이동 효과 카드 - 서버 동기화 대기:", {
+                  userName,
+                  newPosition,
+                  cardName,
+                  note: "서버 GAME_STATE_CHANGE로 위치 동기화 후 타일 액션 처리"
+                });
+
+                // 서버 동기화 완료를 위한 지연 처리
+                setTimeout(() => {
+                  const currentState = get();
+                  const targetPlayer = currentState.players.find(p => p.name === userName);
+
+                  if (targetPlayer && targetPlayer.position === newPosition) {
+                    console.log("🎲 [CHANCE_CARD] 서버 동기화 완료 - 타일 액션 처리:", {
+                      playerName: userName,
+                      finalPosition: targetPlayer.position,
+                      expectedPosition: newPosition
+                    });
+                    set({ isProcessingChanceCard: true });
+                    get().handleTileAction();
+                  } else {
+                    console.log("⚠️ [CHANCE_CARD] 서버 동기화 미완료 - 턴 종료로 대체:", {
+                      playerName: userName,
+                      currentPosition: targetPlayer?.position,
+                      expectedPosition: newPosition
+                    });
+                    get().endTurn();
+                  }
+                }, 1500); // 1.5초 대기로 서버 동기화 완료 보장
+              } else {
+                // 즉시 효과 카드: 바로 턴 종료
+                console.log("🎲 [CHANCE_CARD] 즉시 효과 카드 - 바로 턴 종료:", {
+                  userName,
+                  cardName,
+                  effect: "돈 변동, 감옥 등 즉시 처리 완료"
+                });
+                get().endTurn();
+              }
             }
+          };
+        } else {
+          // 다른 플레이어가 뽑은 카드: 토스트 메시지만 표시
+          console.log("🎲 [CHANCE_CARD] 다른 플레이어의 찬스카드 - 토스트 표시:", {
+            userName,
+            cardName,
+            effectDescription,
+            newPosition
+          });
 
-            console.log("🎲 [CHANCE_CARD] 현재 플레이어 - 게임 로직 실행:", {
-              currentPlayer: currentPlayer.name,
-              myUserId: currentUserId
+          // 위치 변화가 있는 카드의 경우 더 명확한 메시지 표시
+          let toastMessage = `${userName}님: ${cardName} - ${effectDescription}`;
+          if (newPosition !== undefined && newPosition !== null) {
+            const currentBoard = get().board;
+            const targetTileName = currentBoard[newPosition]?.name || `위치 ${newPosition}`;
+            toastMessage = `🎲 ${userName}님이 찬스카드로 ${targetTileName}(${newPosition}번)으로 이동했습니다!`;
+            console.log("🎲 [POSITION_CHANGE] 위치 변화 토스트:", {
+              userName,
+              newPosition,
+              targetTileName,
+              message: toastMessage
             });
-
-
-
-            // 위치가 변경되었다면 다시 타일 액션 처리
-            if (newPosition !== undefined && newPosition !== null) {
-              console.log("🎲 [CHANCE_CARD] 위치 변경됨 - 새 위치에서 타일 액션 처리:", {
-                userName,
-                previousPosition: "unknown",
-                newPosition,
-                willTriggerTileAction: true
-              });
-              get().handleTileAction();
-            } else {
-              // 위치 변경이 없으면 턴 종료
-              console.log("🎲 [CHANCE_CARD] 위치 변경 없음 - 바로 턴 종료:", {
-                userName,
-                moneyChange,
-                turnEnding: true
-              });
-              get().endTurn();
-            }
           }
-        };
+
+          get().addToast("info", "🎲 찬스카드", toastMessage, 4000);
+          newModal = { type: "NONE" as const };
+        }
 
         console.log("🎲 [MODAL] 새 모달 상태 설정:", newModal);
         console.log("🎲 [MODAL] 모달 타입 확인:", newModal.type);
@@ -676,10 +794,15 @@ export const createWebSocketHandlers = (
 
           return {
             players: updatedPlayers,
-            board: updatedBoard,
-            modal: { type: "NONE" }
+            board: updatedBoard
+            // modal은 건드리지 않음 - 현재 진행 중인 모달을 보존
           };
         });
+
+        // 건물 건설 성공 후 항상 수동 턴 종료를 위해 TILE_ACTION으로 전환
+        console.log("🏗️ [CONSTRUCT_BUILDING] 건설 성공 - 수동 턴 종료를 위해 TILE_ACTION으로 전환");
+        set({ gamePhase: "TILE_ACTION", isProcessingChanceCard: false });
+
       } else {
         set({
           modal: {
@@ -939,30 +1062,28 @@ export const createWebSocketHandlers = (
         });
 
         // 세계여행 완료 후 도착한 타일의 액션 실행
-        console.log("✈️ [WORLD_TRAVEL] 세계여행 완료, 도착 타일 액션 실행:", {
+        console.log("✈️ [WORLD_TRAVEL] 세계여행 완료, 즉시 타일 액션 실행:", {
           travelerNickname: payload.nickname,
           destination: payload.endLand
         });
 
-        setTimeout(() => {
-          const currentState = get();
-          console.log("✈️ [WORLD_TRAVEL] 타일 액션 실행 시작:", {
-            gamePhase: currentState.gamePhase,
-            currentPlayerIndex: currentState.currentPlayerIndex,
-            travelerName: payload.nickname,
-            destination: payload.endLand
-          });
+        // 지연 제거 - 즉시 타일 액션 실행
+        const currentState = get();
+        console.log("✈️ [WORLD_TRAVEL] 즉시 타일 액션 실행 시작:", {
+          gamePhase: currentState.gamePhase,
+          currentPlayerIndex: currentState.currentPlayerIndex,
+          travelerName: payload.nickname,
+          destination: payload.endLand
+        });
 
-
-          // 세계여행한 플레이어가 현재 플레이어인지 확인
-          const travelerPlayer = currentState.players.find(p => p.name === payload.nickname);
-          if (travelerPlayer && currentState.players[currentState.currentPlayerIndex].id === travelerPlayer.id) {
-            console.log("✈️ [WORLD_TRAVEL] 현재 플레이어의 세계여행, 타일 액션 처리");
-            get().handleTileAction("세계여행 후");
-          } else {
-            console.log("✈️ [WORLD_TRAVEL] 다른 플레이어의 세계여행, 타일 액션 건너뛰기");
-          }
-        }, 100); // 상태 업데이트 완료 후 실행
+        // 세계여행한 플레이어가 현재 플레이어인지 확인
+        const travelerPlayer = currentState.players.find(p => p.name === payload.nickname);
+        if (travelerPlayer && currentState.players[currentState.currentPlayerIndex].id === travelerPlayer.id) {
+          console.log("✈️ [WORLD_TRAVEL] 현재 플레이어의 세계여행, 즉시 타일 액션 처리");
+          get().handleTileAction("세계여행 후");
+        } else {
+          console.log("✈️ [WORLD_TRAVEL] 다른 플레이어의 세계여행, 타일 액션 건너뛰기");
+        }
       } else {
         console.error("❌ [WORLD_TRAVEL] 세계여행 실패:", payload);
 
@@ -1001,7 +1122,9 @@ export const createWebSocketHandlers = (
       console.log("🏛️ [NTS_EVENT] Processing tax payment:", {
         nickname: payload.nickname,
         taxAmount: payload.taxAmount,
-        updatedMoney: payload.updatedAsset?.money
+        updatedAsset: payload.updatedAsset,
+        updatedMoney: payload.updatedAsset?.money,
+        hasUpdatedAsset: !!payload.updatedAsset
       });
 
       const userStore = useUserStore.getState();
@@ -1020,21 +1143,42 @@ export const createWebSocketHandlers = (
 
       // 플레이어 자산 업데이트 (모든 경우에 적용)
       set((state) => {
+        console.log("🏛️ [NTS_EVENT] 현재 state.players:", state.players.map(p => ({name: p.name, money: p.money})));
+
         const updatedPlayers = state.players.map(player => {
           if (player.name === payload.nickname) {
-            console.log("🏛️ [NTS_EVENT] Updating player asset:", {
+            if (!payload.updatedAsset) {
+              console.error("❌ [NTS_EVENT] updatedAsset이 없습니다!");
+              return player;
+            }
+
+            console.log("🏛️ [NTS_EVENT] 플레이어 자산 업데이트:", {
               playerName: player.name,
+              payloadNickname: payload.nickname,
               oldMoney: player.money,
-              newMoney: payload.updatedAsset.money
+              newMoney: payload.updatedAsset.money,
+              moneyDifference: payload.updatedAsset.money - player.money,
+              taxAmount: payload.taxAmount
             });
-            return {
+
+            const updatedPlayer = {
               ...player,
               money: payload.updatedAsset.money,
-              properties: payload.updatedAsset.lands || []
+              properties: payload.updatedAsset.lands || player.properties
             };
+
+            console.log("🏛️ [NTS_EVENT] 플레이어 업데이트 완료:", {
+              before: { name: player.name, money: player.money },
+              after: { name: updatedPlayer.name, money: updatedPlayer.money },
+              actualChange: updatedPlayer.money - player.money
+            });
+
+            return updatedPlayer;
           }
           return player;
         });
+
+        console.log("🏛️ [NTS_EVENT] 업데이트 후 players:", updatedPlayers.map(p => ({name: p.name, money: p.money})));
 
         // 내 턴이고 내가 세금을 낸 경우에만 모달 표시
         if (isMyTurn && payload.nickname === currentPlayer.name) {
@@ -1047,6 +1191,18 @@ export const createWebSocketHandlers = (
               taxAmount: payload.taxAmount,
               onConfirm: () => {
                 console.log("🏛️ [NTS_EVENT] Tax payment confirmed - ending turn");
+
+                // 세금 납부 완료 토스트 표시
+                const updatedPlayer = updatedPlayers.find(p => p.name === payload.nickname);
+                if (updatedPlayer) {
+                  get().addToast(
+                    "success",
+                    "💰 세금 납부 완료",
+                    `${payload.taxAmount.toLocaleString()}원 납부\n현재 보유금: ${updatedPlayer.money.toLocaleString()}원`,
+                    4000
+                  );
+                }
+
                 set({ modal: { type: "NONE" as const } });
                 get().endTurn();
               }
@@ -1136,6 +1292,73 @@ export const createWebSocketHandlers = (
             }
           });
         }
+      }
+    }));
+
+    // INVALID_BEHAVIOR 메시지 처리
+    unsubscribeFunctions.push(subscribeToTopic("INVALID_BEHAVIOR", (message) => {
+      console.error("❌ [WEBSOCKET] INVALID_BEHAVIOR received:", message);
+      console.error("❌ [INVALID_BEHAVIOR] Error details:", {
+        message: message.message,
+        timestamp: new Date().toISOString(),
+        currentGamePhase: get().gamePhase,
+        currentPlayer: get().players[get().currentPlayerIndex]?.name
+      });
+
+      // 사용자에게 경고 메시지 표시
+      get().addToast(
+        "error",
+        "⚠️ 비정상적 동작",
+        message.message || "비정상적인 동작이 감지되었습니다.",
+        5000
+      );
+
+      // 게임 상태를 안전한 상태로 복원
+      const currentState = get();
+      if (currentState.gamePhase === "DICE_ROLLING" || currentState.gamePhase === "PLAYER_MOVING") {
+        set({
+          gamePhase: "WAITING_FOR_ROLL",
+          modal: { type: "NONE" as const }
+        });
+      }
+    }));
+
+    // GAME_END 메시지 처리 (백엔드에서 공식 승리자 발표)
+    unsubscribeFunctions.push(subscribeToTopic("GAME_END", (message) => {
+      console.log("🏆 [WEBSOCKET] GAME_END received:", message);
+      console.log("🏆 [GAME_END] Payload detail:", JSON.stringify(message.payload, null, 2));
+      const { payload } = message;
+
+      if (payload && payload.winnerNickname) {
+        // 승리자 닉네임으로 플레이어 ID 찾기
+        const currentState = get();
+        const winnerPlayer = currentState.players.find(p => p.name === payload.winnerNickname);
+
+        console.log("🏆 [GAME_END] 승리자 매핑:", {
+          winnerNickname: payload.winnerNickname,
+          winnerPlayer: winnerPlayer,
+          winnerId: winnerPlayer?.id,
+          victoryReason: payload.victoryReason,
+          allPlayers: currentState.players.map(p => ({ name: p.name, id: p.id }))
+        });
+
+        // 백엔드에서 공식 게임 종료 선언
+        set({
+          gamePhase: "GAME_OVER",
+          winnerId: winnerPlayer?.id || null,
+          modal: { type: "NONE" as const }
+        });
+
+        console.log("🏆 [GAME_END] 백엔드 승리자 발표로 게임 종료 처리 완료");
+      } else {
+        console.error("❌ [GAME_END] 승리자 정보가 없습니다:", payload);
+
+        // 승리자 정보 없이도 게임 종료 처리
+        set({
+          gamePhase: "GAME_OVER",
+          winnerId: null,
+          modal: { type: "NONE" as const }
+        });
       }
     }));
   },
@@ -1269,49 +1492,158 @@ export const createWebSocketHandlers = (
     }, 5000);
   },
 
-  updateGameState: (newState: Partial<GameState>) => {
-    console.log("🔍 [BACKEND_DATA] updateGameState called with full payload:", {
-      hasPlayers: !!newState.players,
-      newStateKeys: Object.keys(newState),
-      fullPayload: JSON.stringify(newState, null, 2)
+  // 동기화 에러 복구 메커니즘
+  checkSyncStatus: () => {
+    const currentState = get();
+    const now = Date.now();
+
+    // 5초마다만 체크
+    if (now - currentState.lastSyncCheck < 5000) return;
+
+    set({ lastSyncCheck: now });
+
+    // 다른 플레이어들과 위치 차이가 큰지 확인
+    const suspiciousDifferences = currentState.players.map(player => {
+      // 예상 위치 범위 계산 (대략적)
+      const expectedRange = Math.floor(currentState.board.length / 4);
+      const avgPosition = currentState.players.reduce((sum, p) => sum + p.position, 0) / currentState.players.length;
+      const positionDeviation = Math.abs(player.position - avgPosition);
+
+      return {
+        player: player.name,
+        position: player.position,
+        deviation: positionDeviation,
+        suspicious: positionDeviation > expectedRange
+      };
     });
 
+    const suspiciousCount = suspiciousDifferences.filter(p => p.suspicious).length;
+
+    if (suspiciousCount > 1) {
+      console.warn("⚠️ [SYNC_CHECK] 의심스러운 위치 불일치 감지:", {
+        suspiciousDifferences,
+        suspiciousCount,
+        avgPosition: currentState.players.reduce((sum, p) => sum + p.position, 0) / currentState.players.length
+      });
+
+      // 동기화 에러 카운트 증가
+      set({ syncErrorCount: currentState.syncErrorCount + 1 });
+
+      // 에러가 3회 이상이면 복구 시도
+      if (currentState.syncErrorCount >= 2) {
+        console.error("🚨 [SYNC_RECOVERY] 동기화 오류 임계값 도달 - 복구 시도");
+        get().requestFullSync();
+      }
+    } else if (currentState.syncErrorCount > 0) {
+      // 정상 상태로 복구되면 에러 카운트 감소
+      set({ syncErrorCount: Math.max(0, currentState.syncErrorCount - 1) });
+    }
+  },
+
+  // 전체 동기화 요청
+  requestFullSync: () => {
+    const currentState = get();
+
+    console.log("🔄 [FULL_SYNC] 전체 게임 상태 동기화 요청");
+
+    // 토스트 메시지로 사용자에게 알림
+    const syncToast = {
+      id: `sync-${Date.now()}`,
+      type: "warning" as const,
+      title: "동기화 중",
+      message: "게임 상태를 서버와 동기화하는 중입니다...",
+      duration: 3000,
+      timestamp: Date.now()
+    };
+
+    set({
+      toastMessages: [...currentState.toastMessages, syncToast],
+      syncErrorCount: 0 // 복구 시도 시 에러 카운트 리셋
+    });
+
+    // 서버에 게임 상태 재요청 (WebSocket 재연결 통해)
+    if (currentState.gameId) {
+      // 현재는 별도 API가 없으므로, 연결 상태 재확인으로 대체
+      console.log("🔄 [FULL_SYNC] WebSocket 연결 상태 확인 중");
+
+      setTimeout(() => {
+        const successToast = {
+          id: `sync-success-${Date.now()}`,
+          type: "success" as const,
+          title: "동기화 완료",
+          message: "게임 상태 동기화가 완료되었습니다.",
+          duration: 2000,
+          timestamp: Date.now()
+        };
+
+        set(state => ({
+          toastMessages: [...state.toastMessages.filter(t => t.id !== syncToast.id), successToast]
+        }));
+      }, 2000);
+    }
+  },
+
+  // 메모리 정리 메커니즘
+  cleanupMemory: () => {
+    const currentState = get();
+    const now = Date.now();
+
+    // 5분 이상 된 토스트 메시지 제거
+    const cleanedToasts = currentState.toastMessages.filter(toast =>
+      now - toast.timestamp < 5 * 60 * 1000
+    );
+
+    // 토스트 메시지가 정리되었으면 상태 업데이트
+    if (cleanedToasts.length !== currentState.toastMessages.length) {
+      logger.dev(`🧹 [CLEANUP] 토스트 메시지 정리: ${currentState.toastMessages.length - cleanedToasts.length}개 제거`);
+      set({ toastMessages: cleanedToasts });
+    }
+
+    // 동기화 에러 카운트가 너무 높으면 리셋 (10 이상)
+    if (currentState.syncErrorCount >= 10) {
+      logger.warn("동기화 에러 카운트 리셋", { previousCount: currentState.syncErrorCount });
+      set({ syncErrorCount: 0 });
+    }
+  },
+
+  updateGameState: (newState: Partial<GameState>) => {
+    const currentState = get();
+
+    console.log("🔍 [BACKEND_DATA] updateGameState called:", {
+      hasPlayers: !!newState.players,
+      isUpdatingPosition: currentState.isUpdatingPosition,
+      newStateKeys: Object.keys(newState),
+      timestamp: new Date().toISOString()
+    });
+
+    // 디버깅을 위한 상세 로깅
     if (newState.players) {
       const players = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
-      console.log("🔍 [BACKEND_DATA] Received player positions from server:");
-      players.forEach((p, index) => {
-        console.log(`  Server Player ${index}: ${p.name} (ID: ${p.id}) - Position: ${p.position}`);
+      console.log("🔍 [BACKEND_DATA] Server player positions vs Client positions:");
+      players.forEach((serverPlayer, index) => {
+        const clientPlayer = currentState.players.find(p => p.id === serverPlayer.id);
+        const positionDiff = clientPlayer ? Math.abs(serverPlayer.position - clientPlayer.position) : 0;
+        console.log(`  Player ${index}: ${serverPlayer.name} - Server: ${serverPlayer.position} vs Client: ${clientPlayer?.position || 'N/A'} (diff: ${positionDiff})`);
       });
     }
 
-    // 위치는 제외하고 상태 업데이트 (위치는 USE_DICE와 찬스카드에서만)
-    const currentState = get();
-
-    if (newState.players) {
-      console.log("🚨 [BLOCKED] updateGameState called with players data - COMPLETELY BLOCKED to prevent position sync issues");
-      const newPlayers = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
-
-      currentState.players.forEach((currentPlayer) => {
-        const serverPlayer = newPlayers.find(p => p.id === currentPlayer.id);
-        if (serverPlayer && serverPlayer.position !== currentPlayer.position) {
-          console.log(`🚨 [POSITION_MISMATCH_BLOCKED] ${currentPlayer.name}:`);
-          console.log(`  Current: ${currentPlayer.position} -> Server wants: ${serverPlayer.position} (IGNORED)`);
-        }
+    // isUpdatingPosition이 true일 때만 위치 업데이트 차단
+    if (newState.players && currentState.isUpdatingPosition) {
+      console.warn("🚫 [POSITION_UPDATE_BLOCKED] 위치 업데이트 진행 중 - 플레이어 데이터 무시:", {
+        reason: "movePlayer 실행 중",
+        isUpdatingPosition: currentState.isUpdatingPosition
       });
 
-      // 플레이어 데이터가 있는 경우 완전히 차단 - curPlayer만 업데이트
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { players, ...safeState } = newState;
-      console.log("🛡️ [COMPLETE_BLOCK] ONLY updating non-player state to prevent any position corruption");
 
-      // curPlayer가 있으면 currentPlayerIndex만 업데이트 (다른 모든 것 무시)
+      // curPlayer만 업데이트
       if (safeState.curPlayer) {
         const nextPlayerIndex = currentState.players.findIndex(p => p.name === safeState.curPlayer);
         if (nextPlayerIndex !== -1) {
-          console.log("🔄 [MINIMAL_UPDATE] ONLY updating currentPlayerIndex:", {
+          console.log("🔄 [TURN_ONLY_UPDATE] 턴 정보만 업데이트 (위치 보호):", {
             curPlayer: safeState.curPlayer,
-            nextPlayerIndex,
-            previousIndex: currentState.currentPlayerIndex
+            nextPlayerIndex
           });
           set({
             currentPlayerIndex: nextPlayerIndex,
@@ -1319,15 +1651,74 @@ export const createWebSocketHandlers = (
           });
         }
       }
+      return;
+    }
+
+    // 플레이어 데이터가 있는 경우 서버 우선 동기화 적용
+    if (newState.players) {
+      console.log("📊 [SERVER_SYNC] 서버 플레이어 데이터로 동기화");
+
+      const serverPlayers = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
+      const updatedPlayers = currentState.players.map(clientPlayer => {
+        const serverPlayer = serverPlayers.find(p => p.id === clientPlayer.id);
+        if (serverPlayer) {
+          // 서버 위치 정보를 우선적으로 적용
+          const finalPosition = serverPlayer.position !== undefined && serverPlayer.position !== null
+            ? serverPlayer.position
+            : clientPlayer.position;
+
+          const positionDifference = Math.abs(finalPosition - clientPlayer.position);
+          if (positionDifference > 0) {
+            console.log("🔧 [updateGameState] 서버 위치로 동기화:", {
+              playerName: clientPlayer.name,
+              clientPosition: clientPlayer.position,
+              serverPosition: finalPosition,
+              difference: positionDifference
+            });
+          }
+
+          return {
+            ...clientPlayer,
+            ...serverPlayer,
+            position: finalPosition,
+            isTraveling: clientPlayer.isTraveling
+          };
+        }
+        return clientPlayer;
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { players, ...safeState } = newState;
+
+      // curPlayer가 있으면 currentPlayerIndex도 업데이트
+      if (safeState.curPlayer) {
+        const nextPlayerIndex = updatedPlayers.findIndex(p => p.name === safeState.curPlayer);
+        if (nextPlayerIndex !== -1) {
+          set({
+            ...safeState,
+            players: updatedPlayers,
+            currentPlayerIndex: nextPlayerIndex
+          });
+        } else {
+          set({
+            ...safeState,
+            players: updatedPlayers
+          });
+        }
+      } else {
+        set({
+          ...safeState,
+          players: updatedPlayers
+        });
+      }
     } else {
-      console.log("✅ [SAFE_UPDATE] No players in state, applying full update");
+      console.log("✅ [SAFE_UPDATE] No players data, applying full update");
 
       // curPlayer가 있으면 currentPlayerIndex도 업데이트
       if (newState.curPlayer) {
-        const currentState = get();
         const nextPlayerIndex = currentState.players.findIndex(p => p.name === newState.curPlayer);
         if (nextPlayerIndex !== -1) {
-          console.log("🔄 [SAFE_UPDATE] curPlayer 감지 - currentPlayerIndex 업데이트:", {
+          console.log("🔄 [FULL_UPDATE] curPlayer와 함께 전체 상태 업데이트:", {
             curPlayer: newState.curPlayer,
             nextPlayerIndex,
             previousIndex: currentState.currentPlayerIndex
