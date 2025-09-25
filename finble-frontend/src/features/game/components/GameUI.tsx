@@ -65,17 +65,27 @@ const BuyPropertyModalContent = ({ modal, buyPropertyWithItems, endTurn, current
 
 
   const handleItemChange = (item: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (item === 'land' && !event.target.checked) {
-      // 땅을 체크 해제하면 모든 건물도 해제
-      setSelectedItems({
-        land: false,
-        house: false,
-        building: false,
-        hotel: false
-      });
-    } else {
-      setSelectedItems(prev => ({ ...prev, [item]: event.target.checked }));
-    }
+    const isChecked = event.target.checked;
+    setSelectedItems(prev => {
+      const newState = { ...prev, [item]: isChecked };
+
+      // Unchecking an item should uncheck all subsequent items
+      if (!isChecked) {
+        if (item === 'land') {
+          newState.house = false;
+          newState.building = false;
+          newState.hotel = false;
+        }
+        if (item === 'house') {
+          newState.building = false;
+          newState.hotel = false;
+        }
+        if (item === 'building') {
+          newState.hotel = false;
+        }
+      }
+      return newState;
+    });
   };
 
   const calculateTotal = () => {
@@ -102,7 +112,6 @@ const BuyPropertyModalContent = ({ modal, buyPropertyWithItems, endTurn, current
 
     // 커스텀 구매 함수 호출
     buyPropertyWithItems(purchaseData);
-    endTurn();
   };
 
   return (
@@ -153,13 +162,13 @@ const BuyPropertyModalContent = ({ modal, buyPropertyWithItems, endTurn, current
             <Checkbox
               checked={selectedItems.building}
               onChange={handleItemChange('building')}
-              disabled={!selectedItems.land}
+              disabled={!selectedItems.house}
             />
           }
           label={
             <Box>
-              <Typography color={!selectedItems.land ? 'text.disabled' : 'text.primary'}>
-                빌딩 {!selectedItems.land && '(땅 구매 필요)'}
+              <Typography color={!selectedItems.house ? 'text.disabled' : 'text.primary'}>
+                빌딩 {!selectedItems.house && '(주택 구매 필요)'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {buildingPrice.toLocaleString()}원
@@ -173,13 +182,13 @@ const BuyPropertyModalContent = ({ modal, buyPropertyWithItems, endTurn, current
             <Checkbox
               checked={selectedItems.hotel}
               onChange={handleItemChange('hotel')}
-              disabled={!selectedItems.land}
+              disabled={!selectedItems.building}
             />
           }
           label={
             <Box>
-              <Typography color={!selectedItems.land ? 'text.disabled' : 'text.primary'}>
-                호텔 {!selectedItems.land && '(땅 구매 필요)'}
+              <Typography color={!selectedItems.building ? 'text.disabled' : 'text.primary'}>
+                호텔 {!selectedItems.building && '(빌딩 구매 필요)'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {hotelPrice.toLocaleString()}원
@@ -402,7 +411,6 @@ const ManagePropertyModalContent = ({ modal, endTurn, buyPropertyWithItems, curr
         totalCost,
         tile
       });
-      endTurn(); // 구매 후 턴 종료
     }
   };
 
