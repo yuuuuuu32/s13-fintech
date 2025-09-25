@@ -777,7 +777,7 @@ const GameOverModalContent = ({
           : "승자 없이 게임이 종료되었습니다."}
       </Typography>
 
-      {/* 승리자 정보는 패배자에게도 표시 */}
+      {/* 승리자 정보는 패배자에게도 표시! */}
       {finalWinner && !isWinner && (
         <Typography sx={{ mt: 1, fontSize: "1.2rem", color: "text.secondary" }}>
           🏆 {finalWinner.name}님이 최종 승리했습니다!
