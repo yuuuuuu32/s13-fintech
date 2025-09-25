@@ -40,6 +40,9 @@ export const useGameStore = create<GameState>()((set, get) => {
     lastSalaryBonus: 0,
     toastMessages: [],
     isProcessingChanceCard: false, // 찬스카드 처리 중복 방지
+    isUpdatingPosition: false, // 위치 업데이트 진행 중 플래그
+    syncErrorCount: 0, // 동기화 오류 횟수
+    lastSyncCheck: 0, // 마지막 동기화 확인 시간
 
     // 웹소켓 관련 메서드
     connect: websocketHandlers.connect,
@@ -47,6 +50,9 @@ export const useGameStore = create<GameState>()((set, get) => {
     send: websocketHandlers.send,
     initializeGame: websocketHandlers.initializeGame,
     updateGameState: websocketHandlers.updateGameState,
+    checkSyncStatus: websocketHandlers.checkSyncStatus,
+    requestFullSync: websocketHandlers.requestFullSync,
+    cleanupMemory: websocketHandlers.cleanupMemory,
 
     // 게임 로직 메서드
     setDicePower: gameLogicHandlers.setDicePower,

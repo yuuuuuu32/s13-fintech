@@ -148,17 +148,16 @@ export const createWebSocketHandlers = (
                       // 위치 동기화 검증 및 결정
                       let finalPosition = clientPlayer.position;
 
-                      // 위치 업데이트 조건 검사
-                      if (!currentState.isUpdatingPosition &&
-                          serverPlayer.position !== undefined &&
+                      // 위치 업데이트 조건 검사 (isUpdatingPosition 체크 제거)
+                      if (serverPlayer.position !== undefined &&
                           serverPlayer.position !== null) {
 
                         const positionDifference = Math.abs(serverPlayer.position - clientPlayer.position);
                         const boardLength = currentState.board.length || 32;
 
-                        // 동적 임계값 계산
-                        const dynamicThreshold = Math.max(2, Math.min(6, Math.floor(boardLength / 8))); // 2~6칸 사이에서 동적 조정
-                        const majorDifferenceThreshold = Math.floor(boardLength / 3); // 보드의 1/3 이상 차이면 무조건 서버 신뢰
+                        // 더 적극적인 동기화를 위한 임계값 조정
+                        const dynamicThreshold = Math.max(1, Math.min(3, Math.floor(boardLength / 16))); // 1~3칸 사이에서 조정
+                        const majorDifferenceThreshold = Math.floor(boardLength / 4); // 보드의 1/4 이상 차이면 무조건 서버 신뢰
 
                         logger.dev("🔍 [POSITION_ANALYSIS] 위치 동기화 분석:", {
                           playerName: clientPlayer.name,
@@ -184,9 +183,9 @@ export const createWebSocketHandlers = (
                           });
                           finalPosition = serverPlayer.position;
                         }
-                        // 중간 위치 차이 - 동적 임계값 기준
+                        // 중간 위치 차이 - 동적 임계값 기준 (더 적극적)
                         else if (positionDifference >= dynamicThreshold) {
-                          console.log("🔧 [POSITION_SYNC] 중간 위치 차이 감지 - 서버 위치로 보정:", {
+                          console.log("🔧 [POSITION_SYNC] 위치 차이 감지 - 서버 위치로 보정:", {
                             playerName: clientPlayer.name,
                             clientPosition: clientPlayer.position,
                             serverPosition: serverPlayer.position,
@@ -196,31 +195,16 @@ export const createWebSocketHandlers = (
                           });
                           finalPosition = serverPlayer.position;
                         }
-                        // 타이머로 인한 턴 변경 시 작은 차이도 보정
-                        else if (payload.curPlayer && payload.gameTurn && positionDifference > 0) {
-                          // 최근 턴 변경인지 확인 (급격한 상태 변화 방지)
-                          const currentTurn = currentState.currentTurn || 0;
-                          const isRecentTurnChange = Math.abs((payload.gameTurn || 0) - currentTurn) <= 1;
-
-                          if (isRecentTurnChange) {
-                            console.log("🔧 [POSITION_SYNC] 타이머 턴 변경 - 작은 차이 보정:", {
-                              playerName: clientPlayer.name,
-                              clientPosition: clientPlayer.position,
-                              serverPosition: serverPlayer.position,
-                              difference: positionDifference,
-                              currentTurn,
-                              serverTurn: payload.gameTurn,
-                              turnInfo: { curPlayer: payload.curPlayer, gameTurn: payload.gameTurn }
-                            });
-                            finalPosition = serverPlayer.position;
-                          } else {
-                            console.log("⚠️ [POSITION_SYNC] 턴 변경이지만 시간차가 큼 - 보정 스킵:", {
-                              playerName: clientPlayer.name,
-                              currentTurn,
-                              serverTurn: payload.gameTurn,
-                              turnDifference: Math.abs((payload.gameTurn || 0) - currentTurn)
-                            });
-                          }
+                        // 작은 차이라도 서버 위치 신뢰 (1칸 이상 차이)
+                        else if (positionDifference >= 1) {
+                          console.log("🔧 [POSITION_SYNC] 작은 위치 차이 보정:", {
+                            playerName: clientPlayer.name,
+                            clientPosition: clientPlayer.position,
+                            serverPosition: serverPlayer.position,
+                            difference: positionDifference,
+                            reason: "1칸 이상 차이 - 서버 우선"
+                          });
+                          finalPosition = serverPlayer.position;
                         }
                       }
 
@@ -255,8 +239,9 @@ export const createWebSocketHandlers = (
                   const { players, ...safePayload } = payload;
                   set({ ...safePayload, players: updatedPlayers });
 
-                  // 위치 업데이트 후 동기화 상태 확인
+                  // 위치 업데이트 후 동기화 상태 확인 및 플래그 해제
                   setTimeout(() => {
+                    set({ isUpdatingPosition: false });
                     get().checkSyncStatus();
                   }, 1000);
                 } else {
@@ -399,7 +384,7 @@ export const createWebSocketHandlers = (
           });
 
           // 위치는 이미 업데이트되었으므로 애니메이션과 타일 액션만 처리
-          set({ gamePhase: "PLAYER_MOVING" });
+          set({ gamePhase: "PLAYER_MOVING", isUpdatingPosition: false });
 
           // MOVE_PLAYER를 호출하여 이동 애니메이션 처리
           get().movePlayer([diceNum1, diceNum2]);
@@ -410,6 +395,9 @@ export const createWebSocketHandlers = (
             currentPlayerIndex: currentState.currentPlayerIndex,
             note: "다른 플레이어의 이동이므로 내 gamePhase나 애니메이션 처리 안함"
           });
+        }
+        } catch (error) {
+          console.error("❌ [USE_DICE] 주사위 애니메이션 처리 중 오류:", error);
         }
       };
 
@@ -562,8 +550,6 @@ export const createWebSocketHandlers = (
         });
 
         // 찬스카드를 뽑은 당사자만 모달 표시, 다른 플레이어는 토스트
-        const currentState = get();
-        const currentPlayer = currentState.players[currentState.currentPlayerIndex];
         const currentUserInfo = useUserStore.getState().userInfo;
         const isMyCard = currentUserInfo && currentUserInfo.nickname === userName;
 

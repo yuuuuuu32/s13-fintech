@@ -3,8 +3,7 @@ import { useGameStore } from "../store/useGameStore.ts";
 import type { ToastMessage } from "../types/gameTypes.ts";
 
 const ToastItem: React.FC<{ toast: ToastMessage; onRemove: (id: string) => void }> = ({
-  toast,
-  onRemove
+  toast
 }) => {
   const getToastStyle = (type: ToastMessage["type"]) => {
     const baseStyle = "mb-3 p-5 rounded-xl shadow-xl border-2 w-96 relative animate-fadeInScale backdrop-blur-sm mx-auto";

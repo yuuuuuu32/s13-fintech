@@ -1,5 +1,3 @@
-import { Text } from '@react-three/drei'; // 이것도 삭제 가능
-import type { TileData } from '../../data/boardData.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
 import Building from '../Building';
 
