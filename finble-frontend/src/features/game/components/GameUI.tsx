@@ -165,12 +165,13 @@ const BuyPropertyModalContent = ({
             <Checkbox
               checked={selectedItems.land}
               onChange={handleItemChange("land")}
+              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF" } }}
             />
           }
           label={
             <Box>
-              <Typography>땅 증서</Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography className={styles.formGroupLabel}>땅 증서</Typography>
+              <Typography className={styles.formGroupLabel}>
                 {landPrice.toLocaleString()}원
               </Typography>
             </Box>
@@ -183,16 +184,24 @@ const BuyPropertyModalContent = ({
               checked={selectedItems.house}
               onChange={handleItemChange("house")}
               disabled={!selectedItems.land}
+              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF" } }}
             />
           }
           label={
             <Box>
               <Typography
-                color={!selectedItems.land ? "text.disabled" : "text.primary"}
+                className={`${styles.formGroupLabel} ${
+                  !selectedItems.land ? styles.formGroupLabelDisabled : ""
+                }`}
               >
                 주택 {!selectedItems.land && "(땅 구매 필요)"}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+
+              <Typography
+                className={`${styles.formGroupLabel} ${
+                  !selectedItems.land ? styles.formGroupLabelDisabled : ""
+                }`}
+              >
                 {housePrice.toLocaleString()}원
               </Typography>
             </Box>
@@ -205,16 +214,24 @@ const BuyPropertyModalContent = ({
               checked={selectedItems.building}
               onChange={handleItemChange("building")}
               disabled={!selectedItems.house}
+              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF"  } }}
             />
           }
           label={
             <Box>
               <Typography
-                color={!selectedItems.house ? "text.disabled" : "text.primary"}
+                className={`${styles.formGroupLabel} ${
+                  !selectedItems.house ? styles.formGroupLabelDisabled : ""
+                }`}
               >
                 빌딩 {!selectedItems.house && "(주택 구매 필요)"}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                className={`${styles.formGroupLabel} ${
+                  !selectedItems.house ? styles.formGroupLabelDisabled : ""
+                }`}
+                variant="body2"
+              >
                 {buildingPrice.toLocaleString()}원
               </Typography>
             </Box>
@@ -227,18 +244,23 @@ const BuyPropertyModalContent = ({
               checked={selectedItems.hotel}
               onChange={handleItemChange("hotel")}
               disabled={!selectedItems.building}
+              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF"  } }}
             />
           }
           label={
             <Box>
               <Typography
-                color={
-                  !selectedItems.building ? "text.disabled" : "text.primary"
-                }
+                className={`${styles.formGroupLabel} ${
+                  !selectedItems.building ? styles.formGroupLabelDisabled : ""
+                }`}
               >
                 호텔 {!selectedItems.building && "(빌딩 구매 필요)"}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                className={`${styles.formGroupLabel} ${
+                  !selectedItems.building ? styles.formGroupLabelDisabled : ""
+                }`}
+              >
                 {hotelPrice.toLocaleString()}원
               </Typography>
             </Box>
@@ -246,21 +268,20 @@ const BuyPropertyModalContent = ({
         />
       </FormGroup>
 
-      <Box sx={{ mt: 3, p: 2, bgcolor: "grey.100", borderRadius: 1 }}>
-        <Typography variant="h6">
+      <Box className={styles.totalCostBox}>
+        <Typography className={styles.totalCostText}>
           {hasSelectedItems
             ? `총 비용: ${totalCost.toLocaleString()}원`
             : "선택된 항목이 없습니다"}
         </Typography>
         <Typography
-          variant="body2"
-          color={
+          className={`${styles.cashText} ${
             hasSelectedItems
               ? canAfford
-                ? "success.main"
-                : "error.main"
-              : "text.secondary"
-          }
+                ? styles.cashTextSuccess
+                : styles.cashTextError
+              : ""
+          }`}
         >
           보유 현금: {currentPlayer?.money.toLocaleString()}원
           {hasSelectedItems && !canAfford && " (현금 부족)"}
@@ -667,27 +688,27 @@ const BuySpecialLandModalContent = ({
       <Typography variant="h5" component="h2" fontWeight="bold">
         {tile?.name}
       </Typography>
-      <Typography sx={{ mt: 2, mb: 3 }} color="primary">
+      <Typography className={styles.specialLandTitle}>
         🏛️ SSAFY 특별 땅
       </Typography>
-      <Typography sx={{ mb: 2 }}>
+      <Typography className={styles.specialLandDescription}>
         이 땅은 건물 건설이 불가능하며, 땅만 구매할 수 있습니다.
       </Typography>
 
-      <Box sx={{ mt: 3, p: 2, bgcolor: "grey.100", borderRadius: 1 }}>
+      <Box className={styles.specialLandPriceBox}>
         <Typography variant="h6">
           구매 가격: {landPrice.toLocaleString()}원
         </Typography>
         <Typography
           variant="body2"
-          color={canAfford ? "success.main" : "error.main"}
+          className={canAfford ? styles.cashTextSuccess : styles.cashTextError}
         >
           보유 현금: {currentPlayer?.money.toLocaleString()}원
           {!canAfford && " (현금 부족)"}
         </Typography>
       </Box>
 
-      <Box sx={{ mt: 3, display: "flex", gap: 2, justifyContent: "center" }}>
+      <Box className={styles.specialLandActions}>
         <Button
           variant="contained"
           onClick={handlePurchase}
@@ -707,7 +728,6 @@ const BuySpecialLandModalContent = ({
 const GameOverModalContent = ({
   winner,
   handleGoToLobby,
-  modalStyle,
   players,
   board,
   shouldShowGameOverByTurns,
@@ -731,31 +751,31 @@ const GameOverModalContent = ({
   }
 
   return (
-    <Box sx={modalStyle}>
-      <Typography variant="h4" component="h2">
+    <Box className={styles.gameOverModal}>
+      <Typography variant="h4" component="h2" className={styles.gameOverTitle}>
         🎉 게임 종료!
       </Typography>
-      <Typography sx={{ mt: 2, fontSize: "1.5rem", fontWeight: "bold" }}>
+      <Typography className={styles.gameOverMessage}>
         {finalWinner
           ? `${finalWinner.name}님이 최종 승리했습니다!`
           : "승자 없이 게임이 종료되었습니다."}
       </Typography>
       {gameEndReason && (
-        <Typography sx={{ mt: 1, fontSize: "1rem", color: "text.secondary" }}>
+        <Typography className={styles.gameOverReason}>
           {gameEndReason}
         </Typography>
       )}
       {finalWinner && (
-        <Typography sx={{ mt: 1, fontSize: "1.2rem" }}>
+        <Typography className={styles.gameOverAssets}>
           🏆 총 자산:{" "}
           {calculateTotalAssets(finalWinner, board).toLocaleString()}원
         </Typography>
       )}
       <Button
-        sx={{ mt: 3 }}
         variant="contained"
         size="large"
         onClick={handleGoToLobby}
+        className={styles.gameOverButton}
       >
         로비로 돌아가기
       </Button>
@@ -853,22 +873,6 @@ export function GameUI() {
 
   const handleGoToLobby = () => {
     navigate("/lobby");
-  };
-
-  const modalStyle = {
-    position: "absolute" as const,
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    width: 450,
-    bgcolor: "background.paper",
-    border: "2px solid #000",
-    boxShadow: 24,
-    p: 4,
-    color: "black",
-    borderRadius: 2,
-    textAlign: "center" as const,
-    fontFamily: "Galmuri14, sans-serif",
   };
 
   // 경제역사 상태 디버깅
@@ -1059,7 +1063,7 @@ export function GameUI() {
                   src={characterImages[player.character]}
                   alt={`${player.name} 아이콘`}
                   className={styles.playerIcon}
-                  style={{ width: '30px', height: '30px' }} 
+                  style={{ width: "30px", height: "30px" }}
                 />
 
                 <Typography
@@ -1189,76 +1193,78 @@ export function GameUI() {
         open={modal.type !== "NONE" || shouldShowGameOver}
         sx={{ pointerEvents: "all" }}
       >
-        <Box className={styles.modalStyle} sx={{ fontFamily: "Galmuri14" }}>
-          {modal.type === "BUY_PROPERTY" && (
-            <BuyPropertyModalContent
-              modal={modal}
-              buyPropertyWithItems={buyPropertyWithItems}
-              endTurn={endTurn}
-              currentPlayer={currentPlayer}
-              applyEconomicMultiplier={applyEconomicMultiplier}
-            />
-          )}
-          {modal.type === "BUY_SPECIAL_LAND" && (
-            <BuySpecialLandModalContent
-              modal={modal}
-              buySpecialLand={buySpecialLand}
-              endTurn={endTurn}
-              currentPlayer={currentPlayer}
-            />
-          )}
-          {modal.type === "ACQUIRE_PROPERTY" && (
-            <AcquirePropertyModalContent
-              modal={modal}
-              acquireProperty={acquireProperty}
-              payToll={payToll}
-              currentPlayer={currentPlayer}
-              endTurn={endTurn}
-            />
-          )}
-          {modal.type === "CHANCE_CARD" && (
-            <ChanceCardModalContent modal={modal} />
-          )}
-          {modal.type === "INFO" && (
-            <InfoModalContent modal={modal} endTurn={endTurn} />
-          )}
-          {modal.type === "JAIL" && (
-            <JailModalContent
-              payBail={payBail}
-              handleJail={handleJail}
-              BAIL_AMOUNT={BAIL_AMOUNT}
-              currentPlayer={currentPlayer}
-            />
-          )}
-          {modal.type === "JAIL_ESCAPE" && (
-            <JailEscapeModalContent modal={modal} />
-          )}
-          {modal.type === "EXPO" && (
-            <ExpoModalContent
-              modal={modal}
-              selectExpoProperty={selectExpoProperty}
-            />
-          )}
-          {modal.type === "MANAGE_PROPERTY" && (
-            <ManagePropertyModalContent
-              modal={modal}
-              endTurn={endTurn}
-              buyPropertyWithItems={buyPropertyWithItems}
-              currentPlayer={currentPlayer}
-            />
-          )}
-          {modal.type === "NTS" && <NtsModalContent modal={modal} />}
-          {shouldShowGameOver && (
+        <>
+          {shouldShowGameOver ? (
             <GameOverModalContent
               winner={winner}
               handleGoToLobby={handleGoToLobby}
-              modalStyle={modalStyle}
               players={players}
               board={board}
               shouldShowGameOverByTurns={shouldShowGameOverByTurns}
             />
+          ) : (
+            <Box className={styles.modalStyle} sx={{ fontFamily: "Galmuri14" }}>
+              {modal.type === "BUY_PROPERTY" && (
+                <BuyPropertyModalContent
+                  modal={modal}
+                  buyPropertyWithItems={buyPropertyWithItems}
+                  endTurn={endTurn}
+                  currentPlayer={currentPlayer}
+                  applyEconomicMultiplier={applyEconomicMultiplier}
+                />
+              )}
+              {modal.type === "BUY_SPECIAL_LAND" && (
+                <BuySpecialLandModalContent
+                  modal={modal}
+                  buySpecialLand={buySpecialLand}
+                  endTurn={endTurn}
+                  currentPlayer={currentPlayer}
+                />
+              )}
+              {modal.type === "ACQUIRE_PROPERTY" && (
+                <AcquirePropertyModalContent
+                  modal={modal}
+                  acquireProperty={acquireProperty}
+                  payToll={payToll}
+                  currentPlayer={currentPlayer}
+                  endTurn={endTurn}
+                />
+              )}
+              {modal.type === "CHANCE_CARD" && (
+                <ChanceCardModalContent modal={modal} />
+              )}
+              {modal.type === "INFO" && (
+                <InfoModalContent modal={modal} endTurn={endTurn} />
+              )}
+              {modal.type === "JAIL" && (
+                <JailModalContent
+                  payBail={payBail}
+                  handleJail={handleJail}
+                  BAIL_AMOUNT={BAIL_AMOUNT}
+                  currentPlayer={currentPlayer}
+                />
+              )}
+              {modal.type === "JAIL_ESCAPE" && (
+                <JailEscapeModalContent modal={modal} />
+              )}
+              {modal.type === "EXPO" && (
+                <ExpoModalContent
+                  modal={modal}
+                  selectExpoProperty={selectExpoProperty}
+                />
+              )}
+              {modal.type === "MANAGE_PROPERTY" && (
+                <ManagePropertyModalContent
+                  modal={modal}
+                  endTurn={endTurn}
+                  buyPropertyWithItems={buyPropertyWithItems}
+                  currentPlayer={currentPlayer}
+                />
+              )}
+              {modal.type === "NTS" && <NtsModalContent modal={modal} />}
+            </Box>
           )}
-        </Box>
+        </>
       </Modal>
 
       {/* 토스트 메시지 컨테이너 */}
