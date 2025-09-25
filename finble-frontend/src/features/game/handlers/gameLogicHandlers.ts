@@ -290,9 +290,19 @@ export const createGameLogicHandlers = (
   },
 
   movePlayer: (diceValues: [number, number]) => {
-    const { players, currentPlayerIndex, board, serverCurrentPosition } = get();
+    const { players, currentPlayerIndex, board, serverCurrentPosition, isUpdatingPosition } = get();
     const currentPlayer = players[currentPlayerIndex];
     const diceSum = diceValues[0] + diceValues[1];
+
+    // 동시성 검사: 이미 다른 위치 업데이트가 진행 중이면 스킵
+    if (isUpdatingPosition && serverCurrentPosition === null) {
+      console.warn("⚠️ [MOVE_PLAYER] 다른 위치 업데이트 진행 중 - movePlayer 호출 스킵:", {
+        playerName: currentPlayer.name,
+        isUpdatingPosition,
+        serverCurrentPosition
+      });
+      return;
+    }
 
     // 서버에서 받은 정확한 위치 사용 (찬스카드 이동 등이 반영됨)
     const finalPosition = serverCurrentPosition !== null ? serverCurrentPosition : (currentPlayer.position + diceSum) % board.length;
@@ -316,6 +326,7 @@ export const createGameLogicHandlers = (
       finalPosition: finalPosition,
       diceSum,
       lapCountUpdated: lapCount,
+      isUpdatingPosition,
       note: "서버에서 받은 위치 사용"
     });
 
@@ -332,6 +343,10 @@ export const createGameLogicHandlers = (
     console.log("🎬 [MOVE_PLAYER] 이동 애니메이션 시뮬레이션 시작");
     setTimeout(() => {
       console.log("🎯 [MOVE_PLAYER] 애니메이션 완료 - 타일 액션 처리 시작");
+
+      // 위치 업데이트 완료 플래그 해제
+      set({ isUpdatingPosition: false });
+
       get().handleTileAction();
     }, 1000); // 1초 애니메이션 시뮬레이션
   },

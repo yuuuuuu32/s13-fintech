@@ -2,6 +2,7 @@ import { useUserStore } from "../../../stores/useUserStore.ts";
 import type { GameState, GameInitialState, Player } from "../types/gameTypes.ts";
 import { sendMessage, subscribeToTopic } from "../../../utils/websocket.ts";
 import { CHARACTER_PREFABS } from "../constants/gameConstants.ts";
+import { logger } from "../../../utils/logger.ts";
 
 
 
@@ -131,46 +132,131 @@ export const createWebSocketHandlers = (
           return {};
         });
               } else {
-                // GAME_STATE_CHANGE는 위치 업데이트하지 않음 - 게임 상태만
-                console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE without curPlayer - merging players state:", JSON.stringify(payload, null, 2));
-                
+                // GAME_STATE_CHANGE는 선택적으로 위치 업데이트
+                console.log("🔍 [BACKEND_DATA] GAME_STATE_CHANGE without curPlayer - analyzing payload:", JSON.stringify(payload, null, 2));
+
                 if (payload.players) {
                   const newPlayers = Array.isArray(payload.players) ? payload.players : Object.values(payload.players);
                   const currentPlayers = get().players;
-      
+                  const currentState = get();
+
                   const updatedPlayers = currentPlayers.map(clientPlayer => {
                     const serverPlayer = newPlayers.find(p => p.id === clientPlayer.id);
-                                  if (serverPlayer) {
-                                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                                    const { position, ...serverData } = serverPlayer;
+                    if (serverPlayer) {
+                      // 위치 동기화 검증 및 결정
+                      let finalPosition = clientPlayer.position;
 
-                                    // 감옥 상태 보호: 클라이언트에서 이미 탈출한 플레이어는 서버 감옥 상태를 무시
-                                    const protectedJailState = {};
-                                    if (!clientPlayer.isInJail && clientPlayer.jailTurns === 0 && serverPlayer.isInJail) {
-                                      console.log("🛡️ [JAIL_PROTECTION] 클라이언트 탈출 상태 보호:", {
-                                        playerName: clientPlayer.name,
-                                        clientJailState: { isInJail: clientPlayer.isInJail, jailTurns: clientPlayer.jailTurns },
-                                        serverJailState: { isInJail: serverPlayer.isInJail, jailTurns: serverPlayer.jailTurns },
-                                        action: "서버 감옥 상태 무시"
-                                      });
-                                      protectedJailState.isInJail = false;
-                                      protectedJailState.jailTurns = 0;
-                                    }
+                      // 위치 업데이트 조건 검사
+                      if (!currentState.isUpdatingPosition &&
+                          serverPlayer.position !== undefined &&
+                          serverPlayer.position !== null) {
 
-                                    return {
-                                      ...clientPlayer,
-                                      ...serverData,
-                                      ...protectedJailState,
-                                      position: clientPlayer.position,
-                                      isTraveling: clientPlayer.isTraveling
-                                    };
-                                  }
-                                  return clientPlayer;
-                                });
-                                
-                                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                                const { players, ...safePayload } = payload;
-                                set({ ...safePayload, players: updatedPlayers });      
+                        const positionDifference = Math.abs(serverPlayer.position - clientPlayer.position);
+                        const boardLength = currentState.board.length || 32;
+
+                        // 동적 임계값 계산
+                        const dynamicThreshold = Math.max(2, Math.min(6, Math.floor(boardLength / 8))); // 2~6칸 사이에서 동적 조정
+                        const majorDifferenceThreshold = Math.floor(boardLength / 3); // 보드의 1/3 이상 차이면 무조건 서버 신뢰
+
+                        logger.dev("🔍 [POSITION_ANALYSIS] 위치 동기화 분석:", {
+                          playerName: clientPlayer.name,
+                          clientPosition: clientPlayer.position,
+                          serverPosition: serverPlayer.position,
+                          difference: positionDifference,
+                          dynamicThreshold,
+                          majorDifferenceThreshold,
+                          boardLength,
+                          hasGameTurn: !!payload.gameTurn,
+                          hasCurPlayer: !!payload.curPlayer
+                        });
+
+                        // 대규모 위치 차이 - 무조건 서버 위치 신뢰
+                        if (positionDifference >= majorDifferenceThreshold) {
+                          logger.position("대규모 위치 차이 감지 - 강제 서버 동기화", {
+                            playerName: clientPlayer.name,
+                            clientPosition: clientPlayer.position,
+                            serverPosition: serverPlayer.position,
+                            difference: positionDifference,
+                            threshold: majorDifferenceThreshold,
+                            reason: "대규모 위치 불일치"
+                          });
+                          finalPosition = serverPlayer.position;
+                        }
+                        // 중간 위치 차이 - 동적 임계값 기준
+                        else if (positionDifference >= dynamicThreshold) {
+                          console.log("🔧 [POSITION_SYNC] 중간 위치 차이 감지 - 서버 위치로 보정:", {
+                            playerName: clientPlayer.name,
+                            clientPosition: clientPlayer.position,
+                            serverPosition: serverPlayer.position,
+                            difference: positionDifference,
+                            threshold: dynamicThreshold,
+                            reason: "동적 임계값 초과"
+                          });
+                          finalPosition = serverPlayer.position;
+                        }
+                        // 타이머로 인한 턴 변경 시 작은 차이도 보정
+                        else if (payload.curPlayer && payload.gameTurn && positionDifference > 0) {
+                          // 최근 턴 변경인지 확인 (급격한 상태 변화 방지)
+                          const currentTurn = currentState.currentTurn || 0;
+                          const isRecentTurnChange = Math.abs((payload.gameTurn || 0) - currentTurn) <= 1;
+
+                          if (isRecentTurnChange) {
+                            console.log("🔧 [POSITION_SYNC] 타이머 턴 변경 - 작은 차이 보정:", {
+                              playerName: clientPlayer.name,
+                              clientPosition: clientPlayer.position,
+                              serverPosition: serverPlayer.position,
+                              difference: positionDifference,
+                              currentTurn,
+                              serverTurn: payload.gameTurn,
+                              turnInfo: { curPlayer: payload.curPlayer, gameTurn: payload.gameTurn }
+                            });
+                            finalPosition = serverPlayer.position;
+                          } else {
+                            console.log("⚠️ [POSITION_SYNC] 턴 변경이지만 시간차가 큼 - 보정 스킵:", {
+                              playerName: clientPlayer.name,
+                              currentTurn,
+                              serverTurn: payload.gameTurn,
+                              turnDifference: Math.abs((payload.gameTurn || 0) - currentTurn)
+                            });
+                          }
+                        }
+                      }
+
+                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                      const { position, ...serverData } = serverPlayer;
+
+                      // 감옥 상태 보호: 클라이언트에서 이미 탈출한 플레이어는 서버 감옥 상태를 무시
+                      const protectedJailState = {};
+                      if (!clientPlayer.isInJail && clientPlayer.jailTurns === 0 && serverPlayer.isInJail) {
+                        console.log("🛡️ [JAIL_PROTECTION] 클라이언트 탈출 상태 보호:", {
+                          playerName: clientPlayer.name,
+                          clientJailState: { isInJail: clientPlayer.isInJail, jailTurns: clientPlayer.jailTurns },
+                          serverJailState: { isInJail: serverPlayer.isInJail, jailTurns: serverPlayer.jailTurns },
+                          action: "서버 감옥 상태 무시"
+                        });
+                        protectedJailState.isInJail = false;
+                        protectedJailState.jailTurns = 0;
+                      }
+
+                      return {
+                        ...clientPlayer,
+                        ...serverData,
+                        ...protectedJailState,
+                        position: finalPosition,
+                        isTraveling: clientPlayer.isTraveling
+                      };
+                    }
+                    return clientPlayer;
+                  });
+
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  const { players, ...safePayload } = payload;
+                  set({ ...safePayload, players: updatedPlayers });
+
+                  // 위치 업데이트 후 동기화 상태 확인
+                  setTimeout(() => {
+                    get().checkSyncStatus();
+                  }, 1000);
                 } else {
                   get().updateGameState(payload);
                 }
@@ -290,29 +376,60 @@ export const createWebSocketHandlers = (
 
       console.log("🎲 [USE_DICE] 백엔드에서 주사위 처리 완료 - 주사위 애니메이션 대기 중");
 
-      // 주사위 애니메이션이 끝난 후 (2초) 기물 이동 시작
-      setTimeout(() => {
-        console.log("🎬 [USE_DICE] 주사위 애니메이션 완료 - 기물 이동 시작");
+      // Promise 기반 주사위 애니메이션 처리
+      const handleDiceAnimation = async () => {
+        try {
+          // 주사위 애니메이션 대기 (2초)
+          await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // 현재 턴의 플레이어만 이동 처리
-        const currentState = get();
-        const currentPlayer = currentState.players[currentState.currentPlayerIndex];
+          console.log("🎬 [USE_DICE] 주사위 애니메이션 완료 - 기물 이동 시작");
 
-        if (currentPlayer && currentPlayer.name === userName) {
-          console.log("🏃 [USE_DICE] 현재 플레이어 이동 처리:", {
-            playerName: userName,
-            currentPlayerIndex: currentState.currentPlayerIndex,
-            dice: [diceNum1, diceNum2]
-          });
-          get().movePlayer([diceNum1, diceNum2]);
-        } else {
-          console.log("👀 [USE_DICE] 다른 플레이어의 주사위 - 이동 처리 건너뛰기:", {
-            dicePlayerName: userName,
-            currentPlayerName: currentPlayer?.name,
-            currentPlayerIndex: currentState.currentPlayerIndex
-          });
+          // 현재 상태 재확인 (비동기 중 상태가 변경될 수 있음)
+          const currentState = get();
+          const currentPlayer = currentState.players[currentState.currentPlayerIndex];
+
+          // 이미 위치 업데이트가 진행 중인지 확인
+          if (currentState.isUpdatingPosition) {
+            console.warn("⚠️ [USE_DICE] 위치 업데이트가 이미 진행 중 - 중복 처리 방지");
+            return;
+          }
+
+          if (currentPlayer && currentPlayer.name === userName) {
+            console.log("🏃 [USE_DICE] 현재 플레이어 이동 처리:", {
+              playerName: userName,
+              currentPlayerIndex: currentState.currentPlayerIndex,
+              dice: [diceNum1, diceNum2],
+              serverPosition: currentState.serverCurrentPosition,
+              isUpdatingPosition: currentState.isUpdatingPosition
+            });
+
+            // 동시성 제어: 위치 업데이트 시작
+            set({ isUpdatingPosition: true });
+
+            // movePlayer 호출
+            get().movePlayer([diceNum1, diceNum2]);
+          } else {
+            console.log("👀 [USE_DICE] 다른 플레이어의 주사위 - 이동 처리 건너뛰기:", {
+              dicePlayerName: userName,
+              currentPlayerName: currentPlayer?.name,
+              currentPlayerIndex: currentState.currentPlayerIndex
+            });
+          }
+        } catch (error) {
+          console.error("❌ [USE_DICE] 주사위 애니메이션 처리 중 오류:", error);
+          // 오류 발생 시 위치 업데이트 플래그 해제
+          set({ isUpdatingPosition: false });
         }
-      }, 2000); // 주사위 애니메이션 시간과 동일
+      };
+
+      // 비동기 처리 시작
+      handleDiceAnimation();
+
+      // 주사위 처리 후 동기화 상태 확인 및 메모리 정리
+      setTimeout(() => {
+        get().checkSyncStatus();
+        get().cleanupMemory();
+      }, 3000);
     }));
 
     unsubscribeFunctions.push(subscribeToTopic("TRADE_LAND", (message) => {
@@ -1269,46 +1386,181 @@ export const createWebSocketHandlers = (
     }, 5000);
   },
 
-  updateGameState: (newState: Partial<GameState>) => {
-    console.log("🔍 [BACKEND_DATA] updateGameState called with full payload:", {
-      hasPlayers: !!newState.players,
-      newStateKeys: Object.keys(newState),
-      fullPayload: JSON.stringify(newState, null, 2)
+  // 동기화 에러 복구 메커니즘
+  checkSyncStatus: () => {
+    const currentState = get();
+    const now = Date.now();
+
+    // 5초마다만 체크
+    if (now - currentState.lastSyncCheck < 5000) return;
+
+    set({ lastSyncCheck: now });
+
+    // 다른 플레이어들과 위치 차이가 큰지 확인
+    const suspiciousDifferences = currentState.players.map(player => {
+      // 예상 위치 범위 계산 (대략적)
+      const expectedRange = Math.floor(currentState.board.length / 4);
+      const avgPosition = currentState.players.reduce((sum, p) => sum + p.position, 0) / currentState.players.length;
+      const positionDeviation = Math.abs(player.position - avgPosition);
+
+      return {
+        player: player.name,
+        position: player.position,
+        deviation: positionDeviation,
+        suspicious: positionDeviation > expectedRange
+      };
     });
 
+    const suspiciousCount = suspiciousDifferences.filter(p => p.suspicious).length;
+
+    if (suspiciousCount > 1) {
+      console.warn("⚠️ [SYNC_CHECK] 의심스러운 위치 불일치 감지:", {
+        suspiciousDifferences,
+        suspiciousCount,
+        avgPosition: currentState.players.reduce((sum, p) => sum + p.position, 0) / currentState.players.length
+      });
+
+      // 동기화 에러 카운트 증가
+      set({ syncErrorCount: currentState.syncErrorCount + 1 });
+
+      // 에러가 3회 이상이면 복구 시도
+      if (currentState.syncErrorCount >= 2) {
+        console.error("🚨 [SYNC_RECOVERY] 동기화 오류 임계값 도달 - 복구 시도");
+        get().requestFullSync();
+      }
+    } else if (currentState.syncErrorCount > 0) {
+      // 정상 상태로 복구되면 에러 카운트 감소
+      set({ syncErrorCount: Math.max(0, currentState.syncErrorCount - 1) });
+    }
+  },
+
+  // 전체 동기화 요청
+  requestFullSync: () => {
+    const currentState = get();
+
+    console.log("🔄 [FULL_SYNC] 전체 게임 상태 동기화 요청");
+
+    // 토스트 메시지로 사용자에게 알림
+    const syncToast = {
+      id: `sync-${Date.now()}`,
+      type: "warning" as const,
+      title: "동기화 중",
+      message: "게임 상태를 서버와 동기화하는 중입니다...",
+      duration: 3000,
+      timestamp: Date.now()
+    };
+
+    set({
+      toastMessages: [...currentState.toastMessages, syncToast],
+      syncErrorCount: 0 // 복구 시도 시 에러 카운트 리셋
+    });
+
+    // 서버에 게임 상태 재요청 (WebSocket 재연결 통해)
+    if (currentState.gameId) {
+      // 현재는 별도 API가 없으므로, 연결 상태 재확인으로 대체
+      console.log("🔄 [FULL_SYNC] WebSocket 연결 상태 확인 중");
+
+      setTimeout(() => {
+        const successToast = {
+          id: `sync-success-${Date.now()}`,
+          type: "success" as const,
+          title: "동기화 완료",
+          message: "게임 상태 동기화가 완료되었습니다.",
+          duration: 2000,
+          timestamp: Date.now()
+        };
+
+        set(state => ({
+          toastMessages: [...state.toastMessages.filter(t => t.id !== syncToast.id), successToast]
+        }));
+      }, 2000);
+    }
+  },
+
+  // 메모리 정리 메커니즘
+  cleanupMemory: () => {
+    const currentState = get();
+    const now = Date.now();
+
+    // 5분 이상 된 토스트 메시지 제거
+    const cleanedToasts = currentState.toastMessages.filter(toast =>
+      now - toast.timestamp < 5 * 60 * 1000
+    );
+
+    // 토스트 메시지가 정리되었으면 상태 업데이트
+    if (cleanedToasts.length !== currentState.toastMessages.length) {
+      logger.dev(`🧹 [CLEANUP] 토스트 메시지 정리: ${currentState.toastMessages.length - cleanedToasts.length}개 제거`);
+      set({ toastMessages: cleanedToasts });
+    }
+
+    // 동기화 에러 카운트가 너무 높으면 리셋 (10 이상)
+    if (currentState.syncErrorCount >= 10) {
+      logger.warn("동기화 에러 카운트 리셋", { previousCount: currentState.syncErrorCount });
+      set({ syncErrorCount: 0 });
+    }
+  },
+
+  updateGameState: (newState: Partial<GameState>) => {
+    const currentState = get();
+
+    console.log("🔍 [BACKEND_DATA] updateGameState called:", {
+      hasPlayers: !!newState.players,
+      isUpdatingPosition: currentState.isUpdatingPosition,
+      newStateKeys: Object.keys(newState),
+      timestamp: new Date().toISOString()
+    });
+
+    // 디버깅을 위한 상세 로깅
     if (newState.players) {
       const players = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
-      console.log("🔍 [BACKEND_DATA] Received player positions from server:");
-      players.forEach((p, index) => {
-        console.log(`  Server Player ${index}: ${p.name} (ID: ${p.id}) - Position: ${p.position}`);
+      console.log("🔍 [BACKEND_DATA] Server player positions vs Client positions:");
+      players.forEach((serverPlayer, index) => {
+        const clientPlayer = currentState.players.find(p => p.id === serverPlayer.id);
+        const positionDiff = clientPlayer ? Math.abs(serverPlayer.position - clientPlayer.position) : 0;
+        console.log(`  Player ${index}: ${serverPlayer.name} - Server: ${serverPlayer.position} vs Client: ${clientPlayer?.position || 'N/A'} (diff: ${positionDiff})`);
       });
     }
 
-    // 위치는 제외하고 상태 업데이트 (위치는 USE_DICE와 찬스카드에서만)
-    const currentState = get();
-
-    if (newState.players) {
-      console.log("🚨 [BLOCKED] updateGameState called with players data - COMPLETELY BLOCKED to prevent position sync issues");
-      const newPlayers = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
-
-      currentState.players.forEach((currentPlayer) => {
-        const serverPlayer = newPlayers.find(p => p.id === currentPlayer.id);
-        if (serverPlayer && serverPlayer.position !== currentPlayer.position) {
-          console.log(`🚨 [POSITION_MISMATCH_BLOCKED] ${currentPlayer.name}:`);
-          console.log(`  Current: ${currentPlayer.position} -> Server wants: ${serverPlayer.position} (IGNORED)`);
-        }
+    // 위치 업데이트 진행 중일 때는 플레이어 데이터 업데이트 차단
+    if (newState.players && currentState.isUpdatingPosition) {
+      console.warn("🚫 [POSITION_UPDATE_BLOCKED] 위치 업데이트 진행 중 - 플레이어 데이터 무시:", {
+        reason: "movePlayer 실행 중",
+        isUpdatingPosition: currentState.isUpdatingPosition
       });
 
-      // 플레이어 데이터가 있는 경우 완전히 차단 - curPlayer만 업데이트
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { players, ...safeState } = newState;
-      console.log("🛡️ [COMPLETE_BLOCK] ONLY updating non-player state to prevent any position corruption");
 
-      // curPlayer가 있으면 currentPlayerIndex만 업데이트 (다른 모든 것 무시)
+      // curPlayer만 업데이트
       if (safeState.curPlayer) {
         const nextPlayerIndex = currentState.players.findIndex(p => p.name === safeState.curPlayer);
         if (nextPlayerIndex !== -1) {
-          console.log("🔄 [MINIMAL_UPDATE] ONLY updating currentPlayerIndex:", {
+          console.log("🔄 [TURN_ONLY_UPDATE] 턴 정보만 업데이트 (위치 보호):", {
+            curPlayer: safeState.curPlayer,
+            nextPlayerIndex
+          });
+          set({
+            currentPlayerIndex: nextPlayerIndex,
+            currentTurn: safeState.gameTurn || currentState.currentTurn
+          });
+        }
+      }
+      return;
+    }
+
+    // 일반적인 상태 업데이트
+    if (newState.players) {
+      console.log("📊 [POSITION_ANALYSIS] Analyzing position differences for sync decision");
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { players, ...safeState } = newState;
+      console.log("🔄 [LEGACY_BLOCK] 기존 차단 로직 유지 - 플레이어 데이터 무시");
+
+      // curPlayer가 있으면 currentPlayerIndex만 업데이트
+      if (safeState.curPlayer) {
+        const nextPlayerIndex = currentState.players.findIndex(p => p.name === safeState.curPlayer);
+        if (nextPlayerIndex !== -1) {
+          console.log("🔄 [TURN_UPDATE] currentPlayerIndex 업데이트:", {
             curPlayer: safeState.curPlayer,
             nextPlayerIndex,
             previousIndex: currentState.currentPlayerIndex
@@ -1320,14 +1572,13 @@ export const createWebSocketHandlers = (
         }
       }
     } else {
-      console.log("✅ [SAFE_UPDATE] No players in state, applying full update");
+      console.log("✅ [SAFE_UPDATE] No players data, applying full update");
 
       // curPlayer가 있으면 currentPlayerIndex도 업데이트
       if (newState.curPlayer) {
-        const currentState = get();
         const nextPlayerIndex = currentState.players.findIndex(p => p.name === newState.curPlayer);
         if (nextPlayerIndex !== -1) {
-          console.log("🔄 [SAFE_UPDATE] curPlayer 감지 - currentPlayerIndex 업데이트:", {
+          console.log("🔄 [FULL_UPDATE] curPlayer와 함께 전체 상태 업데이트:", {
             curPlayer: newState.curPlayer,
             nextPlayerIndex,
             previousIndex: currentState.currentPlayerIndex

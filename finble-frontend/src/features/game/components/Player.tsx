@@ -188,6 +188,16 @@ export function Player({ player }: PlayerProps) {
     const safeCurrentPosition = Math.max(0, Math.min(player.position, board.length - 1));
     const safePrevPosition = Math.max(0, Math.min(prevPositionRef.current, board.length - 1));
 
+    console.log("🎬 [PLAYER_ANIMATION] Position change detected:", {
+      playerName: player.name,
+      isMyPlayer,
+      previousPosition: safePrevPosition,
+      currentPosition: safeCurrentPosition,
+      positionChanged: safeCurrentPosition !== safePrevPosition,
+      gamePhase,
+      isThisPlayersTurn
+    });
+
     if (safeCurrentPosition === safePrevPosition) return;
 
     const diceSum = dice[0] + dice[1];
@@ -226,7 +236,7 @@ export function Player({ player }: PlayerProps) {
         }
       },
     });
-  }, [player.position, gamePhase, isThisPlayersTurn, isMyPlayer, api, board, dice, playerIndex, players.length, isModalOpen, handleTileAction]);
+  }, [player.position, player.name, gamePhase, isThisPlayersTurn, isMyPlayer, api, board, dice, playerIndex, players.length, isModalOpen, handleTileAction]);
 
   // --- 이동 완료 후 위치 업데이트 ---
   useEffect(() => {

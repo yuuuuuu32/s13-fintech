@@ -39,6 +39,9 @@ export const useGameStore = create<GameState>()((set, get) => {
     lastEconomicModalTurn: null,
     lastSalaryBonus: 0,
     toastMessages: [],
+    isUpdatingPosition: false,
+    syncErrorCount: 0,
+    lastSyncCheck: 0,
 
     // 웹소켓 관련 메서드
     connect: websocketHandlers.connect,
