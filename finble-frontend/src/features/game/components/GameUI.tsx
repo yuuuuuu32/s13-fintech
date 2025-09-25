@@ -1267,7 +1267,7 @@ export function GameUI() {
         </>
       </Modal>
 
-      {/* 토스트 메시지 컨테이너 */}
+      {/* 토스트 메시지 컨테이너! */}
       <ToastContainer />
     </Box>
   );
