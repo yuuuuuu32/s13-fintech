@@ -766,11 +766,11 @@ const GameOverModalContent = ({
   });
 
   return (
-    <Box sx={modalStyle}>
-      <Typography variant="h4" component="h2">
+    <Box className={styles.gameOverModal}>
+      <Typography variant="h4" component="h2" sx={{ fontFamily: "Galmuri14" }} className={styles.gameOverTitle}>
         {isWinner ? "🎉 게임 종료!" : isLoser ? "😢 게임 종료" : "🏁 게임 종료"}
       </Typography>
-      <Typography sx={{ mt: 2, fontSize: "1.5rem", fontWeight: "bold" }}>
+      <Typography sx={{ mt: 2, fontSize: "1.5rem", fontFamily: "Galmuri14", fontWeight: "bold" }}className={styles.gameOverMessage}>
         {isWinner
           ? "축하합니다! 승리했습니다!"
           : isLoser
@@ -780,27 +780,27 @@ const GameOverModalContent = ({
 
       {/* 승리자 정보는 패배자에게도 표시 */}
       {finalWinner && !isWinner && (
-        <Typography sx={{ mt: 1, fontSize: "1.2rem", color: "text.secondary" }}>
+        <Typography sx={{ mt: 1, fontSize: "1.2rem", fontFamily: "Galmuri14" }} className={styles.gameOverAssets}>
           🏆 {finalWinner.name}님이 최종 승리했습니다!
         </Typography>
       )}
 
       {gameEndReason && (
-        <Typography sx={{ mt: 1, fontSize: "1rem", color: "text.secondary" }}>
+        <Typography sx={{ mt: 1, fontSize: "1.2rem", fontFamily: "Galmuri14"}}className={styles.gameOverAssets}>
           {gameEndReason}
         </Typography>
       )}
 
       {/* 총 자산은 승리자에게만 표시 */}
       {finalWinner && isWinner && (
-        <Typography sx={{ mt: 1, fontSize: "1.2rem" }}>
+        <Typography sx={{ fontFamily: "Galmuri14" }}className={styles.gameOverAssets}>
           🏆 총 자산:{" "}
           {calculateTotalAssets(finalWinner, board).toLocaleString()}원
         </Typography>
       )}
 
       <Button
-        sx={{ mt: 3 }}
+        sx={{ mt: 3, fontFamily: "Galmuri14" }}
         variant="contained"
         size="large"
         onClick={handleGoToLobby}
