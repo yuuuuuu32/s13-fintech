@@ -18,13 +18,13 @@ COPY src ./src
 RUN gradle clean build --no-daemon -x test
 
 # Runtime stage (use non-Alpine variant for broader arch support)
-FROM eclipse-temurin:17-jre-alpine
+FROM openjdk:17-jre-slim
 
 # Set working directory
 WORKDIR /app
 
 # Install curl for health check (before switching to non-root user)
-RUN apk add --no-cache curl
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
 RUN addgroup -S appuser && adduser -S appuser -G appuser
