@@ -341,13 +341,26 @@ export const createGameLogicHandlers = (
 
     // 애니메이션 시뮬레이션을 위한 지연 후 타일 액션 처리
     console.log("🎬 [MOVE_PLAYER] 이동 애니메이션 시뮬레이션 시작");
+    const originalPlayerIndex = get().currentPlayerIndex;
     setTimeout(() => {
-      console.log("🎯 [MOVE_PLAYER] 애니메이션 완료 - 타일 액션 처리 시작");
+      const currentState = get();
+      // 턴이 바뀌었는지 확인
+      if (currentState.currentPlayerIndex === originalPlayerIndex) {
+        // 찬스카드로 이미 타일 액션이 처리되었는지 확인
+        if (currentState.isProcessingChanceCard) {
+          console.log("⚠️ [MOVE_PLAYER] 찬스카드로 이미 타일 액션 처리됨 - 중복 처리 건너뛰기");
+          set({ isProcessingChanceCard: false }); // 플래그 리셋
+          return;
+        }
 
-      // 위치 업데이트 완료 플래그 해제
-      set({ isUpdatingPosition: false });
-
-      get().handleTileAction();
+        console.log("🎯 [MOVE_PLAYER] 애니메이션 완료 - 타일 액션 처리 시작 (턴 유효)");
+        get().handleTileAction();
+      } else {
+        console.log("⚠️ [MOVE_PLAYER] 턴이 변경되어 타일 액션 처리 건너뛰기:", {
+          originalPlayer: originalPlayerIndex,
+          currentPlayer: currentState.currentPlayerIndex
+        });
+      }
     }, 1000); // 1초 애니메이션 시뮬레이션
   },
 
@@ -367,8 +380,23 @@ export const createGameLogicHandlers = (
       tileType: currentTile?.type,
       isMyTurn,
       gamePhase: "TILE_ACTION",
-      calledFrom: "찬스카드 이동 후 또는 일반 이동 후"
+      calledFrom: "찬스카드 이동 후 또는 일반 이동 후",
+      boardLength: board.length,
+      tileExists: !!currentTile,
+      // NTS 디버깅을 위한 추가 정보
+      isNTSTile: currentTile?.type === "NTS",
+      boardSample: `board[${Math.max(0, currentPlayer.position-1)}]=${board[Math.max(0, currentPlayer.position-1)]?.name}, board[${currentPlayer.position}]=${currentTile?.name}, board[${Math.min(board.length-1, currentPlayer.position+1)}]=${board[Math.min(board.length-1, currentPlayer.position+1)]?.name}`
     });
+
+    if (!currentTile) {
+      console.error("❌ [TILE_ACTION] 타일 정보를 찾을 수 없습니다:", {
+        position: currentPlayer.position,
+        boardLength: board.length,
+        playerName: currentPlayer.name
+      });
+      get().endTurn();
+      return;
+    }
 
     if (currentPlayer.money < 0) {
       console.log("💸 [BANKRUPTCY] Player went bankrupt:", currentPlayer.name);
@@ -403,9 +431,14 @@ export const createGameLogicHandlers = (
 
   endTurn: () => {
     const state = get();
-    const { gameId, send, players, currentPlayerIndex } = state;
+    const { gameId, send, players, currentPlayerIndex, gamePhase } = state;
     const currentPlayer = players[currentPlayerIndex];
 
+    // 이미 턴 종료 대기 중이면 중복 요청 방지
+    if (gamePhase === "WAITING_FOR_TURN_END") {
+      console.log("⚠️ [END_TURN] 이미 턴 종료 처리 중 - 중복 요청 무시");
+      return;
+    }
 
     // Log all player positions before turn end with detailed info
     console.log("📍 [BACKEND_SYNC] All player positions BEFORE endTurn (will send to server):");

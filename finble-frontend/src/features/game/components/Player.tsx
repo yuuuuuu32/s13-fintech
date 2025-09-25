@@ -180,6 +180,29 @@ export function Player({ player }: PlayerProps) {
     config: { duration: 200 },
   }));
 
+  // --- 찬스카드 등으로 인한 즉시 위치 변화 감지 (모든 플레이어) ---
+  useEffect(() => {
+    if (!board || board.length === 0) return;
+
+    const safeCurrentPosition = Math.max(0, Math.min(player.position, board.length - 1));
+    const safePrevPosition = Math.max(0, Math.min(prevPositionRef.current, board.length - 1));
+
+    // 위치가 변경되었고, 현재 MOVING_PLAYER 페이즈가 아닐 때 (찬스카드 등)
+    if (safeCurrentPosition !== safePrevPosition && gamePhase !== "MOVING_PLAYER") {
+      console.log(`🎲 [POSITION_UPDATE] ${player.name}님 즉시 위치 변경:`, {
+        from: safePrevPosition,
+        to: safeCurrentPosition,
+        gamePhase,
+        reason: "찬스카드 등"
+      });
+
+      // 즉시 위치 업데이트 (애니메이션 없이)
+      const newPosition = getTilePosition(safeCurrentPosition, board, playerIndex, players.length);
+      api.set({ position: newPosition });
+      prevPositionRef.current = player.position;
+    }
+  }, [player.position, board, gamePhase, playerIndex, players.length, api, player.name]);
+
   // --- 이동 애니메이션 이펙트 (MOVING_PLAYER 상태에서만 실행) ---
   useEffect(() => {
     if (isModalOpen || isAnimatingRef.current || !board || board.length === 0) return;
