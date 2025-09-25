@@ -714,25 +714,25 @@ const BuySpecialLandModalContent = ({
   );
 };
 
-// GameOverModalContent
 const GameOverModalContent = ({
   winner,
   handleGoToLobby,
   players,
   board,
   shouldShowGameOverByTurns,
+  currentUserId, // ✅ 추가: 현재 사용자 ID (문자/숫자 혼용 대비)
 }) => {
-  // 승자가 없고 턴 제한으로 게임이 끝난 경우 fallback 승자 결정
+  // develop 승자 결정 로직 그대로
   let finalWinner = winner;
   let gameEndReason = "";
 
   if (!winner && shouldShowGameOverByTurns) {
     const alivePlayers = players.filter((p) => p.money >= 0);
     if (alivePlayers.length > 0) {
-      finalWinner = alivePlayers.reduce((prev, current) => {
-        const prevAssets = calculateTotalAssets(prev, board);
-        const currentAssets = calculateTotalAssets(current, board);
-        return prevAssets > currentAssets ? prev : current;
+      finalWinner = alivePlayers.reduce((prev, curr) => {
+        const pa = calculateTotalAssets(prev, board);
+        const ca = calculateTotalAssets(curr, board);
+        return pa > ca ? prev : curr;
       });
       gameEndReason = "턴 제한으로 인한 자산 기준 승리";
     }
@@ -740,21 +740,39 @@ const GameOverModalContent = ({
     gameEndReason = "게임 진행 중 승리";
   }
 
+  // ✅ 표현만 개인화
+  const isWinner =
+    finalWinner && String(finalWinner.id) === String(currentUserId);
+  const isLoser = !!finalWinner && !isWinner;
+
   return (
     <Box className={styles.gameOverModal}>
       <Typography variant="h4" component="h2" className={styles.gameOverTitle}>
-        🎉 게임 종료!
+        {isWinner ? "🎉 게임 종료!" : isLoser ? "😢 게임 종료" : "🏁 게임 종료"}
       </Typography>
+
+      {/* 메인 메시지: 개인화 */}
       <Typography className={styles.gameOverMessage}>
-        {finalWinner
-          ? `${finalWinner.name}님이 최종 승리했습니다!`
-          : "승자 없이 게임이 종료되었습니다."}
+        {isWinner
+          ? "축하합니다! 승리했습니다!"
+          : isLoser
+            ? "아쉽게도 패배했습니다..."
+            : "승자 없이 게임이 종료되었습니다."}
       </Typography>
+
+      {/* 패배자/관전자에게 승자 이름 알림 (develop의 정보 제공 유지) */}
+      {finalWinner && !isWinner && (
+        <Typography sx={{ mt: 1, fontSize: "1.2rem", color: "text.secondary" }}>
+          🏆 {finalWinner.name}님이 최종 승리했습니다!
+        </Typography>
+      )}
+
       {gameEndReason && (
         <Typography className={styles.gameOverReason}>
           {gameEndReason}
         </Typography>
       )}
+
       {finalWinner && (
         <Typography className={styles.gameOverAssets}>
           🏆 총 자산: {calculateTotalAssets(finalWinner, board).toLocaleString()}원
@@ -769,8 +787,10 @@ const GameOverModalContent = ({
         로비로 돌아가기
       </Button>
     </Box>
+
   );
 };
+
 
 export function GameUI() {
   const { userInfo } = useUserStore();
