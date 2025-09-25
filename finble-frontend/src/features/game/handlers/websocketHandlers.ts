@@ -799,15 +799,9 @@ export const createWebSocketHandlers = (
           };
         });
 
-        // 액션의 출처에 따라 턴 종료 방식을 다르게 처리
-        const isFromChanceCard = get().isProcessingChanceCard;
-        if (isFromChanceCard) {
-          console.log("🏗️ [CONSTRUCT_BUILDING] 찬스카드 액션 후 건설 - 수동 턴 종료를 위해 TILE_ACTION으로 전환");
-          set({ gamePhase: "TILE_ACTION", isProcessingChanceCard: false }); // isProcessingChanceCard 플래그 리셋
-        } else {
-          console.log("🏗️ [CONSTRUCT_BUILDING] 일반 건설 - 서버의 턴 종료 메시지 대기");
-          // 일반적인 경우, 서버가 TURN_SKIP을 보내주므로 클라이언트는 아무것도 하지 않음
-        }
+        // 건물 건설 성공 후 항상 수동 턴 종료를 위해 TILE_ACTION으로 전환
+        console.log("🏗️ [CONSTRUCT_BUILDING] 건설 성공 - 수동 턴 종료를 위해 TILE_ACTION으로 전환");
+        set({ gamePhase: "TILE_ACTION", isProcessingChanceCard: false });
 
       } else {
         set({
