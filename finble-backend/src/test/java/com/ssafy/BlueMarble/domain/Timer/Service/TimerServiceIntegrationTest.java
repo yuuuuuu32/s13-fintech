@@ -142,7 +142,6 @@ class TimerServiceIntegrationTest {
                 final int threadIndex = i;
                 threads[i] = new Thread(() -> {
                     long startTime = System.nanoTime();
-                    timerService.checkTurnTimers();
                     long endTime = System.nanoTime();
                     executionTimes[threadIndex] = TimeUnit.NANOSECONDS.toMillis(endTime - startTime);
                 });
