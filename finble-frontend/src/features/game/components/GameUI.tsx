@@ -61,7 +61,7 @@ const calculateTotalAssets = (player, board: TileData[]) => {
   return player.money + propertyValue;
 };
 
-// BuyPropertyModalContent
+// BuyPropertyModalContent - develop 로직 + 디자인 적용
 const BuyPropertyModalContent = ({
   modal,
   buyPropertyWithItems,
@@ -166,12 +166,13 @@ const BuyPropertyModalContent = ({
             <Checkbox
               checked={selectedItems.land}
               onChange={handleItemChange("land")}
+              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF" } }}
             />
           }
           label={
             <Box>
-              <Typography>땅 증서</Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography className={styles.formGroupLabel}>땅 증서</Typography>
+              <Typography className={styles.formGroupLabel}>
                 {landPrice.toLocaleString()}원
               </Typography>
             </Box>
@@ -184,16 +185,21 @@ const BuyPropertyModalContent = ({
               checked={selectedItems.house}
               onChange={handleItemChange("house")}
               disabled={!selectedItems.land}
+              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF" } }}
             />
           }
           label={
             <Box>
               <Typography
-                color={!selectedItems.land ? "text.disabled" : "text.primary"}
+                className={`${styles.formGroupLabel} ${!selectedItems.land ? styles.formGroupLabelDisabled : ""
+                  }`}
               >
                 주택 {!selectedItems.land && "(땅 구매 필요)"}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                className={`${styles.formGroupLabel} ${!selectedItems.land ? styles.formGroupLabelDisabled : ""
+                  }`}
+              >
                 {housePrice.toLocaleString()}원
               </Typography>
             </Box>
@@ -206,16 +212,21 @@ const BuyPropertyModalContent = ({
               checked={selectedItems.building}
               onChange={handleItemChange("building")}
               disabled={!selectedItems.house}
+              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF" } }}
             />
           }
           label={
             <Box>
               <Typography
-                color={!selectedItems.house ? "text.disabled" : "text.primary"}
+                className={`${styles.formGroupLabel} ${!selectedItems.house ? styles.formGroupLabelDisabled : ""
+                  }`}
               >
                 빌딩 {!selectedItems.house && "(주택 구매 필요)"}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                className={`${styles.formGroupLabel} ${!selectedItems.house ? styles.formGroupLabelDisabled : ""
+                  }`}
+              >
                 {buildingPrice.toLocaleString()}원
               </Typography>
             </Box>
@@ -228,18 +239,21 @@ const BuyPropertyModalContent = ({
               checked={selectedItems.hotel}
               onChange={handleItemChange("hotel")}
               disabled={!selectedItems.building}
+              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF" } }}
             />
           }
           label={
             <Box>
               <Typography
-                color={
-                  !selectedItems.building ? "text.disabled" : "text.primary"
-                }
+                className={`${styles.formGroupLabel} ${!selectedItems.building ? styles.formGroupLabelDisabled : ""
+                  }`}
               >
                 호텔 {!selectedItems.building && "(빌딩 구매 필요)"}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                className={`${styles.formGroupLabel} ${!selectedItems.building ? styles.formGroupLabelDisabled : ""
+                  }`}
+              >
                 {hotelPrice.toLocaleString()}원
               </Typography>
             </Box>
@@ -247,21 +261,19 @@ const BuyPropertyModalContent = ({
         />
       </FormGroup>
 
-      <Box sx={{ mt: 3, p: 2, bgcolor: "grey.100", borderRadius: 1 }}>
-        <Typography variant="h6">
+      <Box className={styles.totalCostBox}>
+        <Typography className={styles.totalCostText}>
           {hasSelectedItems
             ? `총 비용: ${totalCost.toLocaleString()}원`
             : "선택된 항목이 없습니다"}
         </Typography>
         <Typography
-          variant="body2"
-          color={
-            hasSelectedItems
-              ? canAfford
-                ? "success.main"
-                : "error.main"
-              : "text.secondary"
-          }
+          className={`${styles.cashText} ${hasSelectedItems
+            ? canAfford
+              ? styles.cashTextSuccess
+              : styles.cashTextError
+            : ""
+            }`}
         >
           보유 현금: {currentPlayer?.money.toLocaleString()}원
           {hasSelectedItems && !canAfford && " (현금 부족)"}
@@ -590,12 +602,12 @@ const ManagePropertyModalContent = ({
             <Checkbox
               checked={hasHouse || selectedItems.house}
               onChange={() => handleItemChange("house")}
+              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF" } }}
               disabled={hasHouse}
             />
           }
-          label={`주택 (${housePrice.toLocaleString()}원) ${
-            hasHouse ? "✓ 보유중" : ""
-          }`}
+          label={`주택 (${housePrice.toLocaleString()}원) ${hasHouse ? "✓ 보유중" : ""
+            }`}
         />
 
         <FormControlLabel
@@ -603,12 +615,12 @@ const ManagePropertyModalContent = ({
             <Checkbox
               checked={hasBuilding || selectedItems.building}
               onChange={() => handleItemChange("building")}
+              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF" } }}
               disabled={hasBuilding}
             />
           }
-          label={`빌딩 (${buildingPrice.toLocaleString()}원) ${
-            hasBuilding ? "✓ 보유중" : ""
-          }`}
+          label={`빌딩 (${buildingPrice.toLocaleString()}원) ${hasBuilding ? "✓ 보유중" : ""
+            }`}
         />
 
         <FormControlLabel
@@ -616,12 +628,12 @@ const ManagePropertyModalContent = ({
             <Checkbox
               checked={hasHotel || selectedItems.hotel}
               onChange={() => handleItemChange("hotel")}
+              sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF" } }}
               disabled={hasHotel}
             />
           }
-          label={`호텔 (${hotelPrice.toLocaleString()}원) ${
-            hasHotel ? "✓ 보유중" : ""
-          }`}
+          label={`호텔 (${hotelPrice.toLocaleString()}원) ${hasHotel ? "✓ 보유중" : ""
+            }`}
         />
       </Box>
 
@@ -669,27 +681,27 @@ const BuySpecialLandModalContent = ({
       <Typography variant="h5" component="h2" fontWeight="bold">
         {tile?.name}
       </Typography>
-      <Typography sx={{ mt: 2, mb: 3 }} color="primary">
+      <Typography className={styles.specialLandTitle}>
         🏛️ SSAFY 특별 땅
       </Typography>
-      <Typography sx={{ mb: 2 }}>
+      <Typography className={styles.specialLandDescription}>
         이 땅은 건물 건설이 불가능하며, 땅만 구매할 수 있습니다.
       </Typography>
 
-      <Box sx={{ mt: 3, p: 2, bgcolor: "grey.100", borderRadius: 1 }}>
+      <Box className={styles.specialLandPriceBox}>
         <Typography variant="h6">
           구매 가격: {landPrice.toLocaleString()}원
         </Typography>
         <Typography
           variant="body2"
-          color={canAfford ? "success.main" : "error.main"}
+          className={canAfford ? styles.cashTextSuccess : styles.cashTextError}
         >
           보유 현금: {currentPlayer?.money.toLocaleString()}원
           {!canAfford && " (현금 부족)"}
         </Typography>
       </Box>
 
-      <Box sx={{ mt: 3, display: "flex", gap: 2, justifyContent: "center" }}>
+      <Box className={styles.specialLandActions}>
         <Button
           variant="contained"
           onClick={handlePurchase}
@@ -705,7 +717,7 @@ const BuySpecialLandModalContent = ({
   );
 };
 
-// GameOverModalContent
+// GameOverModalContent - develop 로직 유지
 const GameOverModalContent = ({
   winner,
   handleGoToLobby,
