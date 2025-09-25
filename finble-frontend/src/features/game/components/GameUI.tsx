@@ -149,6 +149,7 @@ const BuyPropertyModalContent = ({
     };
 
     // 커스텀 구매 함수 호출
+    // 턴 종료는 서버 응답(CONSTRUCT_BUILDING)에서 처리됨
     buyPropertyWithItems(purchaseData);
   };
 
@@ -572,6 +573,7 @@ const ManagePropertyModalContent = ({
         totalCost,
         tile,
       });
+      // 턴 종료는 서버 응답(CONSTRUCT_BUILDING)에서 처리됨
     }
   };
 
@@ -639,7 +641,7 @@ const ManagePropertyModalContent = ({
           구매
         </Button>
         <Button variant="outlined" onClick={endTurn}>
-          완료
+          구매하지 않음
         </Button>
       </Box>
     </>
@@ -711,6 +713,7 @@ const GameOverModalContent = ({
   players,
   board,
   shouldShowGameOverByTurns,
+  currentUserId,
 }) => {
   // 승자가 없고 턴 제한으로 게임이 끝난 경우 fallback 승자 결정
   let finalWinner = winner;
@@ -730,32 +733,66 @@ const GameOverModalContent = ({
     gameEndReason = "게임 진행 중 승리";
   }
 
+  // 현재 사용자가 승리자인지 확인 (디버깅 로그 추가)
+  console.log("🏆 [GameOverModal] 승리자 판단 디버깅:", {
+    finalWinner: finalWinner,
+    finalWinnerId: finalWinner?.id,
+    finalWinnerIdType: typeof finalWinner?.id,
+    currentUserId: currentUserId,
+    currentUserIdType: typeof currentUserId,
+    directComparison: finalWinner?.id === currentUserId,
+    stringComparison: String(finalWinner?.id) === String(currentUserId)
+  });
+
+  const isWinner = finalWinner && String(finalWinner.id) === String(currentUserId);
+  const isLoser = !isWinner && finalWinner !== null;
+
+  console.log("🏆 [GameOverModal] 최종 판단 결과:", {
+    isWinner: isWinner,
+    isLoser: isLoser,
+    finalWinnerExists: !!finalWinner
+  });
+
   return (
     <Box sx={modalStyle}>
       <Typography variant="h4" component="h2">
-        🎉 게임 종료!
+        {isWinner ? "🎉 게임 종료!" : isLoser ? "😢 게임 종료" : "🏁 게임 종료"}
       </Typography>
       <Typography sx={{ mt: 2, fontSize: "1.5rem", fontWeight: "bold" }}>
-        {finalWinner
-          ? `${finalWinner.name}님이 최종 승리했습니다!`
+        {isWinner
+          ? "축하합니다! 승리했습니다!"
+          : isLoser
+          ? "아쉽게도 패배했습니다..."
           : "승자 없이 게임이 종료되었습니다."}
       </Typography>
+
+      {/* 승리자 정보는 패배자에게도 표시 */}
+      {finalWinner && !isWinner && (
+        <Typography sx={{ mt: 1, fontSize: "1.2rem", color: "text.secondary" }}>
+          🏆 {finalWinner.name}님이 최종 승리했습니다!
+        </Typography>
+      )}
+
       {gameEndReason && (
         <Typography sx={{ mt: 1, fontSize: "1rem", color: "text.secondary" }}>
           {gameEndReason}
         </Typography>
       )}
-      {finalWinner && (
+
+      {/* 총 자산은 승리자에게만 표시 */}
+      {finalWinner && isWinner && (
         <Typography sx={{ mt: 1, fontSize: "1.2rem" }}>
           🏆 총 자산:{" "}
           {calculateTotalAssets(finalWinner, board).toLocaleString()}원
         </Typography>
       )}
+
       <Button
         sx={{ mt: 3 }}
         variant="contained"
         size="large"
         onClick={handleGoToLobby}
+        color={isWinner ? "primary" : isLoser ? "secondary" : "primary"}
       >
         로비로 돌아가기
       </Button>
@@ -906,11 +943,10 @@ export function GameUI() {
           fontWeight="bold"
           sx={{ fontFamily: "Galmuri14" }}
         >
-          라운드 {currentTurn} / {totalTurns}
+          라운드 {currentTurn} - {currentPlayer?.name}님 차례
         </Typography>
         <Typography variant="body2" sx={{ fontFamily: "Galmuri14", mt: 0.5 }}>
-          현재 플레이어: {currentPlayer?.name} ({currentPlayerIndex + 1}/
-          {players.length})
+          플레이어 순서: ({currentPlayerIndex + 1}/{players.length}) | 전체 라운드: {currentTurn}/{totalTurns}
         </Typography>
         {isMyTurn && timeLeft > 5 && (
           <Typography variant="h6" sx={{ fontFamily: "Galmuri14" }}>
@@ -1256,6 +1292,7 @@ export function GameUI() {
               players={players}
               board={board}
               shouldShowGameOverByTurns={shouldShowGameOverByTurns}
+              currentUserId={userInfo?.userId}
             />
           )}
         </Box>

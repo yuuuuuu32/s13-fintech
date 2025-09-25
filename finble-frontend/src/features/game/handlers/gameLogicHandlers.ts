@@ -290,9 +290,22 @@ export const createGameLogicHandlers = (
   },
 
   movePlayer: (diceValues: [number, number]) => {
-    const { players, currentPlayerIndex, board, serverCurrentPosition } = get();
+    const { players, currentPlayerIndex, board, serverCurrentPosition, isUpdatingPosition } = get();
     const currentPlayer = players[currentPlayerIndex];
     const diceSum = diceValues[0] + diceValues[1];
+
+    // 동시성 검사: 이미 다른 위치 업데이트가 진행 중이면 스킵
+    if (isUpdatingPosition && serverCurrentPosition === null) {
+      console.warn("⚠️ [MOVE_PLAYER] 다른 위치 업데이트 진행 중 - movePlayer 호출 스킵:", {
+        playerName: currentPlayer.name,
+        isUpdatingPosition,
+        serverCurrentPosition
+      });
+      return;
+    }
+
+    // 위치 업데이트 진행 중 플래그 설정
+    set({ isUpdatingPosition: true });
 
     // 서버에서 받은 정확한 위치 사용 (찬스카드 이동 등이 반영됨)
     const finalPosition = serverCurrentPosition !== null ? serverCurrentPosition : (currentPlayer.position + diceSum) % board.length;
@@ -316,6 +329,7 @@ export const createGameLogicHandlers = (
       finalPosition: finalPosition,
       diceSum,
       lapCountUpdated: lapCount,
+      isUpdatingPosition,
       note: "서버에서 받은 위치 사용"
     });
 
@@ -338,17 +352,19 @@ export const createGameLogicHandlers = (
         // 찬스카드로 이미 타일 액션이 처리되었는지 확인
         if (currentState.isProcessingChanceCard) {
           console.log("⚠️ [MOVE_PLAYER] 찬스카드로 이미 타일 액션 처리됨 - 중복 처리 건너뛰기");
-          set({ isProcessingChanceCard: false }); // 플래그 리셋
+          set({ isProcessingChanceCard: false, isUpdatingPosition: false }); // 플래그 리셋
           return;
         }
 
         console.log("🎯 [MOVE_PLAYER] 애니메이션 완료 - 타일 액션 처리 시작 (턴 유효)");
+        set({ isUpdatingPosition: false }); // 위치 업데이트 완료
         get().handleTileAction();
       } else {
         console.log("⚠️ [MOVE_PLAYER] 턴이 변경되어 타일 액션 처리 건너뛰기:", {
           originalPlayer: originalPlayerIndex,
           currentPlayer: currentState.currentPlayerIndex
         });
+        set({ isUpdatingPosition: false }); // 턴 변경 시에도 플래그 해제
       }
     }, 1000); // 1초 애니메이션 시뮬레이션
   },

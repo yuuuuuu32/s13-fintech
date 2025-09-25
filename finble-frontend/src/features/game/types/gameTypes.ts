@@ -110,6 +110,10 @@ export interface GameState {
   lastEconomicModalTurn: number | null; // 마지막으로 경제 효과 모달을 표시한 턴
   lastSalaryBonus: number; // 마지막 주사위 굴리기에서 받은 월급 보너스
   toastMessages: ToastMessage[]; // 토스트 메시지 배열
+  isUpdatingPosition: boolean; // 위치 업데이트 진행 중 플래그 (동시성 제어)
+  syncErrorCount: number; // 동기화 오류 발생 횟수
+  lastSyncCheck: number; // 마지막 동기화 확인 시간 (timestamp)
+  lastProcessedDiceMessage?: string; // 마지막으로 처리된 주사위 메시지 키 (중복 방지)
   initializeGame: (initialState: GameInitialState) => void;
   setDicePower: (power: number) => void;
   rollDice: () => void;
