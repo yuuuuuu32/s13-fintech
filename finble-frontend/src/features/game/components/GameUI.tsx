@@ -745,6 +745,7 @@ const GameOverModalContent = ({
     gameEndReason = "게임 진행 중 승리";
   }
 
+  // 현재 사용자가 승리자인지 확인 (디버깅 로그 추가)
   console.log("🏆 [GameOverModal] 승리자 판단 디버깅:", {
     finalWinner: finalWinner,
     finalWinnerId: finalWinner?.id,
@@ -777,7 +778,7 @@ const GameOverModalContent = ({
           : "승자 없이 게임이 종료되었습니다."}
       </Typography>
 
-      {/* 승리자 정보는 패배자에게도 표시! */}
+      {/* 승리자 정보는 패배자에게도 표시 */}
       {finalWinner && !isWinner && (
         <Typography sx={{ mt: 1, fontSize: "1.2rem", color: "text.secondary" }}>
           🏆 {finalWinner.name}님이 최종 승리했습니다!
