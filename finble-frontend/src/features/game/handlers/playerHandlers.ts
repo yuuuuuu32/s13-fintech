@@ -84,6 +84,9 @@ export const createPlayerActions = (
     }
 
     set({ modal: { type: "NONE" as const } });
+
+    // 건물 구매 후 턴 종료는 서버 응답(CONSTRUCT_BUILDING)에서 처리
+    console.log("🏗️ [buyPropertyWithItems] 건물 구매 요청 전송 - 서버 응답 대기 중");
   },
 
   acquireProperty: () => {

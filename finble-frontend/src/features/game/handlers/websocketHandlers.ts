@@ -142,70 +142,38 @@ export const createWebSocketHandlers = (
                   const currentPlayers = get().players;
                   const currentState = get();
 
+                  // isUpdatingPosition이 true일 때만 위치 업데이트 차단
+                  if (currentState.isUpdatingPosition) {
+                    console.warn("🚫 [POSITION_UPDATE_BLOCKED] 위치 업데이트 진행 중 - 플레이어 데이터 무시:", {
+                      reason: "movePlayer 실행 중",
+                      isUpdatingPosition: currentState.isUpdatingPosition
+                    });
+
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { players, ...safePayload } = payload;
+                    set(safePayload);
+                    return;
+                  }
+
                   const updatedPlayers = currentPlayers.map(clientPlayer => {
                     const serverPlayer = newPlayers.find(p => p.id === clientPlayer.id);
                     if (serverPlayer) {
-                      // 위치 동기화 검증 및 결정
-                      let finalPosition = clientPlayer.position;
+                      // 서버 위치 정보를 우선적으로 적용 (찬스카드 후 동기화)
+                      const finalPosition = serverPlayer.position !== undefined && serverPlayer.position !== null
+                        ? serverPlayer.position
+                        : clientPlayer.position;
 
-                      // 위치 업데이트 조건 검사 (isUpdatingPosition 체크 제거)
-                      if (serverPlayer.position !== undefined &&
-                          serverPlayer.position !== null) {
+                      const positionDifference = Math.abs(finalPosition - clientPlayer.position);
 
-                        const positionDifference = Math.abs(serverPlayer.position - clientPlayer.position);
-                        const boardLength = currentState.board.length || 32;
-
-                        // 더 적극적인 동기화를 위한 임계값 조정
-                        const dynamicThreshold = Math.max(1, Math.min(3, Math.floor(boardLength / 16))); // 1~3칸 사이에서 조정
-                        const majorDifferenceThreshold = Math.floor(boardLength / 4); // 보드의 1/4 이상 차이면 무조건 서버 신뢰
-
-                        logger.dev("🔍 [POSITION_ANALYSIS] 위치 동기화 분석:", {
+                      // 위치 차이가 있을 때 동기화 로그
+                      if (positionDifference > 0) {
+                        console.log("🔧 [POSITION_SYNC] 서버 위치로 동기화:", {
                           playerName: clientPlayer.name,
                           clientPosition: clientPlayer.position,
-                          serverPosition: serverPlayer.position,
+                          serverPosition: finalPosition,
                           difference: positionDifference,
-                          dynamicThreshold,
-                          majorDifferenceThreshold,
-                          boardLength,
-                          hasGameTurn: !!payload.gameTurn,
-                          hasCurPlayer: !!payload.curPlayer
+                          reason: "서버 우선 동기화"
                         });
-
-                        // 대규모 위치 차이 - 무조건 서버 위치 신뢰
-                        if (positionDifference >= majorDifferenceThreshold) {
-                          logger.position("대규모 위치 차이 감지 - 강제 서버 동기화", {
-                            playerName: clientPlayer.name,
-                            clientPosition: clientPlayer.position,
-                            serverPosition: serverPlayer.position,
-                            difference: positionDifference,
-                            threshold: majorDifferenceThreshold,
-                            reason: "대규모 위치 불일치"
-                          });
-                          finalPosition = serverPlayer.position;
-                        }
-                        // 중간 위치 차이 - 동적 임계값 기준 (더 적극적)
-                        else if (positionDifference >= dynamicThreshold) {
-                          console.log("🔧 [POSITION_SYNC] 위치 차이 감지 - 서버 위치로 보정:", {
-                            playerName: clientPlayer.name,
-                            clientPosition: clientPlayer.position,
-                            serverPosition: serverPlayer.position,
-                            difference: positionDifference,
-                            threshold: dynamicThreshold,
-                            reason: "동적 임계값 초과"
-                          });
-                          finalPosition = serverPlayer.position;
-                        }
-                        // 작은 차이라도 서버 위치 신뢰 (1칸 이상 차이)
-                        else if (positionDifference >= 1) {
-                          console.log("🔧 [POSITION_SYNC] 작은 위치 차이 보정:", {
-                            playerName: clientPlayer.name,
-                            clientPosition: clientPlayer.position,
-                            serverPosition: serverPlayer.position,
-                            difference: positionDifference,
-                            reason: "1칸 이상 차이 - 서버 우선"
-                          });
-                          finalPosition = serverPlayer.position;
-                        }
                       }
 
                       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -239,9 +207,8 @@ export const createWebSocketHandlers = (
                   const { players, ...safePayload } = payload;
                   set({ ...safePayload, players: updatedPlayers });
 
-                  // 위치 업데이트 후 동기화 상태 확인 및 플래그 해제
+                  // 위치 업데이트 후 동기화 상태 확인
                   setTimeout(() => {
-                    set({ isUpdatingPosition: false });
                     get().checkSyncStatus();
                   }, 1000);
                 } else {
@@ -307,8 +274,15 @@ export const createWebSocketHandlers = (
 
       const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn, userName, updatedAsset, salaryBonus } = payload;
 
-      // 🎲 현재 플레이어의 주사위만 게임 상태 변경
+      // 중복 메시지 방지: 같은 턴의 같은 플레이어 주사위 메시지는 한 번만 처리
       const currentState = get();
+      const messageKey = `${userName}-${curTurn}-${diceNum1}-${diceNum2}`;
+      if (currentState.lastProcessedDiceMessage === messageKey) {
+        console.log("🚫 [USE_DICE] 중복 메시지 무시:", { userName, curTurn, dice: [diceNum1, diceNum2] });
+        return;
+      }
+
+      // 🎲 현재 플레이어의 주사위만 게임 상태 변경
       const currentPlayer = currentState.players[currentState.currentPlayerIndex];
       const isCurrentPlayerDice = currentPlayer && currentPlayer.name === userName;
 
@@ -361,6 +335,7 @@ export const createWebSocketHandlers = (
           serverCurrentPosition: currentPosition,
           currentTurn: curTurn,
           lastSalaryBonus: salaryBonus || 0, // 마지막으로 받은 월급 보너스 저장
+          lastProcessedDiceMessage: messageKey, // 처리된 메시지 키 저장
           // USE_DICE 응답을 받았으므로 주사위 굴리기 완료
         };
       });
@@ -504,21 +479,23 @@ export const createWebSocketHandlers = (
           modalText: `${cardName}: ${effectDescription}`
         });
 
-        // 플레이어 정보 업데이트
+        // 플레이어 정보 업데이트 (위치 업데이트 제거)
         const updatedPlayers = state.players.map(player => {
           // 카드를 뽑은 플레이어 처리
           if (player.name === userName) {
             const updatedPlayer = { ...player };
 
-            // 돈 변화 적용
+            // 돈 변화만 적용 (위치는 서버 GAME_STATE_CHANGE로 동기화)
             if (moneyChange !== undefined && moneyChange !== null) {
               updatedPlayer.money += moneyChange;
             }
 
-            // 위치 변화 적용
-            if (newPosition !== undefined && newPosition !== null) {
-              updatedPlayer.position = newPosition;
-            }
+            console.log("🎲 [CHANCE_CARD] 플레이어 상태 업데이트 (위치 제외):", {
+              playerName: player.name,
+              moneyChange: moneyChange || 0,
+              newPosition: newPosition || "변경 없음",
+              note: "위치는 서버 동기화로 처리됨"
+            });
 
             return updatedPlayer;
           }
@@ -571,15 +548,36 @@ export const createWebSocketHandlers = (
               set({ modal: { type: "NONE" as const } });
 
               if (newPosition !== undefined && newPosition !== null) {
-                // 이동 효과 카드: 도착한 타일에서 상호작용 처리 필요
-                console.log("🎲 [CHANCE_CARD] 이동 효과 카드 - 타일 액션 처리:", {
+                // 이동 효과 카드: 서버 동기화 완료 대기 후 타일 액션 처리
+                console.log("🎲 [CHANCE_CARD] 이동 효과 카드 - 서버 동기화 대기:", {
                   userName,
                   newPosition,
-                  cardName
+                  cardName,
+                  note: "서버 GAME_STATE_CHANGE로 위치 동기화 후 타일 액션 처리"
                 });
-                // 찬스카드로 타일 액션을 처리했음을 표시
-                set({ isProcessingChanceCard: true });
-                get().handleTileAction();
+
+                // 서버 동기화 완료를 위한 지연 처리
+                setTimeout(() => {
+                  const currentState = get();
+                  const targetPlayer = currentState.players.find(p => p.name === userName);
+
+                  if (targetPlayer && targetPlayer.position === newPosition) {
+                    console.log("🎲 [CHANCE_CARD] 서버 동기화 완료 - 타일 액션 처리:", {
+                      playerName: userName,
+                      finalPosition: targetPlayer.position,
+                      expectedPosition: newPosition
+                    });
+                    set({ isProcessingChanceCard: true });
+                    get().handleTileAction();
+                  } else {
+                    console.log("⚠️ [CHANCE_CARD] 서버 동기화 미완료 - 턴 종료로 대체:", {
+                      playerName: userName,
+                      currentPosition: targetPlayer?.position,
+                      expectedPosition: newPosition
+                    });
+                    get().endTurn();
+                  }
+                }, 1500); // 1.5초 대기로 서버 동기화 완료 보장
               } else {
                 // 즉시 효과 카드: 바로 턴 종료
                 console.log("🎲 [CHANCE_CARD] 즉시 효과 카드 - 바로 턴 종료:", {
@@ -800,6 +798,17 @@ export const createWebSocketHandlers = (
             // modal은 건드리지 않음 - 현재 진행 중인 모달을 보존
           };
         });
+
+        // 액션의 출처에 따라 턴 종료 방식을 다르게 처리
+        const isFromChanceCard = get().isProcessingChanceCard;
+        if (isFromChanceCard) {
+          console.log("🏗️ [CONSTRUCT_BUILDING] 찬스카드 액션 후 건설 - 수동 턴 종료를 위해 TILE_ACTION으로 전환");
+          set({ gamePhase: "TILE_ACTION", isProcessingChanceCard: false }); // isProcessingChanceCard 플래그 리셋
+        } else {
+          console.log("🏗️ [CONSTRUCT_BUILDING] 일반 건설 - 서버의 턴 종료 메시지 대기");
+          // 일반적인 경우, 서버가 TURN_SKIP을 보내주므로 클라이언트는 아무것도 하지 않음
+        }
+
       } else {
         set({
           modal: {
@@ -1319,6 +1328,45 @@ export const createWebSocketHandlers = (
         });
       }
     }));
+
+    // GAME_END 메시지 처리 (백엔드에서 공식 승리자 발표)
+    unsubscribeFunctions.push(subscribeToTopic("GAME_END", (message) => {
+      console.log("🏆 [WEBSOCKET] GAME_END received:", message);
+      console.log("🏆 [GAME_END] Payload detail:", JSON.stringify(message.payload, null, 2));
+      const { payload } = message;
+
+      if (payload && payload.winnerNickname) {
+        // 승리자 닉네임으로 플레이어 ID 찾기
+        const currentState = get();
+        const winnerPlayer = currentState.players.find(p => p.name === payload.winnerNickname);
+
+        console.log("🏆 [GAME_END] 승리자 매핑:", {
+          winnerNickname: payload.winnerNickname,
+          winnerPlayer: winnerPlayer,
+          winnerId: winnerPlayer?.id,
+          victoryReason: payload.victoryReason,
+          allPlayers: currentState.players.map(p => ({ name: p.name, id: p.id }))
+        });
+
+        // 백엔드에서 공식 게임 종료 선언
+        set({
+          gamePhase: "GAME_OVER",
+          winnerId: winnerPlayer?.id || null,
+          modal: { type: "NONE" as const }
+        });
+
+        console.log("🏆 [GAME_END] 백엔드 승리자 발표로 게임 종료 처리 완료");
+      } else {
+        console.error("❌ [GAME_END] 승리자 정보가 없습니다:", payload);
+
+        // 승리자 정보 없이도 게임 종료 처리
+        set({
+          gamePhase: "GAME_OVER",
+          winnerId: null,
+          modal: { type: "NONE" as const }
+        });
+      }
+    }));
   },
 
   disconnect: () => {
@@ -1585,7 +1633,7 @@ export const createWebSocketHandlers = (
       });
     }
 
-    // 위치 업데이트 진행 중일 때는 플레이어 데이터 업데이트 차단
+    // isUpdatingPosition이 true일 때만 위치 업데이트 차단
     if (newState.players && currentState.isUpdatingPosition) {
       console.warn("🚫 [POSITION_UPDATE_BLOCKED] 위치 업데이트 진행 중 - 플레이어 데이터 무시:", {
         reason: "movePlayer 실행 중",
@@ -1612,28 +1660,62 @@ export const createWebSocketHandlers = (
       return;
     }
 
-    // 일반적인 상태 업데이트
+    // 플레이어 데이터가 있는 경우 서버 우선 동기화 적용
     if (newState.players) {
-      console.log("📊 [POSITION_ANALYSIS] Analyzing position differences for sync decision");
+      console.log("📊 [SERVER_SYNC] 서버 플레이어 데이터로 동기화");
+
+      const serverPlayers = Array.isArray(newState.players) ? newState.players : Object.values(newState.players);
+      const updatedPlayers = currentState.players.map(clientPlayer => {
+        const serverPlayer = serverPlayers.find(p => p.id === clientPlayer.id);
+        if (serverPlayer) {
+          // 서버 위치 정보를 우선적으로 적용
+          const finalPosition = serverPlayer.position !== undefined && serverPlayer.position !== null
+            ? serverPlayer.position
+            : clientPlayer.position;
+
+          const positionDifference = Math.abs(finalPosition - clientPlayer.position);
+          if (positionDifference > 0) {
+            console.log("🔧 [updateGameState] 서버 위치로 동기화:", {
+              playerName: clientPlayer.name,
+              clientPosition: clientPlayer.position,
+              serverPosition: finalPosition,
+              difference: positionDifference
+            });
+          }
+
+          return {
+            ...clientPlayer,
+            ...serverPlayer,
+            position: finalPosition,
+            isTraveling: clientPlayer.isTraveling
+          };
+        }
+        return clientPlayer;
+      });
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { players, ...safeState } = newState;
-      console.log("🔄 [LEGACY_BLOCK] 기존 차단 로직 유지 - 플레이어 데이터 무시");
 
-      // curPlayer가 있으면 currentPlayerIndex만 업데이트
+      // curPlayer가 있으면 currentPlayerIndex도 업데이트
       if (safeState.curPlayer) {
-        const nextPlayerIndex = currentState.players.findIndex(p => p.name === safeState.curPlayer);
+        const nextPlayerIndex = updatedPlayers.findIndex(p => p.name === safeState.curPlayer);
         if (nextPlayerIndex !== -1) {
-          console.log("🔄 [TURN_UPDATE] currentPlayerIndex 업데이트:", {
-            curPlayer: safeState.curPlayer,
-            nextPlayerIndex,
-            previousIndex: currentState.currentPlayerIndex
-          });
           set({
-            currentPlayerIndex: nextPlayerIndex,
-            currentTurn: safeState.gameTurn || currentState.currentTurn
+            ...safeState,
+            players: updatedPlayers,
+            currentPlayerIndex: nextPlayerIndex
+          });
+        } else {
+          set({
+            ...safeState,
+            players: updatedPlayers
           });
         }
+      } else {
+        set({
+          ...safeState,
+          players: updatedPlayers
+        });
       }
     } else {
       console.log("✅ [SAFE_UPDATE] No players data, applying full update");
