@@ -33,7 +33,7 @@ VALUES
 ('복권 당첨', 'ISSUE', '500만원 획득', 'MONEY', 5000000, true),
 ('사기 피해', 'ISSUE', '500만원 손실', 'MONEY', -5000000, true),
 ('세금 납부', 'ISSUE', '보유 현금의 15% 납부', 'MONEY_PERCENT', 15, true),
-('감옥행', 'ISSUE', '즉시 감옥으로 이동', 'JAIL', 0, true),
+-- ('감옥행', 'ISSUE', '즉시 감옥으로 이동', 'JAIL', 0, true),
 -- 게임 카드들 (즉발)
 ('시작점 이동', 'GAME_CARD', '시작점으로 이동하여 월급 받기', 'POSITION', 0, true),
 ('앞으로 3칸', 'GAME_CARD', '3칸 앞으로 이동', 'MOVE', 3, true),
