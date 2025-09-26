@@ -24,6 +24,5 @@ public class ConstructPayload {
     public static class Asset {
         private Long money;
         private List<Integer> lands;
-        private Long totalAssets;  // 총 자산 (현금 + 부동산 가치)
     }
 }

@@ -36,7 +36,6 @@ public class LandService {
     private final UserRedisService userRedisService;
     private final EconomicHistoryService economicHistoryService;
     private final VictoryService victoryService;
-    private final EventService eventService;
 
     /**
      * 땅 구매
@@ -126,25 +125,12 @@ public class LandService {
         buyer.getOwnedProperties().add(targetCell.getCellNumber());
         log.info("[TRADE] buyerOwnedProps(after)={}", buyer.getOwnedProperties());
 
-        // 8. 총 자산 계산 및 업데이트
-        Long buyerTotalAssets = eventService.calculateTotalAssets(buyer, mapData, gameState.getGameTurn());
-        buyer.setTotalAssets(buyerTotalAssets);
-        log.info("[TRADE] 구매자 총 자산 업데이트: buyerName={}, totalAssets={}", tradeLandRequest.getBuyerName(), buyerTotalAssets);
-
-        if (currentOwner != null) {
-            String sellerUserId = userRedisService.getUserIdByNickname(currentOwner);
-            CreateMapPayload.PlayerState seller = gameState.getPlayers().get(sellerUserId);
-            Long sellerTotalAssets = eventService.calculateTotalAssets(seller, mapData, gameState.getGameTurn());
-            seller.setTotalAssets(sellerTotalAssets);
-            log.info("[TRADE] 판매자 총 자산 업데이트: sellerName={}, totalAssets={}", currentOwner, sellerTotalAssets);
-        }
-
-        // 9. 업데이트된 상태를 Redis에 저장
+        // 8. 업데이트된 상태를 Redis에 저장
         log.info("[TRADE] saving game state to redis: roomId={}", roomId);
         gameRedisService.saveGameMapState(roomId, gameState);
         log.info("[TRADE] saved game state. players snapshot={}", gameState.getPlayers());
 
-        // 10. 다른 플레이어들에게 땅 구매 알림 전송 (경제역사 효과 적용된 가격 정보 포함)
+        // 9. 다른 플레이어들에게 땅 구매 알림 전송 (경제역사 효과 적용된 가격 정보 포함)
         TradeLandPayload payload = TradeLandPayload.builder()
                 .result(true)
                 .players(gameState.getPlayers())
@@ -158,7 +144,7 @@ public class LandService {
         log.info("[TRADE] broadcast TRADE_LAND message sent to roomId={}", roomId);
         sessionMessageService.sendMessageToRoom(roomId, message);
 
-        // 11. 토지 거래 후 승리 조건 체크 (모든 승리 조건 통합 체크)
+        // 10. 토지 거래 후 승리 조건 체크 (모든 승리 조건 통합 체크)
         victoryService.checkAllVictoryConditions(roomId, gameState);
     }
 
@@ -260,11 +246,6 @@ public class LandService {
         user.setMoney(user.getMoney() - totalCost);
         log.info("[CONSTRUCT] 총 비용 차감: 잔액={}, 차감액={}", user.getMoney(), totalCost);
 
-        // 3.9 총 자산 계산 및 업데이트
-        Long totalAssets = eventService.calculateTotalAssets(user, mapData, gameState.getGameTurn());
-        user.setTotalAssets(totalAssets);
-        log.info("[CONSTRUCT] 총 자산 업데이트: nickname={}, totalAssets={}", constructRequest.getNickname(), totalAssets);
-
         //4. 업데이트된 상태를 Redis에 저장
         gameRedisService.saveGameMapState(roomId, gameState);
         
@@ -278,7 +259,6 @@ public class LandService {
                         ConstructPayload.Asset.builder()
                                 .money(user.getMoney())
                                 .lands(user.getOwnedProperties())
-                                .totalAssets(user.getTotalAssets())
                                 .build()
                 )
                 .actualBuildingCost(totalBuildingCost)
