@@ -30,6 +30,7 @@ export function PixelPlayer({ character }: PixelPlayerProps) {
           transparent={true}
           alphaTest={0.5}
           side={THREE.DoubleSide}
+          depthWrite={false}
         />
       </Plane>
     </Billboard>

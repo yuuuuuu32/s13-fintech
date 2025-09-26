@@ -24,7 +24,7 @@ const getRotationByTileIndex = (tileIndex: number) => {
 
 function Building({ level, tileIndex }: BuildingProps) {
   const TILE_HEIGHT = 0.2;
-  const Z_POSITION = -0.8;
+  const Z_POSITION = -1.2;
 
   // 타일 위치에 따른 기본 각도
   const baseRotation = getRotationByTileIndex(tileIndex);
@@ -65,7 +65,7 @@ function Building({ level, tileIndex }: BuildingProps) {
   }
 
   return (
-    <group>
+    <group renderOrder={-1}>
       {level >= 1 && (
         <Image
           url={houseTextureUrl}
@@ -73,6 +73,7 @@ function Building({ level, tileIndex }: BuildingProps) {
           position={[houseX, buildingParams.house.yPos, Z_POSITION]}
           rotation={[0, baseRotation + buildingParams.house.rotationY, 0]} // 기본 각도 + 개별 각도
           transparent
+          renderOrder={-1}
         />
       )}
 
@@ -83,6 +84,7 @@ function Building({ level, tileIndex }: BuildingProps) {
           position={[buildingX, buildingParams.building.yPos, Z_POSITION]}
           rotation={[0, baseRotation + buildingParams.building.rotationY, 0]} // 기본 각도 + 개별 각도
           transparent
+          renderOrder={-1}
         />
       )}
 
@@ -93,6 +95,7 @@ function Building({ level, tileIndex }: BuildingProps) {
           position={[hotelX, buildingParams.hotel.yPos, Z_POSITION]}
           rotation={[0, baseRotation + buildingParams.hotel.rotationY, 0]} // 기본 각도 + 개별 각도
           transparent
+          renderOrder={-1}
         />
       )}
     </group>

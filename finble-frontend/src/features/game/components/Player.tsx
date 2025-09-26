@@ -102,7 +102,9 @@ const getTilePosition = (
     z = 0;
   }
 
-  const position: [number, number, number] = [x, 0.9, z];
+  // Y 위치를 더 높이고, Z 위치를 앞쪽으로 이동
+  const position: [number, number, number] = [x, 0.9, z + 0.2]; // Z축을 +0.2로 미세 조정
+
 
   if (playerIndex > 0 && totalPlayers > 1) {
     const offsetDistance = Math.min(0.3, 0.8 / totalPlayers);
@@ -184,32 +186,61 @@ export function Player({ player }: PlayerProps) {
   useEffect(() => {
     if (!board || board.length === 0) return;
 
-    const safeCurrentPosition = Math.max(0, Math.min(player.position, board.length - 1));
-    const safePrevPosition = Math.max(0, Math.min(prevPositionRef.current, board.length - 1));
+    const safeCurrentPosition = Math.max(
+      0,
+      Math.min(player.position, board.length - 1)
+    );
+    const safePrevPosition = Math.max(
+      0,
+      Math.min(prevPositionRef.current, board.length - 1)
+    );
 
     // 위치가 변경되었고, 현재 MOVING_PLAYER 페이즈가 아닐 때 (찬스카드 등)
-    if (safeCurrentPosition !== safePrevPosition && gamePhase !== "MOVING_PLAYER") {
+    if (
+      safeCurrentPosition !== safePrevPosition &&
+      gamePhase !== "MOVING_PLAYER"
+    ) {
       console.log(`🎲 [POSITION_UPDATE] ${player.name}님 즉시 위치 변경:`, {
         from: safePrevPosition,
         to: safeCurrentPosition,
         gamePhase,
-        reason: "찬스카드 등"
+        reason: "찬스카드 등",
       });
 
       // 즉시 위치 업데이트 (애니메이션 없이)
-      const newPosition = getTilePosition(safeCurrentPosition, board, playerIndex, players.length);
+      const newPosition = getTilePosition(
+        safeCurrentPosition,
+        board,
+        playerIndex,
+        players.length
+      );
       api.set({ position: newPosition });
       prevPositionRef.current = player.position;
     }
-  }, [player.position, board, gamePhase, playerIndex, players.length, api, player.name]);
+  }, [
+    player.position,
+    board,
+    gamePhase,
+    playerIndex,
+    players.length,
+    api,
+    player.name,
+  ]);
 
   // --- 이동 애니메이션 이펙트 (MOVING_PLAYER 상태에서만 실행) ---
   useEffect(() => {
-    if (isModalOpen || isAnimatingRef.current || !board || board.length === 0) return;
+    if (isModalOpen || isAnimatingRef.current || !board || board.length === 0)
+      return;
     if (!isThisPlayersTurn || gamePhase !== "MOVING_PLAYER") return;
 
-    const safeCurrentPosition = Math.max(0, Math.min(player.position, board.length - 1));
-    const safePrevPosition = Math.max(0, Math.min(prevPositionRef.current, board.length - 1));
+    const safeCurrentPosition = Math.max(
+      0,
+      Math.min(player.position, board.length - 1)
+    );
+    const safePrevPosition = Math.max(
+      0,
+      Math.min(prevPositionRef.current, board.length - 1)
+    );
 
     console.log("🎬 [PLAYER_ANIMATION] Position change detected:", {
       playerName: player.name,
@@ -218,7 +249,7 @@ export function Player({ player }: PlayerProps) {
       currentPosition: safeCurrentPosition,
       positionChanged: safeCurrentPosition !== safePrevPosition,
       gamePhase,
-      isThisPlayersTurn
+      isThisPlayersTurn,
     });
 
     if (safeCurrentPosition === safePrevPosition) return;
@@ -232,11 +263,18 @@ export function Player({ player }: PlayerProps) {
       players.length
     );
 
-    const validPath = path.filter((pos) => pos.every((coord) => isFinite(coord)));
+    const validPath = path.filter((pos) =>
+      pos.every((coord) => isFinite(coord))
+    );
     if (validPath.length === 0) return;
 
     // 애니메이션 시작 - 시작 위치 설정
-    const startPosition = getTilePosition(safePrevPosition, board, playerIndex, players.length);
+    const startPosition = getTilePosition(
+      safePrevPosition,
+      board,
+      playerIndex,
+      players.length
+    );
     api.set({ position: startPosition });
     isAnimatingRef.current = true;
 
@@ -259,7 +297,20 @@ export function Player({ player }: PlayerProps) {
         }
       },
     });
-  }, [player.position, player.name, gamePhase, isThisPlayersTurn, isMyPlayer, api, board, dice, playerIndex, players.length, isModalOpen, handleTileAction]);
+  }, [
+    player.position,
+    player.name,
+    gamePhase,
+    isThisPlayersTurn,
+    isMyPlayer,
+    api,
+    board,
+    dice,
+    playerIndex,
+    players.length,
+    isModalOpen,
+    handleTileAction,
+  ]);
 
   // --- 이동 완료 후 위치 업데이트 ---
   useEffect(() => {
@@ -273,9 +324,8 @@ export function Player({ player }: PlayerProps) {
 
   return (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    <animated.mesh ref={meshRef} position={springs.position as any} castShadow>
+    <animated.mesh ref={meshRef} position={springs.position as any} castShadow renderOrder={1}>
       <PixelPlayer character={player.character} />
     </animated.mesh>
   );
 }
-
