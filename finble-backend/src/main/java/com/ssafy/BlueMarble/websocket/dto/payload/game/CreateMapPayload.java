@@ -45,6 +45,7 @@ public class CreateMapPayload {
         private boolean isInJail;                // 감옥에 있는지 여부
         private int jailTurns;                   // 감옥 남은 턴 수
         private boolean isActive;                // 활성 상태 여부
+        private Long totalAssets;                // 총 자산 (현금 + 부동산 가치)
         // private boolean anglecard;               // 천사카드 보유 여부 (비활성화됨)
     }
 }

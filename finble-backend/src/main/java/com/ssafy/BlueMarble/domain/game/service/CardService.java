@@ -575,6 +575,8 @@ public class CardService {
                 // 시작점 이동 시 월급 지급
                 Long currentMoney = player.getMoney();
                 player.setMoney(currentMoney + 1000000); // 월급 100만원 (EventService와 동일)
+                // 이 메소드는 gameMapState 파라미터가 없어서 총 자산 업데이트 불가
+                // 호출하는 곳에서 처리 필요
             }
         } catch (Exception e) {
             log.error("위치 효과 적용 실패: effectData={}", effectData, e);

@@ -7,6 +7,7 @@ import com.ssafy.BlueMarble.domain.game.dto.request.WorldTravelRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.UseDiceRequest;
 import com.ssafy.BlueMarble.domain.game.dto.request.NtsRequest;
 import com.ssafy.BlueMarble.domain.game.entity.Tile;
+import com.ssafy.BlueMarble.domain.game.dto.GameMap;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.Timer.Service.TimerService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
@@ -66,6 +67,55 @@ public class EventService {
     }
 
     /**
+     * 플레이어의 총 자산 계산
+     * @param player 플레이어 상태
+     * @param gameMap 게임 맵
+     * @param currentTurn 현재 턴 (경제 효과 적용용)
+     * @return 총 자산 (현금 + 부동산 가치)
+     */
+    public Long calculateTotalAssets(CreateMapPayload.PlayerState player, GameMap gameMap, Long currentTurn) {
+        // 1. 현금 (모든 수입/지출이 이미 반영된 상태)
+        Long totalAssets = player.getMoney();
+
+        // 2. 소유한 부동산 가치 계산
+        if (player.getOwnedProperties() != null) {
+            for (Integer propertyIndex : player.getOwnedProperties()) {
+                if (propertyIndex < gameMap.getCells().size()) {
+                    Tile tile = gameMap.getCells().get(propertyIndex);
+                    if (tile != null) {
+                        // 토지 가격 (경제 효과 적용)
+                        Long landValue = economicHistoryService.calculatePropertyPriceWithEffect(
+                            tile.getLandPrice(), currentTurn);
+
+                        // 건물 가치 (건설 당시 가격 유지)
+                        Long buildingValue = calculateBuildingValue(tile);
+
+                        totalAssets += landValue + buildingValue;
+                    }
+                }
+            }
+        }
+
+        return totalAssets;
+    }
+
+    /**
+     * 건물 가치 계산 (건설 당시 가격 유지)
+     */
+    private Long calculateBuildingValue(Tile tile) {
+        switch (tile.getBuildingType()) {
+            case VILLA:
+                return tile.getHousePrice();
+            case BUILDING:
+                return tile.getHousePrice() + tile.getBuildingPrice();
+            case HOTEL:
+                return tile.getHousePrice() + tile.getBuildingPrice() + tile.getHotelPrice();
+            default:
+                return 0L;
+        }
+    }
+
+    /**
      * 감옥 이벤트 처리
      */
     public void handleJailEvent(WebSocketSession session, JailRequest jailRequest) {
@@ -113,9 +163,13 @@ public class EventService {
 //            gameState.getPlayers().put(userId, user);
 //
 //        }
+        // 6. 총 자산 계산 및 설정 (보석금 지불 후에도 계산)
+        Long totalAssets = calculateTotalAssets(user, gameState.getCurrentMap(), gameState.getGameTurn());
+        user.setTotalAssets(totalAssets);
+
         gameRedisService.saveGameMapState(roomId, gameState);
 
-        // 6. 결과 메시지 전송
+        // 7. 결과 메시지 전송
         JailPayload payload = JailPayload.builder()
                 .result(escapeSuccess)
                 .userName(jailRequest.getNickname())
@@ -123,6 +177,7 @@ public class EventService {
                         ConstructPayload.Asset.builder()
                                 .money(user.getMoney())
                                 .lands(user.getOwnedProperties() != null ? user.getOwnedProperties() : new ArrayList<>())
+                                .totalAssets(totalAssets)
                                 .build()
                 )
                 .turns(remainingTurns)
@@ -180,6 +235,14 @@ public class EventService {
             if (traveler.getMoney() >= tollAmount) {
                 traveler.setMoney(traveler.getMoney() - tollAmount);
                 owner.setMoney(owner.getMoney() + tollAmount);
+
+                // 총 자산 계산 (여행자와 소유자 모두)
+                Long travelerTotalAssets = calculateTotalAssets(traveler, gameState.getCurrentMap(), gameState.getGameTurn());
+                traveler.setTotalAssets(travelerTotalAssets);
+
+                Long ownerTotalAssets = calculateTotalAssets(owner, gameState.getCurrentMap(), gameState.getGameTurn());
+                owner.setTotalAssets(ownerTotalAssets);
+
                 // 여행자 위치 업데이트
                 traveler.setPosition(endPosition);
             } else {
@@ -207,12 +270,14 @@ public class EventService {
                         ConstructPayload.Asset.builder()
                                 .money(traveler.getMoney())
                                 .lands(traveler.getOwnedProperties() != null ? traveler.getOwnedProperties() : new ArrayList<>())
+                                .totalAssets(traveler.getTotalAssets())
                                 .build()
                 )
                 .ownerAsset(
                         owner != null ? ConstructPayload.Asset.builder()
                                 .money(owner.getMoney())
                                 .lands(owner.getOwnedProperties() != null ? owner.getOwnedProperties() : new ArrayList<>())
+                                .totalAssets(owner.getTotalAssets())
                                 .build()
                                 : null
                 )
@@ -251,6 +316,10 @@ public class EventService {
         Long newMoney = Math.max(0, currentMoney - taxAmount);
         player.setMoney(newMoney);
 
+        // 총 자산 계산
+        Long totalAssets = calculateTotalAssets(player, gameState.getCurrentMap(), gameState.getGameTurn());
+        player.setTotalAssets(totalAssets);
+
         // 게임 상태 저장
         gameRedisService.saveGameMapState(roomId, gameState);
 
@@ -262,6 +331,7 @@ public class EventService {
                         ConstructPayload.Asset.builder()
                                 .money(player.getMoney())
                                 .lands(player.getOwnedProperties() != null ? player.getOwnedProperties() : new ArrayList<>())
+                                .totalAssets(totalAssets)
                                 .build()
                 )
                 .build();
@@ -317,6 +387,10 @@ public class EventService {
             int baseSalary = 1000000; // 기본 월급
             salaryBonus = economicHistoryService.calculateSalaryWithEffect(baseSalary, gameState.getGameTurn());
             player.setMoney(player.getMoney() + salaryBonus);
+
+            // 월급 받은 후 총 자산 계산
+            Long totalAssets = calculateTotalAssets(player, gameState.getCurrentMap(), gameState.getGameTurn());
+            player.setTotalAssets(totalAssets);
         }
 
         //5.1 감옥 자리라면 사용자 상태 업데이트 해야함
@@ -355,6 +429,14 @@ public class EventService {
                             CreateMapPayload.PlayerState owner = gameState.getPlayers().get(ownerUserId);
                             if (owner != null) {
                                 owner.setMoney(owner.getMoney() + tollAmount);
+
+                                // 총 자산 계산 (통행료 지불자와 소유자 모두)
+                                Long playerTotalAssets = calculateTotalAssets(player, gameState.getCurrentMap(), gameState.getGameTurn());
+                                player.setTotalAssets(playerTotalAssets);
+
+                                Long ownerTotalAssets = calculateTotalAssets(owner, gameState.getCurrentMap(), gameState.getGameTurn());
+                                owner.setTotalAssets(ownerTotalAssets);
+
                                 log.info("통행료 지불: player={}, owner={}, amount={}",
                                         useDiceRequest.getUserName(), landOwner, tollAmount);
                             }
@@ -401,6 +483,7 @@ public class EventService {
                         ConstructPayload.Asset.builder()
                                 .money(player.getMoney())
                                 .lands(player.getOwnedProperties() != null ? player.getOwnedProperties() : new ArrayList<>())
+                                .totalAssets(player.getTotalAssets())
                                 .build()
                 )
                 .build();
