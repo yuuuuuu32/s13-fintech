@@ -544,49 +544,62 @@ export const createWebSocketHandlers = (
             type: "CHANCE_CARD" as const,
             text: `${cardName}: ${effectDescription}`,
             onConfirm: () => {
-              console.log("🎲 [CHANCE_CARD] 찬스카드 모달 확인 - 카드 유형별 처리");
+              console.log("🎲 [CHANCE_CARD] 찬스카드 모달 확인 - 백엔드에서 이미 모든 처리 완료");
               set({ modal: { type: "NONE" as const } });
 
+              // 백엔드에서 이미 모든 처리를 완료했으므로
+              // 추가 정보만 UI로 표시하고 바로 턴 종료
+              const { tollAmount, landOwner, canBuyLand } = payload?.result || {};
+
               if (newPosition !== undefined && newPosition !== null) {
-                // 이동 효과 카드: 서버 동기화 완료 대기 후 타일 액션 처리
-                console.log("🎲 [CHANCE_CARD] 이동 효과 카드 - 서버 동기화 대기:", {
+                // 🚨 중요: 이동 효과 카드는 이미 타일 액션이 처리되었으므로 중복 방지 플래그 설정
+                set({ isProcessingChanceCard: true });
+
+                console.log("🎲 [CHANCE_CARD] 이동 효과 카드 - 중복 타일 액션 방지 플래그 설정:", {
                   userName,
                   newPosition,
                   cardName,
-                  note: "서버 GAME_STATE_CHANGE로 위치 동기화 후 타일 액션 처리"
+                  tollAmount,
+                  landOwner,
+                  canBuyLand,
+                  note: "백엔드에서 이미 처리 완료, movePlayer의 중복 handleTileAction 방지"
                 });
 
-                // 서버 동기화 완료를 위한 지연 처리
-                setTimeout(() => {
-                  const currentState = get();
-                  const targetPlayer = currentState.players.find(p => p.name === userName);
+                if (canBuyLand) {
+                  // 구매 가능한 땅 - 구매 모달 표시 (백엔드 데이터 활용)
+                  const currentBoard = get().board;
+                  const targetTile = currentBoard[newPosition];
 
-                  if (targetPlayer && targetPlayer.position === newPosition) {
-                    console.log("🎲 [CHANCE_CARD] 서버 동기화 완료 - 타일 액션 처리:", {
-                      playerName: userName,
-                      finalPosition: targetPlayer.position,
-                      expectedPosition: newPosition
+                  if (targetTile) {
+                    console.log("🏠 [CHANCE_CARD] 구매 가능한 땅 - 구매 모달 표시:", {
+                      position: newPosition,
+                      tileName: targetTile.name,
+                      price: targetTile.price
                     });
-                    set({ isProcessingChanceCard: true });
-                    get().handleTileAction();
-                  } else {
-                    console.log("⚠️ [CHANCE_CARD] 서버 동기화 미완료 - 턴 종료로 대체:", {
-                      playerName: userName,
-                      currentPosition: targetPlayer?.position,
-                      expectedPosition: newPosition
+
+                    set({
+                      modal: {
+                        type: "BUY_PROPERTY" as const,
+                        tile: targetTile
+                      }
                     });
-                    get().endTurn();
+                    return; // 구매 모달이 표시되므로 endTurn 호출하지 않음
                   }
-                }, 1500); // 1.5초 대기로 서버 동기화 완료 보장
+                } else if (tollAmount && tollAmount > 0) {
+                  // 통행료 지불 정보 토스트 표시 (이미 백엔드에서 처리됨)
+                  get().addToast("info", "💰 통행료 지불",
+                    `${landOwner}님에게 ${tollAmount.toLocaleString()}원을 지불했습니다`, 3000);
+                }
               } else {
-                // 즉시 효과 카드: 바로 턴 종료
                 console.log("🎲 [CHANCE_CARD] 즉시 효과 카드 - 바로 턴 종료:", {
                   userName,
                   cardName,
                   effect: "돈 변동, 감옥 등 즉시 처리 완료"
                 });
-                get().endTurn();
               }
+
+              // 구매 모달이 없는 경우에만 턴 종료
+              get().endTurn();
             }
           };
         } else {

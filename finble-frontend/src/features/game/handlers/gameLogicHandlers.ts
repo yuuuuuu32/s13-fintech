@@ -43,30 +43,10 @@ export const createGameLogicHandlers = (
   setDicePower: (power: number) => set({ dicePower: power }),
 
   finishDiceRoll: () => {
-    set((state) => {
-        const { serverCurrentPosition, players, currentPlayerIndex, board } = state;
-        if (serverCurrentPosition === null) return {};
+    const { serverCurrentPosition } = get();
+    if (serverCurrentPosition === null) return;
 
-        // const currentPlayer = players[currentPlayerIndex];
-        const finalPosition = Math.max(0, Math.min(serverCurrentPosition, board.length - 1));
-
-
-        const updatedPlayers = players.map((p, index) => {
-            if (index === currentPlayerIndex) {
-                return {
-                    ...p,
-                    position: finalPosition,
-                };
-            }
-            return p;
-        });
-
-        return {
-            players: updatedPlayers,
-            gamePhase: 'PLAYER_MOVING' as GamePhase,
-            serverCurrentPosition: null,
-        };
-    });
+    set({ gamePhase: "PLAYER_MOVING" as GamePhase });
   },
 
   setIsDiceRolled: (isRolled: boolean) => set({ isDiceRolled: isRolled }),
@@ -308,7 +288,9 @@ export const createGameLogicHandlers = (
     set({ isUpdatingPosition: true });
 
     // 서버에서 받은 정확한 위치 사용 (찬스카드 이동 등이 반영됨)
-    const finalPosition = serverCurrentPosition !== null ? serverCurrentPosition : (currentPlayer.position + diceSum) % board.length;
+    const finalPosition = serverCurrentPosition !== null
+      ? serverCurrentPosition
+      : (currentPlayer.position + diceSum) % board.length;
 
     let lapCount = currentPlayer.lapCount;
     // 시작점 통과 시 lapCount 증가

@@ -733,7 +733,6 @@ const BuySpecialLandModalContent = ({
 const GameOverModalContent = ({
   winner,
   handleGoToLobby,
-  modalStyle,
   players,
   board,
   shouldShowGameOverByTurns,
@@ -916,21 +915,6 @@ export function GameUI() {
     navigate("/lobby");
   };
 
-  const modalStyle = {
-    position: "absolute" as const,
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    width: 450,
-    bgcolor: "background.paper",
-    border: "2px solid #000",
-    boxShadow: 24,
-    p: 4,
-    color: "black",
-    borderRadius: 2,
-    textAlign: "center" as const,
-    fontFamily: "Galmuri14, sans-serif",
-  };
 
   // 경제역사 상태 디버깅
   useEffect(() => {
@@ -1312,7 +1296,6 @@ export function GameUI() {
             <GameOverModalContent
               winner={winner}
               handleGoToLobby={handleGoToLobby}
-              modalStyle={modalStyle}
               players={players}
               board={board}
               shouldShowGameOverByTurns={shouldShowGameOverByTurns}
