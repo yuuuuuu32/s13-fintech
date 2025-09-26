@@ -6,6 +6,7 @@ console.log('LandingVideo path:', LandingVideo);
 
 export default function LandingPage() {
   const navigate = useNavigate()
+  const pinbleLogo = 'src/assets/pinble-logo.png';
 
   const goToLoginPage = useCallback(() => {
     navigate('/login')
@@ -57,7 +58,9 @@ export default function LandingPage() {
             zIndex: -1, // Send to back
           }}
         />
-        <h1>금융 브루마블 (Finble)</h1>
+        <div className="logo-container">
+          <img src={pinbleLogo} alt="PinBle Logo" className="logo-image" />
+        </div>
         <p style={{ marginTop: '2rem' }}>화면을 클릭하거나 아무 키나 눌러 시작하세요.</p>
       </div>
     </main>
