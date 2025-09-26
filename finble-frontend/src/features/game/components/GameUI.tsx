@@ -606,8 +606,12 @@ const ManagePropertyModalContent = ({
               disabled={hasHouse}
             />
           }
-          label={`주택 (${housePrice.toLocaleString()}원) ${hasHouse ? "✓ 보유중" : ""
-            }`}
+          label={
+            <Typography sx={{ color: "#ffffff" }}>
+              `주택 (${housePrice.toLocaleString()}원) ${hasHouse ? "✓ 보유중" : ""
+              }`
+            </Typography>
+          }
         />
 
         <FormControlLabel
@@ -619,8 +623,12 @@ const ManagePropertyModalContent = ({
               disabled={hasBuilding}
             />
           }
-          label={`빌딩 (${buildingPrice.toLocaleString()}원) ${hasBuilding ? "✓ 보유중" : ""
-            }`}
+          label={
+            <Typography sx={{ color: "#ffffff" }}>
+              `빌딩 (${buildingPrice.toLocaleString()}원) ${hasBuilding ? "✓ 보유중" : ""
+              }`
+            </Typography>
+          }
         />
 
         <FormControlLabel
@@ -632,8 +640,12 @@ const ManagePropertyModalContent = ({
               disabled={hasHotel}
             />
           }
-          label={`호텔 (${hotelPrice.toLocaleString()}원) ${hasHotel ? "✓ 보유중" : ""
-            }`}
+          label={
+            <Typography sx={{ color: "#ffffff" }}>
+              `호텔 (${hotelPrice.toLocaleString()}원) ${hasHotel ? "✓ 보유중" : ""
+              }`
+            </Typography>
+          }
         />
       </Box>
 
