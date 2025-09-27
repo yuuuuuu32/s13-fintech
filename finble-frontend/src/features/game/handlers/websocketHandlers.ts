@@ -142,6 +142,11 @@ export const createWebSocketHandlers = (
                   const currentPlayers = get().players;
                   const currentState = get();
 
+                  const normalizeServerPlayerId = (player: { id?: unknown; userId?: unknown; userID?: unknown }) => {
+                    const rawId = player?.id ?? player?.userId ?? player?.userID;
+                    return rawId !== undefined && rawId !== null ? String(rawId) : null;
+                  };
+
                   // isUpdatingPosition이 true일 때만 위치 업데이트 차단
                   if (currentState.isUpdatingPosition) {
                     console.warn("🚫 [POSITION_UPDATE_BLOCKED] 위치 업데이트 진행 중 - 플레이어 데이터 무시:", {
@@ -156,7 +161,12 @@ export const createWebSocketHandlers = (
                   }
 
                   const updatedPlayers = currentPlayers.map(clientPlayer => {
-                    const serverPlayer = newPlayers.find(p => p.id === clientPlayer.id);
+                    const clientId = clientPlayer.id ? String(clientPlayer.id) : null;
+                    const serverPlayer = newPlayers.find((p) => {
+                      const serverId = normalizeServerPlayerId(p);
+                      return serverId !== null && clientId !== null && serverId === clientId;
+                    })
+                      || newPlayers.find((p) => p.nickname === clientPlayer.name); // 닉네임을 기반으로 마지막 매칭 시도
                     if (serverPlayer) {
                       // 서버 위치 정보를 우선적으로 적용 (찬스카드 후 동기화)
                       const finalPosition = serverPlayer.position !== undefined && serverPlayer.position !== null
@@ -200,6 +210,11 @@ export const createWebSocketHandlers = (
                         isTraveling: clientPlayer.isTraveling
                       };
                     }
+                    console.warn("❌ [POSITION_SYNC] 서버 플레이어 데이터를 찾지 못했습니다:", {
+                      clientName: clientPlayer.name,
+                      clientId,
+                      availableServerIds: newPlayers.map(p => normalizeServerPlayerId(p)),
+                    });
                     return clientPlayer;
                   });
 
@@ -272,7 +287,22 @@ export const createWebSocketHandlers = (
       console.log("📥 [WEBSOCKET] USE_DICE received:", message);
       const { payload } = message;
 
-      const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn, userName, updatedAsset, salaryBonus } = payload;
+      const { diceNum1, diceNum2, diceNumSum, currentPosition, curTurn, userName, updatedAsset, salaryBonus, tollAmount } = payload;
+
+      const rawAcquireCost = (payload as { acquisitionCost?: number; acquireCost?: number; buyoutCost?: number; actualPrice?: number }).acquisitionCost
+        ?? (payload as { acquisitionCost?: number; acquireCost?: number; buyoutCost?: number; actualPrice?: number }).acquireCost
+        ?? (payload as { acquisitionCost?: number; acquireCost?: number; buyoutCost?: number; actualPrice?: number }).buyoutCost
+        ?? (payload as { acquisitionCost?: number; acquireCost?: number; buyoutCost?: number; actualPrice?: number }).actualPrice;
+      const normalizedAcquireCost = typeof rawAcquireCost === "number"
+        ? rawAcquireCost
+        : typeof rawAcquireCost === "string" && rawAcquireCost.trim() !== ""
+          ? Number(rawAcquireCost)
+          : undefined;
+      const normalizedTollAmount = typeof tollAmount === "number"
+        ? tollAmount
+        : typeof tollAmount === "string" && tollAmount.trim() !== ""
+          ? Number(tollAmount)
+          : undefined;
 
       // 중복 메시지 방지: 같은 턴의 같은 플레이어 주사위 메시지는 한 번만 처리
       const currentState = get();
@@ -318,11 +348,21 @@ export const createWebSocketHandlers = (
               properties: updatedAsset?.lands
             });
 
+            const rawTotalAsset = (updatedAsset as { totalAsset?: number; totalasset?: number; totalAssets?: number } | undefined)?.totalAsset
+              ?? (updatedAsset as { totalAsset?: number; totalasset?: number; totalAssets?: number } | undefined)?.totalasset
+              ?? (updatedAsset as { totalAsset?: number; totalasset?: number; totalAssets?: number } | undefined)?.totalAssets;
+            const normalizedTotalAsset = typeof rawTotalAsset === "number"
+              ? rawTotalAsset
+              : typeof rawTotalAsset === "string" && rawTotalAsset.trim() !== ""
+                ? Number(rawTotalAsset)
+                : undefined;
+
             return {
               ...player,
               position: currentPosition, // 서버에서 받은 정확한 위치로 동기화
               money: updatedAsset?.money || player.money, // 서버에서 경제역사 효과가 적용된 머니
-              properties: updatedAsset?.lands || player.properties
+              properties: updatedAsset?.lands || player.properties,
+              totalAsset: normalizedTotalAsset ?? player.totalAsset
             };
           }
           return player;
@@ -336,6 +376,12 @@ export const createWebSocketHandlers = (
           currentTurn: curTurn,
           lastSalaryBonus: salaryBonus || 0, // 마지막으로 받은 월급 보너스 저장
           lastProcessedDiceMessage: messageKey, // 처리된 메시지 키 저장
+          pendingTileCost: normalizedTollAmount !== undefined || normalizedAcquireCost !== undefined
+            ? {
+                tollAmount: normalizedTollAmount,
+                acquisitionCost: normalizedAcquireCost,
+              }
+            : null,
           // USE_DICE 응답을 받았으므로 주사위 굴리기 완료
         };
       });
@@ -420,6 +466,15 @@ export const createWebSocketHandlers = (
                 );
               }
 
+              const rawTotalAsset = (serverPlayerState as { totalAsset?: number; totalasset?: number; totalAssets?: number }).totalAsset
+                ?? (serverPlayerState as { totalAsset?: number; totalasset?: number; totalAssets?: number }).totalasset
+                ?? (serverPlayerState as { totalAsset?: number; totalasset?: number; totalAssets?: number }).totalAssets;
+              const normalizedTotalAsset = typeof rawTotalAsset === "number"
+                ? rawTotalAsset
+                : typeof rawTotalAsset === "string" && rawTotalAsset.trim() !== ""
+                  ? Number(rawTotalAsset)
+                  : undefined;
+
               return {
                 ...clientPlayer,
                 money: serverPlayerState.money,
@@ -427,6 +482,7 @@ export const createWebSocketHandlers = (
                 // position: serverPlayerState.position, // BLOCKED - TRADE_LAND는 위치 업데이트 안함
                 isInJail: serverPlayerState.inJail,
                 jailTurns: serverPlayerState.jailTurns,
+                totalAsset: normalizedTotalAsset ?? clientPlayer.totalAsset,
               };
             }
             return clientPlayer;
@@ -480,6 +536,7 @@ export const createWebSocketHandlers = (
         });
 
         // 플레이어 정보 업데이트 (위치 업데이트 제거)
+        let chanceCardNewPosition: number | null = null;
         const updatedPlayers = state.players.map(player => {
           // 카드를 뽑은 플레이어 처리
           if (player.name === userName) {
@@ -488,6 +545,22 @@ export const createWebSocketHandlers = (
             // 돈 변화만 적용 (위치는 서버 GAME_STATE_CHANGE로 동기화)
             if (moneyChange !== undefined && moneyChange !== null) {
               updatedPlayer.money += moneyChange;
+            }
+
+            if (typeof newPosition === "number" && !Number.isNaN(newPosition)) {
+              const boardSize = state.board.length || 32; // 보드 정보가 없으면 기본 32칸으로 가정
+              const normalizedPosition = newPosition % boardSize;
+              const finalPosition = normalizedPosition < 0 ? normalizedPosition + boardSize : normalizedPosition;
+
+              updatedPlayer.position = finalPosition;
+
+              chanceCardNewPosition = finalPosition;
+
+              console.log("🎯 [CHANCE_CARD] 즉시 위치 업데이트:", {
+                playerName: player.name,
+                previousPosition: player.position,
+                newPosition: finalPosition
+              });
             }
 
             console.log("🎲 [CHANCE_CARD] 플레이어 상태 업데이트 (위치 제외):", {
@@ -529,6 +602,14 @@ export const createWebSocketHandlers = (
         // 찬스카드를 뽑은 당사자만 모달 표시, 다른 플레이어는 토스트
         const currentUserInfo = useUserStore.getState().userInfo;
         const isMyCard = currentUserInfo && currentUserInfo.nickname === userName;
+
+        const stateUpdates: Partial<GameState> = {
+          players: updatedPlayers,
+        };
+
+        if (chanceCardNewPosition !== null) {
+          stateUpdates.serverCurrentPosition = chanceCardNewPosition;
+        }
 
         let newModal;
 
@@ -634,7 +715,7 @@ export const createWebSocketHandlers = (
         console.log("🎲 [MODAL] 모달 텍스트 확인:", newModal.text);
 
         const newState = {
-          players: updatedPlayers,
+          ...stateUpdates,
           modal: newModal
         };
 
@@ -1411,10 +1492,18 @@ export const createWebSocketHandlers = (
 
         // 게임이 진행 중이면 현재 위치를 보존, 아니면 시작칸(0)으로 초기화
         const existingPlayer = currentState.players.find(p => p.id === serverPlayer.userId);
-        const playerPosition = isGameInProgress && existingPlayer
-          ? existingPlayer.position
-          : 0; // 게임 시작 시에만 시작칸(0번)에 배치
+        const hasServerPosition = typeof serverPlayer.position === "number" && !Number.isNaN(serverPlayer.position);
+        const playerPosition = hasServerPosition
+          ? serverPlayer.position
+          : (isGameInProgress && existingPlayer ? existingPlayer.position : 0);
 
+        const rawTotalAsset = (serverPlayer as { totalAsset?: number; totalasset?: number }).totalAsset
+          ?? (serverPlayer as { totalAsset?: number; totalasset?: number }).totalasset;
+        const totalAsset = typeof rawTotalAsset === "number"
+          ? rawTotalAsset
+          : typeof rawTotalAsset === "string" && rawTotalAsset.trim() !== ""
+            ? Number(rawTotalAsset)
+            : undefined;
 
         return {
           id: serverPlayer.userId,
@@ -1425,8 +1514,9 @@ export const createWebSocketHandlers = (
           isInJail: serverPlayer.inJail,
           jailTurns: serverPlayer.jailTurns,
           character: CHARACTER_PREFABS[index % CHARACTER_PREFABS.length],
-          isTraveling: false,
-          lapCount: 0,
+          isTraveling: existingPlayer?.isTraveling ?? false,
+          lapCount: existingPlayer?.lapCount ?? 0,
+          totalAsset,
         };
       })
       .filter((p) => p !== null) as Player[];
@@ -1690,11 +1780,32 @@ export const createWebSocketHandlers = (
             });
           }
 
+          const {
+            totalAsset: serverTotalAssetCamel,
+            totalasset: serverTotalAssetLower,
+            totalAssets: serverTotalAssetsPlural,
+            ...serverWithoutTotals
+          } = serverPlayer as { totalAsset?: number; totalasset?: number; totalAssets?: number } & Record<string, unknown>;
+
+          const resolveTotalAsset = (value: unknown): number | undefined => {
+            if (typeof value === "number") return value;
+            if (typeof value === "string" && value.trim() !== "") {
+              const numeric = Number(value);
+              return Number.isNaN(numeric) ? undefined : numeric;
+            }
+            return undefined;
+          };
+
+          const normalizedTotalAsset = resolveTotalAsset(serverTotalAssetCamel)
+            ?? resolveTotalAsset(serverTotalAssetLower)
+            ?? resolveTotalAsset(serverTotalAssetsPlural);
+
           return {
             ...clientPlayer,
-            ...serverPlayer,
+            ...serverWithoutTotals,
             position: finalPosition,
-            isTraveling: clientPlayer.isTraveling
+            isTraveling: clientPlayer.isTraveling,
+            totalAsset: normalizedTotalAsset ?? clientPlayer.totalAsset,
           };
         }
         return clientPlayer;

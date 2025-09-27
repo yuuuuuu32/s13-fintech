@@ -19,6 +19,22 @@ export const handleCityCompanyTile = (
 
 
 
+  const pendingCostInfo = get().pendingTileCost;
+  const normalizeServerNumber = (value: unknown): number | undefined => {
+    if (typeof value === "number" && !Number.isNaN(value)) return value;
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? undefined : parsed;
+    }
+    return undefined;
+  };
+  const tollFromServer = normalizeServerNumber(pendingCostInfo?.tollAmount);
+  const acquireCostFromServer = normalizeServerNumber(pendingCostInfo?.acquisitionCost);
+
+  if (pendingCostInfo) {
+    set({ pendingTileCost: null });
+  }
+
   if (!owner) {
     const baseLandPrice = (currentTile as TileData & { landPrice?: number }).landPrice ?? currentTile.price ?? 0;
     const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
@@ -47,7 +63,7 @@ export const handleCityCompanyTile = (
       return;
     }
 
-    let toll = get().applyEconomicMultiplier(baseToll, 'tollMultiplier');
+    let toll = tollFromServer ?? get().applyEconomicMultiplier(baseToll, 'tollMultiplier');
 
     if (get().expoLocation === currentPlayer.position) {
       toll *= 2;
@@ -80,7 +96,7 @@ export const handleCityCompanyTile = (
       // 통행료 지불 후 인수 여부만 묻기
       const baseLandPrice = (currentTile as TileData & { landPrice?: number }).landPrice ?? currentTile.price ?? 0;
       const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
-      const acquireCost = adjustedLandPrice * 2;
+      const acquireCost = acquireCostFromServer ?? adjustedLandPrice * 2;
 
       // 통행료 지불 완료 후 바로 인수 선택 모달 표시
       set({
