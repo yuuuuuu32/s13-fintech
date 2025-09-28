@@ -30,6 +30,22 @@ import p4_icon from "/assets/player_goblin.png";
 const BAIL_AMOUNT = 500000;
 
 const calculateTotalAssets = (player, board: TileData[]) => {
+  const resolveTotalAsset = (value: unknown): number | undefined => {
+    if (typeof value === "number" && !Number.isNaN(value)) return value;
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? undefined : parsed;
+    }
+    return undefined;
+  };
+
+  const serverTotalAsset = resolveTotalAsset(player.totalAsset)
+    ?? resolveTotalAsset(player.totalasset);
+
+  if (serverTotalAsset !== undefined) {
+    return serverTotalAsset;
+  }
+
   const propertyValue = player.properties.reduce((sum, index) => {
     const tile = board[index];
     if (!tile) return sum;

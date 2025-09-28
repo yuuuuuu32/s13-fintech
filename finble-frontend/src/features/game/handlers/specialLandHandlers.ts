@@ -143,10 +143,26 @@ export const createSpecialLandHandlers = (
     const currentPlayer = players[currentPlayerIndex];
     const owner = players.find((p) => p.properties.includes(tileIndex));
 
+    const pendingCostInfo = get().pendingTileCost;
+    const normalizeServerNumber = (value: unknown): number | undefined => {
+      if (typeof value === "number" && !Number.isNaN(value)) return value;
+      if (typeof value === "string" && value.trim() !== "") {
+        const parsed = Number(value);
+        return Number.isNaN(parsed) ? undefined : parsed;
+      }
+      return undefined;
+    };
+    const tollFromServer = normalizeServerNumber(pendingCostInfo?.tollAmount);
+    const acquireCostFromServer = normalizeServerNumber(pendingCostInfo?.acquisitionCost);
+
+    if (pendingCostInfo) {
+      set({ pendingTileCost: null });
+    }
+
     if (!owner) {
       // 주인이 없는 경우 - SPECIAL 땅 구매 모달 표시 (건물 건설 불가능)
       const baseLandPrice = tile?.landPrice || tile?.price || 0;
-      const adjustedLandPrice = get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
+      const adjustedLandPrice = acquireCostFromServer ?? get().applyEconomicMultiplier(baseLandPrice, 'propertyPriceMultiplier');
 
 
       set({
@@ -166,7 +182,7 @@ export const createSpecialLandHandlers = (
         });
         return;
       }
-      const adjustedToll = get().applyEconomicMultiplier(baseToll, 'tollMultiplier');
+      const adjustedToll = tollFromServer ?? get().applyEconomicMultiplier(baseToll, 'tollMultiplier');
 
       const currentUserId = useUserStore.getState().userInfo?.userId;
       const isMyTurn = currentPlayer.id === currentUserId;

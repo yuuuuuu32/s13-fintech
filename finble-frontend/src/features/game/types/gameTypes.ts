@@ -36,6 +36,7 @@ export interface Player {
   jailTurns: number;
   isTraveling: boolean;
   lapCount: number;
+  totalAsset?: number; // 백엔드에서 계산된 총자산 (totalasset)
 }
 
 export interface ToastMessage {
@@ -114,6 +115,10 @@ export interface GameState {
   syncErrorCount: number; // 동기화 오류 발생 횟수
   lastSyncCheck: number; // 마지막 동기화 확인 시간 (timestamp)
   lastProcessedDiceMessage?: string; // 마지막으로 처리된 주사위 메시지 키 (중복 방지)
+  pendingTileCost: {
+    tollAmount?: number;
+    acquisitionCost?: number;
+  } | null; // 백엔드에서 전달된 통행료/인수 비용 정보 (타일 액션 시 1회용)
   initializeGame: (initialState: GameInitialState) => void;
   setDicePower: (power: number) => void;
   rollDice: () => void;

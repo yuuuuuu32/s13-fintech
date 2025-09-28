@@ -4,7 +4,23 @@ import { useUserStore } from "../../../stores/useUserStore.ts";
 import type { TileData } from "../data/boardData.ts";
 
 // Calculate total assets (money + property values + building values)
-const calculateTotalAssets = (player: { properties: number[]; money: number }, board: TileData[]) => {
+const calculateTotalAssets = (player: { properties: number[]; money: number; totalAsset?: number; totalasset?: number }, board: TileData[]) => {
+  const resolveTotalAsset = (value: unknown): number | undefined => {
+    if (typeof value === "number" && !Number.isNaN(value)) return value;
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? undefined : parsed;
+    }
+    return undefined;
+  };
+
+  const serverTotalAsset = resolveTotalAsset(player.totalAsset)
+    ?? resolveTotalAsset(player.totalasset);
+
+  if (serverTotalAsset !== undefined) {
+    return serverTotalAsset;
+  }
+
   const propertyValue = player.properties.reduce((sum: number, index: number) => {
     const tile = board[index];
     if (!tile) return sum;
@@ -413,6 +429,10 @@ export const createGameLogicHandlers = (
       default:
         get().endTurn();
         break;
+    }
+
+    if (get().pendingTileCost) {
+      set({ pendingTileCost: null });
     }
   },
 

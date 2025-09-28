@@ -43,6 +43,7 @@ export const useGameStore = create<GameState>()((set, get) => {
     isUpdatingPosition: false, // 위치 업데이트 진행 중 플래그
     syncErrorCount: 0, // 동기화 오류 횟수
     lastSyncCheck: 0, // 마지막 동기화 확인 시간
+    pendingTileCost: null, // 백엔드에서 전달된 통행료/인수 비용 (타일 처리 전 보관)
 
     // 웹소켓 관련 메서드
     connect: websocketHandlers.connect,
