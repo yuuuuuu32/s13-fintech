@@ -588,10 +588,22 @@ const ManagePropertyModalContent = ({
     selectedItems.house || selectedItems.building || selectedItems.hotel;
 
   const handleItemChange = (item) => {
-    setSelectedItems((prev) => ({
-      ...prev,
-      [item]: !prev[item],
-    }));
+    setSelectedItems((prev) => {
+      const newState = { ...prev, [item]: !prev[item] };
+      
+      // 체크 해제할 때 상위 건물들도 함께 해제
+      if (!newState[item]) {
+        if (item === "house") {
+          newState.building = false;
+          newState.hotel = false;
+        }
+        if (item === "building") {
+          newState.hotel = false;
+        }
+      }
+      
+      return newState;
+    });
   };
 
   const handlePurchase = () => {
@@ -624,8 +636,7 @@ const ManagePropertyModalContent = ({
           }
           label={
             <Typography sx={{ color: "#ffffff" }}>
-              `주택 (${housePrice.toLocaleString()}원) ${hasHouse ? "✓ 보유중" : ""
-              }`
+              주택 ({housePrice.toLocaleString()}원) {hasHouse ? "✓ 보유중" : ""}
             </Typography>
           }
         />
@@ -636,13 +647,12 @@ const ManagePropertyModalContent = ({
               checked={hasBuilding || selectedItems.building}
               onChange={() => handleItemChange("building")}
               sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF" } }}
-              disabled={hasBuilding}
+              disabled={hasBuilding || (!hasHouse && !selectedItems.house)}
             />
           }
           label={
             <Typography sx={{ color: "#ffffff" }}>
-              `빌딩 (${buildingPrice.toLocaleString()}원) ${hasBuilding ? "✓ 보유중" : ""
-              }`
+              빌딩 ({buildingPrice.toLocaleString()}원) {hasBuilding ? "✓ 보유중" : ""} {(!hasHouse && !selectedItems.house) ? "(주택 필요)" : ""}
             </Typography>
           }
         />
@@ -653,13 +663,12 @@ const ManagePropertyModalContent = ({
               checked={hasHotel || selectedItems.hotel}
               onChange={() => handleItemChange("hotel")}
               sx={{ color: "#00ffff", "&.Mui-checked": { color: "#00FFFF" } }}
-              disabled={hasHotel}
+              disabled={hasHotel || (!hasBuilding && !selectedItems.building)}
             />
           }
           label={
             <Typography sx={{ color: "#ffffff" }}>
-              `호텔 (${hotelPrice.toLocaleString()}원) ${hasHotel ? "✓ 보유중" : ""
-              }`
+              호텔 ({hotelPrice.toLocaleString()}원) {hasHotel ? "✓ 보유중" : ""} {(!hasBuilding && !selectedItems.building) ? "(빌딩 필요)" : ""}
             </Typography>
           }
         />
