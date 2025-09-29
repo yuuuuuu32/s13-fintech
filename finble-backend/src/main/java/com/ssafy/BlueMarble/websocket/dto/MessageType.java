@@ -3,6 +3,8 @@ package com.ssafy.BlueMarble.websocket.dto;
 public enum MessageType {
     // 로비/방 관련
     CREATE_ROOM,
+    CREATE_ROOM_OK,
+    CREATE_ROOM_FAIL,
     ENTER_ROOM,
     ENTER_ROOM_OK,
     ENTER_ROOM_FAIL,
@@ -17,6 +19,22 @@ public enum MessageType {
     START_GAME,
     START_GAME_OBSERVE,
     GAME_STATE_CHANGE,
-    ROLE_ASSIGNMENT,
+    GAME_RETIRED,
     GAME_END,
+    TURN_SKIP,
+
+    // 게임 로직 관련
+    TRADE_LAND,
+    CONSTRUCT_BUILDING,
+    JAIL_EVENT,
+    WORLD_TRAVEL_EVENT,
+    USE_DICE,
+    NTS_EVENT,
+    ECONOMIC_HISTORY_UPDATE,
+
+    // 카드 관련
+    DRAW_CARD,
+    USE_CARD,
+    ANGEL_DEFENSE,
+
 }

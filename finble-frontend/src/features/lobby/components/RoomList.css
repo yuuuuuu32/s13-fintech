@@ -1,0 +1,162 @@
+/* ===== RoomList.css — Retro Neon Board (drop-in) ===== */
+
+/* Theme tokens (헤더/유저패널과 톤 맞춤) */
+:root{
+  --board-bg: rgba(16,18,35,.86);
+  --board-border: rgba(71,216,255,.35);
+  --board-cyan: #47d8ff;
+  --board-mag:  #d24bff;
+  --board-text: #eaf6ff;
+  --board-mute: #9aa6b2;
+}
+
+/* --- 최상위 컨테이너: 네온 보드 판 --- */
+.room-list-container{
+  display:flex; flex-direction:column;
+  min-height:0; min-width:0; height:70vh;
+
+  padding: 1.25rem 1.5rem;
+  background: var(--board-bg);
+  color: var(--board-text);
+
+  border: 2px solid #b2c7d3;          /* 바깥 밝은 베젤(레트로 느낌) */
+  box-shadow:
+    0 16px 40px rgba(0,0,0,.45),
+    inset 0 0 0 2px rgba(0,0,0,.35),
+    inset 0 0 18px rgba(71,216,255,.06);
+
+  position: relative;
+  isolation: isolate;
+
+  /* 은은한 CRT 스캔라인 */
+  background-image:
+    repeating-linear-gradient(to bottom,
+      rgba(255,255,255,.03) 0px,
+      rgba(255,255,255,.03) 1px,
+      transparent 2px,
+      transparent 4px);
+  background-size: 100% 8px;
+}
+
+/* --- 헤더 바: 레트로 창 타이틀 영역 --- */
+.room-list-header{
+  display:flex; justify-content:space-between; align-items:center;
+  margin: -1.25rem -1.5rem 1rem;       /* 바깥 베젤과 딱 붙게 */
+  padding: .75rem 1rem;
+  background: linear-gradient(#2b3641, #222b36);
+  border-bottom: 2px solid rgba(127,231,255,.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.15),
+    0 2px 0 rgba(0,0,0,.5);
+}
+
+.room-list-header h2{
+  margin:0;
+  font-family: 'VT323','Press Start 2P','Orbitron', monospace;
+  font-size: 1.05rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--board-cyan);
+  
+}
+
+/* 헤더 액션 버튼 묶음 */
+.header-actions{ display:flex; gap:.6rem; }
+
+/* 공통 버튼 */
+.refresh-button,
+.create-room-button,
+.quick-join-button{
+  height: 34px;
+  padding: 0 .9rem;
+  border: 0;
+  font: 700 .8rem 'Orbitron', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  border-radius: 0;
+}
+
+/* REFRESH = 시안 테두리 */
+.refresh-button{
+  background: var(--board-cyan);
+  color: #0b0f16;
+  outline: 0;
+  box-shadow: 0 0 10px rgba(71,216,255,.25);
+}
+.refresh-button:hover{
+  filter: brightness(1.05);
+  box-shadow: 0 0 14px rgba(71,216,255,.45);
+  transform: translateY(-1px);
+}
+
+
+
+/* CREATE ROOM = 마젠타 강조 */
+.create-room-button{
+  background: var(--board-mag);
+  color: #0b0f16;
+  box-shadow: 0 0 12px rgba(210,75,255,.55);
+}
+.create-room-button:hover{
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 0 16px rgba(210,75,255,.8);
+}
+
+/* QUICK JOIN (혹시 쓰면) = 마젠타 아웃라인 */
+.quick-join-button{
+  background: transparent;
+  color: var(--board-mag);
+  outline: 2px solid var(--board-mag);
+  box-shadow: 0 0 10px rgba(210,75,255,.25);
+}
+.quick-join-button:hover{
+  background: rgba(210,75,255,.12);
+  box-shadow: 0 0 14px rgba(210,75,255,.5);
+  transform: translateY(-1px);
+}
+
+/* --- 그리드: 방 카드 영역 --- */
+/* 리스트: 2열 x 3행(스크롤) */
+.rooms-grid{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: minmax(120px, auto);
+  gap: 12px;
+
+  /* 3행까지만 보이게 (120px 카드 + 12px 갭 기준) */
+  max-height: calc((120px + 12px) * 3 - 12px);
+  overflow-y: auto;
+  padding-right: .25rem;
+  
+}
+
+/* 스크롤바 커스텀 (WebKit) */
+.rooms-grid::-webkit-scrollbar{ width: 10px; }
+.rooms-grid::-webkit-scrollbar-track{
+  background: rgba(0,0,0,.35);
+  border-left: 1px solid rgba(71,216,255,.25);
+}
+.rooms-grid::-webkit-scrollbar-thumb{
+  background: linear-gradient(180deg, var(--board-cyan), var(--board-mag));
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.45);
+}
+
+/* --- 상태 메시지 --- */
+.loading-message,
+.error-message,
+.no-rooms-message{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; gap:.25rem; padding: 2.5rem 1rem;
+  color: var(--board-mute);
+}
+.error-message{ color: #ff6b6b; }
+.no-rooms-message p{ margin:0; }
+
+/* 반응형 */
+@media (max-width: 768px){
+  .room-list-header{ flex-direction:column; gap:.75rem; align-items:flex-start; }
+  .rooms-grid{ grid-template-columns: 1fr; }
+}

@@ -7,6 +7,8 @@ import com.ssafy.BlueMarble.domain.game.entity.GameState;
 import com.ssafy.BlueMarble.domain.room.dto.FastStartResponse;
 import com.ssafy.BlueMarble.domain.room.dto.RoomListDTO;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.ssafy.BlueMarble.global.common.event.RoomDeletedEvent;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
@@ -43,7 +45,8 @@ public class RoomService {
     private final UserRedisService userRedisService;
     private final ObjectMapper objectMapper;
     private final WebSocketSessionService webSocketSessionService;
-    private final int MAX_USER_LIMIT = 12;
+    private final ApplicationEventPublisher eventPublisher;
+    private final int MAX_USER_LIMIT = 4;
 
     //대기방 만들기₩
     public void createRoom(WebSocketSession session, CreateRoomPayload createRoomPayload) {
@@ -51,7 +54,14 @@ public class RoomService {
 
         //방 인원제한 체크
         if(createRoomPayload.getUserLimit() > MAX_USER_LIMIT){
-            throw new BusinessException(BusinessError.CREATE_ROOM_FAIL);
+            sessionMessageService.sendMessage(
+                    session,
+                    new MessageDto(
+                            MessageType.CREATE_ROOM_FAIL,
+                            objectMapper.createObjectNode().put("message", "방의 최대 인원 제한은 4명입니다.")
+                    )
+            );
+            return;
         }
 
         if(createRoomPayload.getRoomName() == null){
@@ -99,6 +109,12 @@ public class RoomService {
         //session -> roomId
         log.info("addRoom 호출 - roomId: {}, sessionId: {}", roomId, sessionId);
         addRoom(sessionId, roomId);
+
+        // 생성 성공 응답 전송
+        JsonNode okPayload = objectMapper.createObjectNode().put("roomId", roomId);
+        MessageDto okMessage = new MessageDto(MessageType.CREATE_ROOM_OK, okPayload);
+        sessionMessageService.sendMessage(session, okMessage);
+
     }
 
     public Page<RoomListDTO> getRoomList(Pageable pageable, String searchKey) {
@@ -183,7 +199,7 @@ public class RoomService {
         Long userLimit = Long.parseLong(redisTemplate.opsForValue().get(userLimitKey));
 
         //있으면 인원수 체크해서 12명이상이면 꽉찼다는 메시지
-        if (userSet.size() >= userLimit) {
+        if (userSet.size() > userLimit) {
             log.warn("인원 꽉 참");
             throw new BusinessException(BusinessError.ENTER_ROOM_FAIL);
         }
@@ -260,11 +276,10 @@ public class RoomService {
     }
 
     public void deleteRoom(String roomId) {
+        // 방 관련 데이터 정리
         String usersKey = "room:" + roomId + ":users";
         redisTemplate.delete(usersKey);
-//        System.out.println(redisTemplate.opsForSet().isMember(roomIdKey,String.valueOf(roomId)));
         redisTemplate.opsForSet().remove(roomIdKey, String.valueOf(roomId));
-//        System.out.println(redisTemplate.opsForSet().isMember(roomIdKey,String.valueOf(roomId)));
         String infoKey = "room:" + roomId + ":info";
         redisTemplate.delete(infoKey);
         String stateKey = "room:" + roomId + ":state";
@@ -276,6 +291,11 @@ public class RoomService {
         String missionKey = "room:" + roomId + ":mission";
         redisTemplate.delete(missionKey);
         redisTemplate.delete("room:" + roomId + ":channel");
+        
+        // 게임 관련 데이터 정리를 위한 이벤트 발행
+        eventPublisher.publishEvent(new RoomDeletedEvent(this, roomId));
+        
+        log.info("방 삭제 완료: roomId={}", roomId);
     }
 
     public void kick(WebSocketSession session, KickRoomPayload kickRoomPayload) {

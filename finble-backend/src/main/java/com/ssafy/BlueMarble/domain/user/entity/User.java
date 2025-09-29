@@ -45,19 +45,6 @@ public class User {
     @Column(nullable = false)
     private Provider provider;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name="fcm_token")
-    @Setter
-    private String fcmToken;
-
-    @Column(name="name_tag")
-    @Builder.Default
-    @Setter
-    private String nameTagUrl = null;
-
     @Column(name="icon")
     @Builder.Default
     @Setter

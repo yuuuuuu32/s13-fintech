@@ -1,11 +1,11 @@
--- Initial database setup for BlueMarble
-CREATE DATABASE IF NOT EXISTS bluemarble;
+-- Initial database setup for Finble
+CREATE DATABASE IF NOT EXISTS finble;
 
-USE bluemarble;
+USE finble;
 
--- Grant privileges to the application user
-GRANT ALL PRIVILEGES ON bluemarble.* TO 'bluemarble_user'@'%';
-FLUSH PRIVILEGES;
+-- Grant privileges to the application user (user is already created by docker-entrypoint)
+-- GRANT ALL PRIVILEGES ON finble.* TO 'bluemarble_user'@'%';
+-- FLUSH PRIVILEGES;
 
--- Create basic tables if they don't exist (optional - Spring Boot will handle this)
--- This file is mainly for ensuring database and user setup
+-- Wait for Spring Boot to create tables, then insert data
+-- This file will be executed after Spring Boot creates the schema

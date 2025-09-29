@@ -1,18 +1,22 @@
 package com.ssafy.BlueMarble.websocket.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.BlueMarble.domain.Timer.Service.TimerService;
+import com.ssafy.BlueMarble.domain.game.dto.request.*;
 import com.ssafy.BlueMarble.domain.game.service.MapService;
+import com.ssafy.BlueMarble.domain.game.service.LandService;
+import com.ssafy.BlueMarble.domain.game.service.EventService;
+import com.ssafy.BlueMarble.websocket.service.WebSocketCardService;
 import com.ssafy.BlueMarble.domain.room.service.RoomService;
 import com.ssafy.BlueMarble.domain.user.service.UserRedisService;
 
-import com.ssafy.BlueMarble.global.common.exception.BusinessError;
-import com.ssafy.BlueMarble.global.common.exception.BusinessException;
 import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
-import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.UseCardPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.CreateRoomPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.EnterRoomPayload;
 import com.ssafy.BlueMarble.websocket.dto.payload.room.KickRoomPayload;
+import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
 import com.ssafy.BlueMarble.websocket.service.WebSocketSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +25,7 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+
 
 
 /**
@@ -35,6 +40,11 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final UserRedisService userRedisService;
     private final MapService mapService;
+    private final LandService landService;
+    private final EventService eventService;
+    private final WebSocketCardService webSocketCardService;
+    private final SessionMessageService sessionMessageService;
+    private final TimerService timerService;
 
     /**
      * [연결 성공] WebSocket 협상이 성공적으로 완료되고 WebSocket 연결이 열려 사용할 준비가 된 후 호출됩니다.
@@ -57,7 +67,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 session.getId(), userId, nickname, icon, nameTag);
 
         webSocketSessionService.addSession(userId, session);
-        userRedisService.putNickname(userId, nickname, icon, nameTag);
+        userRedisService.putNickname(userId, nickname, icon);
         log.info("[WebSocket] afterConnectionEstablished 완료 - sessionId: {}", session.getId());
     }
 
@@ -106,6 +116,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 roomService.enterRoom(session, enterRoomPayload);
                 break;
             case EXIT_ROOM:
+                roomService.exitRoom(session);
                 session.close();
                 break;
             case KICK:
@@ -114,12 +125,47 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 break;
             case START_GAME:
                 log.info("[WebSocket] 게임 시작 요청: roomId={}, sessionId={}", roomId, session.getId());
-                if ("null".equals(roomId))
-                    throw new BusinessException(BusinessError.ROOM_ID_NOT_FOUND);
-                CreateMapPayload createMapPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), CreateMapPayload.class);
-                mapService.createNewGameMapState(session, createMapPayload);
+                mapService.createNewGameMapState(roomId);
                 break;
-
+            case TRADE_LAND:
+                TradeLandRequest tradeLandRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), TradeLandRequest.class);
+                landService.tradeLand(session, tradeLandRequest);
+                break;
+            case CONSTRUCT_BUILDING:
+                ConstructRequest constructRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), ConstructRequest.class);
+                landService.constructBuilding(session, constructRequest);
+                break;
+            case JAIL_EVENT:
+                JailRequest jailRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), JailRequest.class);
+                eventService.handleJailEvent(session, jailRequest);
+                break;
+            case WORLD_TRAVEL_EVENT:
+                WorldTravelRequest worldTravelRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), WorldTravelRequest.class);
+                eventService.handleWorldTravelEvent(session, worldTravelRequest);
+                break;
+            case NTS_EVENT:
+                NtsRequest ntsRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), NtsRequest.class);
+                eventService.handleNtsEvent(session, ntsRequest);
+                break;
+            case USE_DICE:
+                UseDiceRequest useDiceRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), UseDiceRequest.class);
+                eventService.handleUseDiceEvent(session, useDiceRequest);
+                break;
+            case USE_CARD:
+                log.info("[WebSocket] 카드 사용 요청: sessionId={}", session.getId());
+                UseCardPayload useCardPayload = objectMapper.treeToValue(chatMessageDto.getPayload(), UseCardPayload.class);
+                webSocketCardService.handleUseCard(session, useCardPayload);
+                break;
+            // DRAW_CARD는 찬스 칸 도착 시 자동으로 처리되므로 수동 요청은 제거
+            case ANGEL_DEFENSE:
+                log.info("[WebSocket] 천사카드 방어 요청 (비활성화됨): sessionId={}", session.getId());
+                webSocketCardService.handleAngelDefense(session); // 비활성화 응답 전송
+                break;
+            case TURN_SKIP:
+                log.debug("사용자가 턴을 스킵하기로 요청보냈음.");
+                TurnSkipRequest turnSkipRequest = objectMapper.treeToValue(chatMessageDto.getPayload(), TurnSkipRequest.class);
+                timerService.endTurnManually(session , turnSkipRequest);
+                break;
         }
 
         log.info("[WebSocket] handleTextMessage 종료 - sessionId: {}", session.getId());
@@ -129,13 +175,22 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
     //     roomId와 uid가 필요한 메시지 타입들을 체크하는 헬퍼 메서드
     private boolean needsRoomIdAndUserId(MessageType messageType) {
-//        return messageType == MessageType.NIGHT_VOTE ||
-        return true;
+        return messageType == MessageType.TRADE_LAND ||
+               messageType == MessageType.CONSTRUCT_BUILDING ||
+               messageType == MessageType.JAIL_EVENT ||
+               messageType == MessageType.WORLD_TRAVEL_EVENT ||
+               messageType == MessageType.USE_DICE ||
+               messageType == MessageType.USE_CARD ||
+               messageType == MessageType.ANGEL_DEFENSE ||
+               messageType == MessageType.TURN_SKIP;
     }
 
     private boolean needsRoomId(MessageType messageType) {
         return messageType == MessageType.START_GAME;
     }
+
+
+
 
     /**
      * [소켓 종료 및 전송 오류] WebSocket 연결이 어느 쪽에서든 종료되거나 전송 오류가 발생한 후 호출됩니다.

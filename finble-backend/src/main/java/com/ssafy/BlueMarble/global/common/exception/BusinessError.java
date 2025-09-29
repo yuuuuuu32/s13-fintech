@@ -43,6 +43,19 @@ public enum BusinessError {
 
     //투표
     INVALID_VOTE(HttpStatus.BAD_REQUEST, "유효한 투표가 아닙니다."),
+    
+    //게임
+    LAND_NOT_FOUND(HttpStatus.BAD_REQUEST, "땅을 찾을 수 없습니다."),
+    INSUFFICIENT_MONEY(HttpStatus.BAD_REQUEST, "잔액이 부족합니다."),
+    USER_NOT_FOUND(HttpStatus.BAD_REQUEST, "사용자를 찾을 수 없습니다."),
+    INVALID_JAIL_STATE(HttpStatus.BAD_REQUEST, "감옥 상태가 올바르지 않습니다."),
+    INVALID_TURN(HttpStatus.BAD_REQUEST, "현재 사용자의 턴이 아닙니다"),
+    INVALID_BEHAVIOR(HttpStatus.BAD_REQUEST,"비정상적인 동작입니다."),
+    SPECIAL_CANNOT_BUILD(HttpStatus.BAD_REQUEST, "특별땅에는 건물을 지을 수 없습니다."),
+    INVALID_BUILDING_TYPE(HttpStatus.BAD_REQUEST, "유효하지 않은 건물 타입입니다."),
+    MAX_BUILDING_REACHED(HttpStatus.BAD_REQUEST, "최대 건물 레벨에 도달했습니다."),
+    CANNOT_TRADE(HttpStatus.BAD_REQUEST, "주인이 없어 거래할 수 없습니다."),
+    CANNOT_CONSTRUCT(HttpStatus.BAD_REQUEST, "건물을 지을 수 없는 땅 입니다.")
     ;
 
 

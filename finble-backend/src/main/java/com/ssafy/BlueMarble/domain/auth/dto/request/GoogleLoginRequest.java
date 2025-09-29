@@ -11,5 +11,4 @@ import lombok.Setter;
 @AllArgsConstructor
 public class GoogleLoginRequest {
     private String idToken;
-    private String fcmToken;
 }

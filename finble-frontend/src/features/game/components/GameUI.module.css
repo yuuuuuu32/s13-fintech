@@ -1,0 +1,274 @@
+.gameContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  color: white;
+  z-index: 999;
+}
+
+.turnInfo {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: 10px;
+  pointer-events: auto;
+}
+
+.economicText {
+  margin-top: 8px;
+  cursor: help;
+}
+
+.economicText:hover {
+  text-decoration: underline;
+}
+
+.boomText {
+  color: #4CAF50;
+}
+
+.bustText {
+  color: #FF9800;
+}
+
+.playerCard {
+  min-width: 200px;
+  max-width: 220px;
+  color: white;
+  transition: all 0.3s;
+  border-radius: 8px;
+  pointer-events: all;
+  z-index: 1000;
+}
+
+.playerCardContent {
+  padding: 12px;
+}
+
+.playerInfo {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.playerIcon {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 8px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+.playerName {
+  font-size: 0.9rem;
+}
+
+.playerStats {
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.bankruptText {
+  color: #ff6b6b;
+}
+
+.jailText {
+  color: #ffa726;
+}
+
+.currentTurnLabel {
+  display: block;
+  margin-top: 4px;
+  color: #FFD700;
+  font-weight: bold;
+  font-size: 0.7rem;
+}
+
+.bottomControls {
+  position: absolute;
+  bottom: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: all;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.gaugeContainer {
+  width: 300px;
+}
+
+.gauge {
+  height: 10px;
+  border-radius: 5px;
+}
+
+.mainButton {
+  width: 250px;
+  height: 60px;
+  font-size: 1.2rem;
+}
+
+.worldTravelOverlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 32px;
+  background-color: rgba(0, 20, 40, 0.95);
+  border-radius: 12px;
+  border: 2px solid #00ffff;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+  text-align: center;
+  min-width: 400px;
+}
+
+.worldTravelTitle {
+  color: #00ffff;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+  margin-bottom: 16px;
+  font-weight: bold;
+}
+
+.worldTravelText {
+  color: #ffffff;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.worldTravelHighlight {
+  color: #00ffff;
+  font-size: 0.9em;
+}
+
+.tooltipContainer {
+  background-color: rgba(0, 0, 0, 0.9);
+  max-width: 350px;
+  font-size: 0.875rem;
+}
+
+.modalStyle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 450px;
+  background-color: #111;
+  border: 2px solid #00ffff;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 32px;
+  color: #fff;
+  border-radius: 8px;
+  text-align: center;
+  font-family: 'Galmuri14.ttf', sans-serif;
+}
+
+.formGroupLabelDisabled {
+  color: rgba(255, 255, 255, 0.4); /* 비활성 상태 텍스트 색상 (반투명한 흰색) */
+}
+
+.formGroupLabel {
+  font-family: 'Galmuri14.ttf', sans-serif;
+}
+
+.totalCostBox {
+  margin-top: 24px;
+  padding: 16px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: white;
+}
+
+.totalCostText {
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.cashText {
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.cashTextSuccess {
+  color: #2e7d32;
+}
+
+.cashTextError {
+  color: #d32f2f;
+}
+
+.specialLandTitle {
+  margin-top: 16px;
+  margin-bottom: 24px;
+  color: #00ffff;
+}
+
+.specialLandDescription {
+  margin-bottom: 16px;
+}
+
+.specialLandPriceBox {
+  margin-top: 24px;
+  padding: 16px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: white;
+}
+
+.specialLandActions {
+  margin-top: 24px;
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.gameOverModal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 450px;
+  background-color: #111;
+  border: 2px solid #00ffff;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  padding: 32px;
+  color: white;
+  border-radius: 8px;
+  text-align: center;
+  font-family: "Galmuri14", sans-serif;
+}
+
+.gameOverTitle {
+  font-family: "Galmuri14", sans-serif;
+}
+
+.gameOverMessage {
+  margin-top: 16px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  font-family: "Galmuri14", sans-serif;
+}
+
+.gameOverReason {
+  margin-top: 8px;
+  font-size: 1rem;
+  color: #6c757d;
+  
+}
+
+.gameOverAssets {
+  margin-top: 8px;
+  font-size: 1.2rem;
+}
+
+.gameOverButton {
+  margin-top: 24px;
+}

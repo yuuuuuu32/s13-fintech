@@ -1,0 +1,90 @@
+/* ===== LobbyPage.css — Cyberpunk Layout (final) ===== */
+
+/* ---- Theme tokens ---- */
+:root{
+  --page-max: 1400px;
+  --gap: 2rem;
+  --left-col: 320px;                    /* 좌측 UserInfo 폭 */
+  --panel-bg: rgba(16,18,35,.86);
+  --panel-border: rgba(71,216,255,.35);
+  --panel-cyan: #47d8ff;
+  --panel-mag:  #d24bff;
+  --vignette: rgba(0,0,0,.65);
+}
+
+/* 다른 페이지 영향 제거 */
+.app-container{
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* --- 페이지 배경 --- */
+.lobby-page-wrapper {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(120% 90% at 50% 60%, transparent 0%, var(--vignette) 80%),
+    var(--bg-url) center/cover no-repeat fixed,
+    linear-gradient(180deg,#0a0b17,#0a0b17);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 스캔라인 오버레이 */
+.lobby-page-wrapper::after{
+  content:"";
+  position:absolute; inset:0;
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,.035) 0px,
+      rgba(255,255,255,.035) 1px,
+      transparent 2px,
+      transparent 4px
+    );
+  background-size: 100% 8px;
+  pointer-events:none;
+  z-index: 0;
+}
+
+/* --- 중앙 그리드 --- */
+.lobby-page-content{
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 2rem;
+  box-sizing: border-box;
+
+  display: grid;
+  grid-template-columns: var(--left-col) 1fr;  /* 좌: UserInfo / 우: Rooms */
+  grid-template-rows: minmax(0,1fr);
+  gap: var(--gap);
+  align-items: stretch;                        /* 같은 높이 */
+}
+
+/* 자식 스택 안전 */
+.lobby-page-content > *{
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- 반응형 ---- */
+@media (max-width: 1200px){
+  :root{ --left-col: 300px; }
+}
+@media (max-width: 992px){
+  .lobby-page-content{
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    gap: 1.25rem;
+    padding: 1rem;
+  }
+}
+@media (max-width: 640px){
+  .lobby-page-wrapper{ background-attachment: scroll; }
+}

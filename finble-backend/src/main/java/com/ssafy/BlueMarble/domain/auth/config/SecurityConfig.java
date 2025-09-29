@@ -6,9 +6,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.client.RestTemplate;
 
 @Configuration
 public class SecurityConfig {
@@ -24,22 +26,22 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf
+                        .disable())
+                .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
 
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/v3/api-docs"
                         ).permitAll()
+                        .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/ws/**", "/user/**", "/game/**").permitAll()
-                        .requestMatchers("/api/room/**", "/api/user/friend/**").permitAll()
+                        .requestMatchers("/api/room/**").permitAll()
                         .requestMatchers("/api/game/**").permitAll()
-                        .requestMatchers("/api/inventory/**").permitAll()
                         .requestMatchers(
                                 "/auth/**", "/oauth2/**", "/oauth2", "/login/oauth2", "/login/oauth2/code/**"
-                        ).permitAll()
-                        .requestMatchers(
-                                "/api/chat/**"
                         ).permitAll()
                         .requestMatchers(
                                 "/ws-endpoint"

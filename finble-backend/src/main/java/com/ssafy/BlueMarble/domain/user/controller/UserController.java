@@ -58,7 +58,7 @@ public class UserController {
     @Operation(summary = "닉네임 검색", description = "닉네임으로 유저 조회하는 API")
     public ResponseEntity<UserSearchResponseDTO> searchUser(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestParam String userName){
+            @RequestParam String userName) {
         return ResponseEntity.ok(userService.searchUser(userName));
     }
 }

@@ -8,6 +8,7 @@ import com.ssafy.BlueMarble.domain.user.entity.User;
 import com.ssafy.BlueMarble.domain.user.repository.UserRepository;
 import com.ssafy.BlueMarble.global.common.exception.BusinessError;
 import com.ssafy.BlueMarble.global.common.exception.BusinessException;
+import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -29,40 +30,9 @@ public class UserService {
     private final Random random = new Random();
 
     public UserInfoResponse getUserInfo(User user) {
-//        UserStats userStats = userStatsRepository.findByUser(user);
-//
-//        LevelService.XpInfo xpInfo = levelService.calculateXpInfo(userStats);
-//
-//        List<JobStats> jobStatsList = jobStatsRepository.findByUser(user);
-//
-//        Map<Role, JobStats> jobStatsMap = jobStatsList.stream()
-//                .collect(Collectors.toMap(JobStats::getJobType, stats -> stats));
-//
-//        List<ItemDto> icons = inventoryService.getUserIcons(user.getId());
-//        List<ItemDto> nameTags = inventoryService.getUserNameTags(user.getId());
-//
-//        return UserInfoResponse.builder()
-//                .nickname(user.getNickname())
-//                .email(user.getEmail())
-//                .createdAt(user.getCreatedAt())
-//                .level(userStats.getLevel())
-//                .xp(xpInfo.curXp())
-//                .maxXp(xpInfo.maxXp())
-//                .progress(xpInfo.progress())
-//                .tier(userStats.getTier())
-//                .MMR(userStats.getMMR())
-//                .totalGames(userStats.getTotalGames())
-//                .totalWins(userStats.getTotalWins())
-//                .totalLosses(userStats.getTotalLosses())
-//                .winRate(userStats.getWinRate())
-//                .MafiaTeamWinRate(jobStatsService.calculateJobWinRate(jobStatsMap, Role.MAFIA))
-//                .CitizenTeamWinRate(jobStatsService.calculateCitizenTeamWinRate(jobStatsList))
-//                .iconUrl(user.getIconUrl())
-//                .nameTagUrl(user.getNameTagUrl())
-//                .icons(icons)
-//                .nameTags(nameTags)
-//                .build();
-        return UserInfoResponse.builder().build();
+        return UserInfoResponse.builder()
+                .nickname(user.getNickname())
+                .build();
     }
 
     public String generateNickname() {
@@ -82,21 +52,7 @@ public class UserService {
 
         request.applyTo(user);
 
-//        if(request.getNameTagId()!=null){
-//            Item item = itemRepository.findById(request.getNameTagId())
-//                    .orElseThrow(()-> new BusinessException(BusinessError.ITEM_ID_NOT_FOUND));
-//
-//            if(item.getItemCategory() != Item.CategoryType.NAME)
-//                throw new BusinessException(BusinessError.CATEGORY_MISMATCH);
-//
-//            user.setNameTagUrl(item.getItemIcon());
-//        }
-
-        User savedUser = userRepository.save(user);
-
-//        if (nicknameChanged) {
-//            userRedisService.putNickname(savedUser.getId().toString(), savedUser.getNickname(), icon, nameTag);
-//        }
+        userRepository.save(user);
 
         return true;
     }
@@ -118,7 +74,6 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(BusinessError.USER_EMAIL_NOT_FOUND));
 
-        user.setFcmToken(null);
         userRepository.save(user);
     }
 
@@ -128,5 +83,13 @@ public class UserService {
 
     public UserSearchResponseDTO searchUser(String userName) {
         return userRepository.findByNickname(userName);
+    }
+
+    public String getUserIdByNickname(CreateMapPayload gameMapState, String userName) {
+        return gameMapState.getPlayers().entrySet().stream()
+                .filter(entry -> userName.equals(entry.getValue().getNickname()))
+                .map(entry -> entry.getKey())
+                .findFirst()
+                .orElse(null);
     }
 }
