@@ -1,0 +1,13 @@
+# Google OAuth2 설정
+GOOGLE_CLIENT_ID=1018962715120-f269l235ob2kmcb26lu1bocm22eus0mr.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
+
+# JWT 설정
+JWT_SECRET=your-secret-key-here-make-it-long-enough-for-security-at-least-32-characters
+
+# 데이터베이스 설정
+DB_USERNAME=root
+DB_PASSWORD=password
+
+# Redis 설정 (필요시)
+REDIS_PASSWORD=

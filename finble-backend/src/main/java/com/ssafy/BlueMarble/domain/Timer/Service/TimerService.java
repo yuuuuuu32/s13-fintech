@@ -13,6 +13,7 @@ import com.ssafy.BlueMarble.websocket.dto.MessageDto;
 import com.ssafy.BlueMarble.websocket.dto.MessageType;
 import com.ssafy.BlueMarble.websocket.dto.payload.game.CreateMapPayload;
 import com.ssafy.BlueMarble.websocket.service.SessionMessageService;
+import com.ssafy.BlueMarble.config.MetricsConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -36,6 +37,7 @@ public class TimerService {
     private final UserRedisService userRedisService;
     private final EconomicHistoryService economicHistoryService;
     private final RoomService roomService;
+    private final MetricsConfig metricsConfig;
     // 턴 타이머 키 패턴
     private static final String TURN_TIMER_PREFIX = "turn_timer:";
 
@@ -44,7 +46,7 @@ public class TimerService {
     private final ConcurrentMap<String, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
 
     /**
-     * 턴 시작 시 타이머 설정
+     * 턴 시작 시 타이머 설정 (메모리 기반)
      */
     public void startTurnTimer(String roomId, Long seconds) {
 
@@ -64,6 +66,26 @@ public class TimerService {
 
         // 예약 정보 저장
         scheduledTasks.put(roomId, scheduledFuture);
+    }
+
+    /**
+     * 턴 시작 시 Redis TTL 기반 타이머 설정
+     */
+    public void startTurnTimerWithTTL(String roomId, Long seconds) {
+        //log.info("Redis TTL 기반 타이머 시작: roomId={}, seconds={}", roomId, seconds);
+        
+        String timerKey = TURN_TIMER_PREFIX + roomId;
+        
+        // 기존 타이머 키 삭제
+        redisTemplate.delete(timerKey);
+        
+        // TTL로 타이머 설정 (seconds 후 만료)
+        redisTemplate.opsForValue().set(timerKey, "active", seconds, TimeUnit.SECONDS);
+        
+        // 메트릭 업데이트
+        metricsConfig.incrementTimerCreated();
+        
+        //log.info("Redis TTL 타이머 설정 완료: roomId={}, timerKey={}", roomId, timerKey);
     }
 
     /**
@@ -112,11 +134,19 @@ public class TimerService {
         log.info("게임 종료로 인한 타이머 정리 완료: roomId={}", roomId);
     }
 
+    /**
+     * Redis TTL 만료로 인한 턴 타이머 처리 (public 메서드)
+     */
+    public void handleTurnTimerExpiration(String roomId) {
+        //log.info("Redis TTL 만료로 인한 턴 타이머 처리: roomId={}", roomId);
+        endTurnByTimer(roomId);
+    }
+
     private void endTurnByTimer(String roomId) {
         // 턴 종료 로직 실행
         CreateMapPayload gameState = gameRedisService.getGameMapState(roomId);
         if (gameState == null) {
-            log.error("게임 상태를 찾을 수 없음: roomId={}", roomId);
+            //log.error("게임 상태를 찾을 수 없음: roomId={}", roomId);
             return;
         }
 

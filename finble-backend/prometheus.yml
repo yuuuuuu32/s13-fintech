@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus 자체 메트릭
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Redis Exporter 메트릭
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 5s
+    metrics_path: /metrics
+
+  # Spring Boot 애플리케이션 메트릭 (추후 추가)
+  - job_name: 'spring-boot-app'
+    static_configs:
+      - targets: ['host.docker.internal:8080']  # Spring Boot 앱 주소
+    metrics_path: /actuator/prometheus
+    scrape_interval: 10s
