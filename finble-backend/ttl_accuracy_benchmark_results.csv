@@ -1,0 +1,4 @@
+Room Count,TTL Seconds,Expected Expiration,Actual Expiration,Accuracy MS,Accuracy Grade,Expired Keys,Accuracy Rate
+1000,30,01:00:11,01:00:16,5000,POOR,,0%
+5000,30,01:00:51,01:00:56,5000,POOR,,0%
+10000,30,01:01:31,01:01:36,5000,POOR,,0%

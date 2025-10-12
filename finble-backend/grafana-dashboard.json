@@ -1,0 +1,262 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Redis TTL Monitoring Dashboard",
+    "tags": ["redis", "ttl", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "5s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Redis Expired Keys Total",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "redis_expired_keys_total",
+            "legendFormat": "Total Expired Keys"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "list",
+              "orientation": "horizontal"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 10000
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Redis Memory Usage",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "redis_memory_used_bytes",
+            "legendFormat": "Memory Used (bytes)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes",
+            "color": {
+              "mode": "palette-classic"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 100000000
+                },
+                {
+                  "color": "red",
+                  "value": 500000000
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Redis Connected Clients",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "redis_connected_clients",
+            "legendFormat": "Connected Clients"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "red",
+                  "value": 100
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 4,
+        "title": "Redis CPU Usage",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "redis_cpu_used_sys_seconds_total",
+            "legendFormat": "CPU Usage"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "palette-classic"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        }
+      },
+      {
+        "id": 5,
+        "title": "TTL Load Test Metrics",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ttlLoad_set_latency_seconds",
+            "legendFormat": "TTL Set Latency"
+          },
+          {
+            "expr": "ttlLoad_bulk_latency_seconds",
+            "legendFormat": "Bulk TTL Latency"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Latency (seconds)",
+            "logBase": 1,
+            "max": null,
+            "min": null
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 6,
+        "title": "Redis Expired Key Processing Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "redis_expired_key_processing_time_seconds",
+            "legendFormat": "Processing Time"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Time (seconds)",
+            "logBase": 1,
+            "max": null,
+            "min": null
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 7,
+        "title": "Redis Keyspace Events Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(redis_expired_keys_total[5m])",
+            "legendFormat": "Expired Keys/sec"
+          },
+          {
+            "expr": "rate(redis_expired_keys_by_pattern_total[5m])",
+            "legendFormat": "Turn Timer Expired/sec"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Events/sec",
+            "logBase": 1,
+            "max": null,
+            "min": null
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 16
+        }
+      }
+    ]
+  }
+}

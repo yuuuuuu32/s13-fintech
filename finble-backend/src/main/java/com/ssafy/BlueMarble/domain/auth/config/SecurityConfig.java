@@ -37,6 +37,8 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/monitor/**").permitAll()
+                        .requestMatchers("/test/**").permitAll()
                         .requestMatchers("/ws/**", "/user/**", "/game/**").permitAll()
                         .requestMatchers("/api/room/**").permitAll()
                         .requestMatchers("/api/game/**").permitAll()

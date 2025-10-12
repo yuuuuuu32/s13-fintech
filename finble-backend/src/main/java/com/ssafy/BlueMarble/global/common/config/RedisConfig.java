@@ -55,9 +55,17 @@ public class RedisConfig {
     }
 
     @Bean
-    public RedisMessageListenerContainer redisMessageListenerContainer(RedisConnectionFactory connectionFactory) {
+    public RedisMessageListenerContainer redisMessageListenerContainer(
+            RedisConnectionFactory connectionFactory,
+            com.ssafy.BlueMarble.monitoring.RedisExpiredKeyListener expiredKeyListener) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
+        
+        // Redis Keyspace Events 구독 설정
+        // __keyevent@0__:expired 채널을 구독하여 키 만료 이벤트 수신
+        container.addMessageListener(expiredKeyListener, 
+            org.springframework.data.redis.listener.PatternTopic.of("__keyevent@0__:expired"));
+        
         return container;
     }
 }
