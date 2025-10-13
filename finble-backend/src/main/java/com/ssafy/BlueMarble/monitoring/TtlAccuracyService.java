@@ -4,7 +4,6 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -16,7 +15,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class TtlAccuracyService {
 
     private final RedisTemplate<String, String> redisTemplate;
@@ -31,7 +29,7 @@ public class TtlAccuracyService {
     private final ConcurrentHashMap<String, Long> expectedExpirationTimes = new ConcurrentHashMap<>();
     private final AtomicLong totalExpiredKeys = new AtomicLong(0);
     private final AtomicLong totalAccuracyMeasured = new AtomicLong(0);
-    
+
     public TtlAccuracyService(RedisTemplate<String, String> redisTemplate, MeterRegistry meterRegistry) {
         this.redisTemplate = redisTemplate;
         this.meterRegistry = meterRegistry;
