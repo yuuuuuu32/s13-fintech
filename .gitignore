@@ -65,3 +65,8 @@ redis_data/
 # Docker 임시 파일
 .dockerignore
 docker-compose.override.yml
+
+# ────────────── 보안 키 ──────────────
+*.pem
+deploy_key
+deploy_key.pub

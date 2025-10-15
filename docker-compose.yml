@@ -6,10 +6,10 @@ services:
     ports:
       - "3307:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME:-finble}
       MYSQL_USER: ${DB_USERNAME:-finble_user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
@@ -54,10 +54,10 @@ services:
       DB_PORT: 3306
       DB_NAME: ${DB_NAME:-finble}
       DB_USERNAME: ${DB_USERNAME:-finble_user}
-      DB_PASSWORD: ${DB_PASSWORD:-password}
+      DB_PASSWORD: ${DB_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-6f8d3a1c2b4e5f60718293ab4cd5ef60718293ab4cd5ef60a1b2c3d4e5f60718}
+      JWT_SECRET: ${JWT_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dummy-client-id}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-dummy-client-secret}
     depends_on:
