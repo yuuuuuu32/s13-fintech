@@ -1,0 +1,62 @@
+.seats-layer{
+  position: relative;
+  width: 100%;
+  height: 60vh;               /* 좌석 표시 높이 */
+  min-height: 400px;
+}
+
+.seat{
+  position: absolute;
+  transform: translateX(-50%);
+  width: clamp(120px, 18vw, 220px);  /* 좌석 크기 기준 */
+  height: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+/* 이름/역할 배지 */
+.name-tag{
+  position: absolute;
+  top: -2.5rem;  /* 의자 위 */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .35rem .6rem;
+  border-radius: .6rem;
+  background: rgba(16,18,35,.78);
+  border: 1px solid rgba(71,216,255,.35);
+  color: #eaf6ff;
+  font-weight: 600;
+  font-size: clamp(12px, 1.1vw, 16px);
+  white-space: nowrap;
+}
+
+/* 레이어 순서: 링(0) < 의자(1) < 캐릭터(2) < 이름(3) */
+.neon-ring{
+  z-index: 0;
+}
+
+.chair-img{
+  width: 100%;
+  height: auto;
+  z-index: 1;
+  position: relative;
+}
+
+.character-img{
+  position: absolute;
+  bottom: 20%;            /* 캐릭터를 의자 위에 올림 */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;             /* 의자 크기 대비 캐릭터 크기 조정 */
+  height: auto;
+  z-index: 2;
+  image-rendering: pixelated;
+}

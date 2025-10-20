@@ -1,0 +1,119 @@
+/* finble-frontend/src/features/auth/pages/LoginPage.css */
+
+/* Note: For fonts to work, ensure Google Fonts (Orbitron, Noto Sans KR, Roboto) 
+   are imported in your main index.html file or a global CSS file.
+*/
+
+.login-container {
+  width: 100vw;
+  height: 100vh;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  font-family: 'Orbitron', sans-serif;
+}
+
+.login-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 1;
+}
+
+.logo-container {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 60px;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.7)) 
+          drop-shadow(0 0 20px rgba(0, 255, 255, 0.5));
+}
+
+.logo-image {
+  width: 600px;
+  height: auto;
+  display: block;
+}
+
+.login-actions {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 320px; /* 버튼 폭 기준 */
+  align-items: center;
+}
+
+.error-message {
+  color: #ff4d4d;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-family: "Noto Sans KR", sans-serif;
+}
+
+/* ---------------- Google 버튼 래퍼 ---------------- */
+.google-login-wrapper {
+  width: 320px;              /* GoogleLogin width와 동일 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ---------------- Kakao 버튼 ---------------- */
+.kakao-login-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  width: 320px;              /* Google 버튼과 동일 폭 */
+  height: 40px;              /* Google size="large" 높이에 맞춤 */
+  padding: 0 16px;           /* 수평 패딩만 */
+  border-radius: 8px;
+
+  background-color: #FEE500;
+  border: 1px solid #E6CF00;
+  color: #000;
+  font-size: 14px;           /* Google large와 시각적 밸런스 */
+  font-weight: 600;
+  font-family: "Noto Sans KR", sans-serif;
+  cursor: pointer;
+
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08), 
+              0 3px 8px rgba(0,0,0,0.12);
+  transition: box-shadow 0.2s ease-in-out, filter 0.2s ease-in-out;
+}
+
+.kakao-login-button:hover:not(:disabled) {
+  filter: brightness(0.98);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.10), 
+              0 6px 14px rgba(0,0,0,0.18);
+}
+
+.kakao-login-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.kakao-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+
+.kakao-text {
+  line-height: 1;
+}

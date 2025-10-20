@@ -1,0 +1,84 @@
+# ────────────── 공통 ──────────────
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+*.lock
+
+# ────────────── Frontend (React) ──────────────
+node_modules/
+dist/
+build/
+out/
+.cache/
+coverage/
+*.tsbuildinfo
+
+# ────────────── 환경변수 & 보안 ──────────────
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.staging
+.env.example
+
+# ────────────── Backend (Spring Boot) ──────────────
+# Maven / Gradle build 결과물
+/target/
+/build/
+/out/
+
+# IDE / Editor 설정
+*.iml
+*.ipr
+*.iws
+
+# OS 특화
+ehthumbs.db
+Desktop.ini
+
+# ────────────── 로그 파일 ──────────────
+*.log
+logs/
+*.tmp
+nohup.out
+
+# 환경 설정 (개발자 로컬별 - 기본 application.yml은 제외)
+# application-local.yml
+# application-dev.yml
+# application-prod.yml
+# application-test.yml
+# application-*.properties
+
+# ────────────── Docker ──────────────
+# Docker volumes
+mysql_data/
+redis_data/
+
+# Docker 임시 파일
+.dockerignore
+docker-compose.override.yml
+
+# ────────────── 보안 키 ──────────────
+*.pem
+deploy_key
+deploy_key.pub
+
+# secrets
+.env
+*.env
+*.env.*
+client_secret*.json
+*.pem
+*.key
+
+# exclude secrets files
+finble-backend/src/main/resources/application-docker.yml
+exec/PORTING_MANUAL.md

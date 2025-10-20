@@ -1,0 +1,32 @@
+/* 레퍼런스처럼 타일 위에 인덱스 형식으로 표시하려 했지만, 시간 상 보류 */
+
+:root {
+  /* 더 밝은 네온 타일 색상 */
+  --tile-city-color: #10b981;
+  --tile-company-color: #3b82f6;
+  --tile-chance-color: #ef4444;
+  --tile-special-color: #8b5cf6;
+  --tile-jail-color: #6b7280;
+  --tile-airplane-color: #06b6d4;
+  --tile-border-color: #4b5563;
+  --tile-world-travel-color: #00ffff;
+  --tile-world-travel-hover: #4fd1c7;
+  
+  --player-1-color: #10b981;
+  --player-2-color: #ef4444;
+  --player-default-color: #ffffff;
+
+  /* BaseTile에서 사용하는 CSS 변수 정의 */
+  /* 타일 색상 */
+  --tile-base-color: #2a2a3a;
+  --tile-top-color: #90EE90;
+  --tile-border-color: black;
+  --tile-world-travel-color: #00ffff;
+  
+  /* 플레이어 캐릭터 색상 */
+  --player-cone-color: #4A90E2;
+  --player-sphere-color: #E74C3C;
+  --player-box-color: #F39C12;
+  --player-torus-color: #9B59B6;
+  --player-default-color: #FFFFFF;
+}

@@ -1,0 +1,114 @@
+/* --- 전체 카드 --- */
+.room-card { 
+  background: rgba(10, 11, 23, 0.8);
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  overflow: hidden; 
+  transition: all 0.3s ease; 
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.1);
+  min-height: 180px;
+}
+.room-card:hover { 
+  border-color: #00ffff; 
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2);
+  transform: translateY(-4px); 
+}
+
+.room-card-inner {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.room-name {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- 상태 표시 태그 --- */
+.room-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px; /* 기존 4px에서 아주 큰 값을 주어 캡슐 모양으로 */
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  font-weight: bold;
+  font-family: 'Orbitron', sans-serif;
+  flex-shrink: 0;
+  border-radius: 0;
+}
+.room-status.waiting {
+  background: rgba(0, 255, 0, 0.15);
+  color: #00ff00;
+  border: 1px solid rgba(0, 255, 0, 0.5);
+}
+
+.room-status.playing {
+  background: rgba(255, 0, 255, 0.15);
+  color: #ff00ff;
+  border: 1px solid rgba(255, 0, 255, 0.5);
+}
+
+.room-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-grow: 1;
+}
+
+.room-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.label {
+  color: #aaa;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.value {
+  color: #00ffff;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+/* --- 참가 버튼 --- */
+.join-button {
+  width: 100%;
+  padding: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  font-family: 'Orbitron', sans-serif;
+  cursor: pointer;
+  border: none;
+  border-radius: 0;
+  background-color: #00ffff;
+  color: #000;
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+}
+
+.join-button:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 1);
+  filter: brightness(1.1);
+}

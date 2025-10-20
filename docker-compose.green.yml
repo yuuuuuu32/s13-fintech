@@ -1,0 +1,81 @@
+services:
+  # Spring Boot Backend (Green deployment on port 8082)
+  backend:
+    build:
+      context: ./finble-backend
+      dockerfile: Dockerfile
+    container_name: bluemarble-backend-green
+    ports:
+      - "8082:8081"  # Map host 8082 to container 8081
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-docker}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-finble}
+      DB_USERNAME: ${DB_USERNAME:-finble_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dummy-client-id}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-dummy-client-secret}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bluemarble-network
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
+  # Use existing MySQL and Redis services
+  mysql:
+    image: mysql:8.0
+    container_name: bluemarble-mysql
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-finble}
+      MYSQL_USER: ${DB_USERNAME:-finble_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - bluemarble-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: bluemarble-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - bluemarble-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+networks:
+  bluemarble-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local

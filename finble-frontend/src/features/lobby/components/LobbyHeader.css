@@ -1,0 +1,124 @@
+/* ===== Cyberpunk Lobby Header (CSS only, JSX 변경 없음) ===== */
+:root{
+  --hdr-h: 64px;
+  --hdr-bg: rgba(8,10,22,0.75);       /* 반투명 다크 */
+  --hdr-border: #47d8ff;              /* 청록 네온 */
+  --hdr-border-dim: rgba(71,216,255,.35);
+  --hdr-magenta: #d24bff;             /* 보조 네온(마젠타) */
+  --max-w: 1400px;
+}
+
+/* 상단 고정 + 블러 + 네온 프레임 */
+.lobby-header{
+  position: sticky; top: 0; z-index: 50;
+  width:100%; height: var(--hdr-h);
+  background: var(--hdr-bg);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow:
+    0 8px 24px rgba(0,0,0,.35),
+    inset 0 -1px 0 var(--hdr-border-dim);
+  /* 외곽 프레임(얇은 시안 라인) */
+  border-bottom: 2px solid var(--hdr-border-dim);
+}
+
+/* 내부 컨테이너 */
+.header-content{
+  height: var(--hdr-h);
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 28px;
+  display: flex; align-items: center; justify-content: flex-start;
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* 로고: 레퍼런스 같은 청록-보라 네온 글로우 */
+.logo{
+  height: calc(var(--hdr-h) - 18px);
+  width: auto; display:block; user-select:none; -webkit-user-drag:none;
+  filter:
+    drop-shadow(0 0 6px rgba(71,216,255,.75))
+    drop-shadow(0 0 14px rgba(210,75,255,.35));
+  transition: transform .18s ease, filter .18s ease, opacity .18s ease;
+  cursor: pointer;
+}
+.logo:hover{
+  transform: translateY(-1px) scale(1.02);
+  filter:
+    drop-shadow(0 0 10px rgba(71,216,255,.9))
+    drop-shadow(0 0 22px rgba(210,75,255,.6));
+}
+.logo:active{ transform: translateY(0) scale(.99); }
+
+/* === 데코레이션(요소 추가 없이 라인/코너/스캔라인 구현) === */
+
+/* 하단 네온 라인 + 그라데이션(시안→마젠타) */
+.lobby-header::after{
+  content:"";
+  position:absolute; left:0; right:0; bottom:0; height:2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(71,216,255,.8) 12%,
+    rgba(71,216,255,1) 25%,
+    rgba(210,75,255,1) 60%,
+    rgba(210,75,255,.6) 85%,
+    transparent 100%);
+  pointer-events:none;
+}
+
+/* 내부 얇은 상단 보더(참조 이미지의 더블 프레임 느낌) */
+.header-content::before{
+  content:"";
+  position:absolute; left:16px; right:16px; top:10px; height:1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(71,216,255,.55) 15%,
+    rgba(71,216,255,.85) 40%,
+    rgba(210,75,255,.85) 60%,
+    rgba(210,75,255,.55) 85%,
+    transparent 100%);
+  filter: drop-shadow(0 0 2px rgba(71,216,255,.6));
+  pointer-events:none;
+}
+
+/* 코너 브라켓(도시 배경 위 HUD 같은 모서리 장식) */
+.header-content::after{
+  content:"";
+  position:absolute; inset: 8px 16px auto 16px; height: calc(var(--hdr-h) - 16px);
+  background:
+    /* 좌상 */
+    linear-gradient(90deg, var(--hdr-border) 0 10px, transparent 10px) top left/100% 2px no-repeat,
+    linear-gradient(180deg, var(--hdr-border) 0 10px, transparent 10px) top left/2px 100% no-repeat,
+    /* 우상 */
+    linear-gradient(90deg, transparent calc(100% - 10px), var(--hdr-border) 0) top right/100% 2px no-repeat,
+    linear-gradient(180deg, var(--hdr-border) 0 10px, transparent 10px) top right/2px 100% no-repeat;
+  opacity:.25; pointer-events:none;
+}
+
+/* 은은한 스캔라인(레퍼런스 HUD 질감) */
+.lobby-header .header-content{
+  --scan-alpha: .07;
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,var(--scan-alpha)) 0px,
+      rgba(255,255,255,var(--scan-alpha)) 1px,
+      transparent 2px,
+      transparent 4px
+    );
+  background-size: 100% 8px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.6), rgba(0,0,0,1));
+}
+
+/* 모바일/태블릿 대응 */
+@media (max-width: 992px){
+  :root{ --hdr-h: 56px; }
+  .header-content{ padding: 0 16px; }
+  .logo{ height: calc(var(--hdr-h) - 14px); }
+}
+@media (max-width: 640px){
+  :root{ --hdr-h: 52px; }
+  .header-content{ padding: 0 12px; }
+  .logo{ height: calc(var(--hdr-h) - 12px); }
+}

@@ -1,0 +1,49 @@
+:root {
+  /* 더 밝고 현대적인 사이버펑크 테마 */
+  --board-background: #0f0f23;
+  --board-center: #1a1a35;
+  --board-border: #00d4ff;
+  --board-decorative: #00d4ff;
+  --board-logo-bg: #2a2a4a;
+  --board-logo-border: #00ffff;
+  --board-base: #1a1a35;
+}
+
+/* 전역 CSS 변수도 정의 */
+html {
+  --board-background: #0f0f23;
+  --board-center: #1a1a35;
+  --board-border: #00d4ff;
+  --board-decorative: #00d4ff;
+  --board-logo-bg: #2a2a4a;
+  --board-logo-border: #00ffff;
+  --board-base: #1a1a35;
+}
+
+.boardBackground {
+  color: var(--board-background);
+}
+
+.centerArea {
+  color: var(--board-center);
+}
+
+.borderRing {
+  color: var(--board-border);
+}
+
+.decorativeBorder {
+  color: var(--board-decorative);
+}
+
+.logoArea {
+  color: var(--board-logo-bg);
+}
+
+.logoBorder {
+  color: var(--board-logo-border);
+}
+
+.boardBase {
+  color: var(--board-base);
+}

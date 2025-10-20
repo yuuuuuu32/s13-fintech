@@ -1,0 +1,165 @@
+/* ===== Retro Arcade HUD — UserInfo.css (JSX 변경 없음) ===== */
+:root{
+  --retro-bg: #0c0f16;              /* 패널 베이스 */
+  --retro-plate: #222b36;           /* 타이틀 바 판넬 */
+  --retro-border: #b2c7d3;          /* 밝은 외곽선(회색) */
+  --retro-cyan: #7fe7ff;           /* 시안 라인 */
+  --retro-cyan-dim: rgba(127,231,255,.35);
+  --retro-mag: #d24bff;            /* 마젠타 보조 */
+  --retro-text: #eaf6ff;
+  --retro-mute: #a8b2bf;
+}
+
+/* 패널: 두꺼운 베젤 + 내부 네온 라인 */
+.user-info-panel{
+  width: 280px; flex-shrink: 0;
+  position: sticky; top: 2rem; z-index: 1;
+  padding: 1rem 1.25rem 1.25rem;
+  background: var(--retro-bg);
+  color: var(--retro-text);
+  border: 2px solid var(--retro-border);                 /* 바깥 밝은 보더 */
+  box-shadow:
+    0 10px 24px rgba(0,0,0,.45),                         /* 외부 그림자 */
+    inset 0 0 0 2px rgba(0,0,0,.35),                     /* 안쪽 어두운 홈 */
+    inset 0 0 18px rgba(127,231,255,.06);                /* HUD 글로우 */
+
+  /* CRT 스캔라인 살짝 */
+  background-image:
+    repeating-linear-gradient(to bottom,
+      rgba(255,255,255,.03) 0px,
+      rgba(255,255,255,.03) 1px,
+      transparent 2px,
+      transparent 4px);
+  background-size: 100% 8px;
+  isolation: isolate;
+}
+
+/* 타이틀 바: 레트로 창 헤더 */
+.panel-title{
+  display:flex; 
+  align-items: center;  
+  min-height: 40px; 
+  margin: -1rem -1.25rem 1rem;                 /* 패널 패딩을 넘어 맞붙게 */
+  padding: .6rem 1rem;
+  background: linear-gradient(#2b3641, #222b36);
+  color: var(--retro-cyan);
+  font-family: 'VT323','Press Start 2P','Orbitron', monospace;
+  font-size: 1rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 800;
+  border-top-left-radius: calc(var(--radius) - 2px);
+  border-top-right-radius: calc(var(--radius) - 2px);
+  border-bottom: 2px solid rgba(127,231,255,.55);        /* 시안 하단 라인 */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.15),
+    0 2px 0 rgba(0,0,0,.5);
+    
+}
+
+/* 아바타 + 텍스트를 좌측 정렬 그리드로 (레퍼런스처럼) */
+.profile-summary {
+  display: flex;
+  flex-direction: column;   /* 가로 → 세로 */
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* 아바타: 마젠타 프레임 + 네온 */
+.avatar-container {
+  width: 120px;
+  height: 120px;
+  border-radius: 0;
+  padding: 6px;
+  background: #0b0e15;
+  position: relative;
+  border: 2px solid var(--retro-mag);
+  box-shadow: 0 0 0 2px rgba(0,0,0,.6) inset,
+              0 0 18px rgba(210,75,255,.25);
+  margin-bottom: 0.5rem;   /* 아바타와 닉네임 사이 여백 */
+}
+
+.avatar-image{
+  width:100%; height:100%; border-radius: 2px;
+  object-fit: cover; background:#2c3140;
+  image-rendering: pixelated;               /* 레트로 질감 */
+  display:block;
+}
+
+/* 닉네임 + 온라인 점 */
+.user-name-container {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  justify-content: center; /* 중앙 정렬 */
+}
+
+.user-name{
+  font-family:'VT323','Press Start 2P','Orbitron', monospace;
+  font-size: 1.2rem; font-weight: 900;
+  color: var(--retro-text);
+  text-shadow: 0 0 6px rgba(127,231,255,.15);
+}
+.online-indicator{
+  width:10px; height:10px; border-radius:50%;
+  background: #21ff66;
+  box-shadow: 0 0 6px #21ff66, 0 0 14px rgba(33,255,102,.45);
+  animation: pulse 1.8s ease-in-out infinite;
+  transform: translateY(1px);
+}
+@keyframes pulse{
+  0%,100%{ transform: translateY(1px) scale(1); opacity:.85; }
+  50%{ transform: translateY(1px) scale(1.25); opacity:1; }
+}
+
+/* (옵션) 라벨/값 스타일 — 컴포넌트에 항목이 추가되면 사용
+   .stat-label, .stat-value 는 기존 클래스 유지 */
+.stat-item{ display:flex; align-items:baseline; gap:.5rem; }
+.stat-label{
+  font-family:'VT323','Press Start 2P','Orbitron', monospace;
+  color: var(--retro-mute); font-size:.85rem; letter-spacing:1px;
+}
+.stat-value{
+  font-family:'VT323','Press Start 2P','Orbitron', monospace;
+  color:#fff; font-weight:900; font-size:1.6rem; line-height:1;
+}
+
+/* ENERGY 바(= xp bar) — 레퍼런스 톤 */
+.xp-bar-container{ width:100%; margin-top:.5rem; }
+.xp-bar{
+  width:100%; height: 14px; border-radius: 4px;
+  background:#0f1320;
+  border: 2px solid rgba(127,231,255,.55);     /* 시안 프레임 */
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.5);
+  overflow:hidden;
+}
+.xp-bar-progress{
+  height:100%;
+  background: linear-gradient(90deg, #b26bff, #f06cff);
+  box-shadow: 0 0 10px rgba(240,108,255,.45);
+}
+
+/* 로딩 상태도 레트로 스타일 */
+.loading-user-info{
+  color: var(--retro-mute);
+  font-family:'VT323','Press Start 2P','Orbitron', monospace;
+  letter-spacing: 2px; text-transform: uppercase;
+  position: relative; padding-left: 22px;
+}
+.loading-user-info::before{
+  content:""; position:absolute; left:0; top:50%;
+  transform: translateY(-50%);
+  width:14px; height:14px; border-radius:50%;
+  border: 2px solid var(--retro-cyan);
+  border-right-color: transparent;
+  animation: spin .9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 반응형 */
+@media (max-width: 992px){
+  .user-info-panel{ width:100%; position: static; }
+  .profile-summary{ grid-template-columns: 100px 1fr; }
+  .avatar-container{ width:100px; height:100px; }
+}
