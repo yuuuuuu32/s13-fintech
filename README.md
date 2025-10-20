@@ -53,7 +53,7 @@
 |:---:|:---|
 | **Frontend** | `React 19` `TypeScript` `Vite` `Zustand` `React Router v7` <br/> `Three.js` `React Three Fiber` `Rapier3D` <br/> `Material-UI` `Emotion` `Framer Motion` |
 | **Backend** | `Java 17` `Spring Boot 3.5.3` `Spring Data JPA` `Spring Security` <br/> `Gradle` `MySQL 8` `Redis` `Lettuce` <br/> `WebSocket (STOMP)` `JWT` `Swagger` |
-| **CI/CD & Infra** | `Docker` `Docker-Compose` `Jenkins` `EC2` `NGINX` |
+| **CI/CD & Infra** | `Docker` `Docker-Compose` `Jenkins` `EC2` |
 
 <br/>
 
