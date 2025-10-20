@@ -64,7 +64,7 @@
 
 ## 🧡 팀원 소개
 
-| [윤문정](https://github.com/yuuuuuu32) | 김태균 | [박재연](https://github.com/Park-Jaeyeon) | 박준하 | [하승재](https://github.com/SEUNGJAE-97) |
+| [윤문정](https://github.com/yuuuuuu32) | [김태균](https://github.com/ktg9804287) | [박재연](https://github.com/Park-Jaeyeon) | 박준하 | [하승재](https://github.com/SEUNGJAE-97) |
 |:---:|:---:|:---:|:---:|:---:|
 | <img src="https://avatars.githubusercontent.com/yuuuuuu32?v=4" width="150"> | | <img src="https://avatars.githubusercontent.com/Park-Jaeyeon?v=4" width="150"> |  | <img src="https://avatars.githubusercontent.com/SEUNGJAE-97?v=4" width="150"> |
 | 팀장, 프론트, 디자인 | 프론트, 인프라 | 프론트 | 백엔드 | 백엔드 |
