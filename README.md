@@ -11,6 +11,7 @@
   - [🚀 핵심 기능](#-핵심-기능)
   - [⚙️ 기술 스택](#️-기술-스택)
   - [🏛️ 시스템 아키텍처](#️-시스템-아키텍처)
+  - [🍀 프론트 아키텍처](#-프론트-아키텍처)
   - [🧡 팀원 소개](#-팀원-소개)
   - [📄 라이선스](#-라이선스)
     - [🎨 리소스 출처](#-리소스-출처)
@@ -62,11 +63,17 @@
 
 <br/>
 
+## 🍀 프론트 아키텍처
+![프론트 아키텍처](ScreenShot/image4.png)
+
+
+<br/>
+
 ## 🧡 팀원 소개
 
-| [윤문정](https://github.com/yuuuuuu32) | [김태균](https://github.com/ktg980428) | [박재연](https://github.com/Park-Jaeyeon) | 박준하 | [하승재](https://github.com/SEUNGJAE-97) |
+| [윤문정](https://github.com/yuuuuuu32) | [김태균](https://github.com/ktg980428) | [박재연](https://github.com/Park-Jaeyeon) | [박준하](https://github.com/junha356-hash) | [하승재](https://github.com/SEUNGJAE-97) |
 |:---:|:---:|:---:|:---:|:---:|
-| <img src="https://avatars.githubusercontent.com/yuuuuuu32?v=4" width="150"> | <img src="https://avatars.githubusercontent.com/ktg980428?v=4" width="150"> | <img src="https://avatars.githubusercontent.com/Park-Jaeyeon?v=4" width="150"> |  | <img src="https://avatars.githubusercontent.com/SEUNGJAE-97?v=4" width="150"> |
+| <img src="https://avatars.githubusercontent.com/yuuuuuu32?v=4" width="150"> | <img src="https://avatars.githubusercontent.com/ktg980428?v=4" width="150"> | <img src="https://avatars.githubusercontent.com/Park-Jaeyeon?v=4" width="150"> | <img src="https://avatars.githubusercontent.com/junha356-hash?v=4" width="150"> | <img src="https://avatars.githubusercontent.com/SEUNGJAE-97?v=4" width="150"> |
 | 팀장, 프론트, 디자인 | 프론트, 인프라 | 프론트 | 백엔드 | 백엔드 |
 
 <br/>
