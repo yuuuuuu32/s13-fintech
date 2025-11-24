@@ -87,8 +87,8 @@ JWT_SECRET=bluemarble-jwt-secret-key-for-finble-game-project-2024-very-long-secu
 ### 2.2 OAuth2 설정
 ```properties
 # Google OAuth2
-spring.security.oauth2.client.registration.google.client-id=488233152596-2p0q6k05r71d0i1hp0k8p28u5uc3g3r2.apps.googleusercontent.com
-spring.security.oauth2.client.registration.google.client-secret=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
+spring.security.oauth2.client.registration.google.client-id=
+spring.security.oauth2.client.registration.google.client-secret=
 
 # Kakao OAuth2
 KAKAO_REST_API_KEY=409725197be3c8a40abff4791c2ac7e6
